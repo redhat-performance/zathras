@@ -1,0 +1,28 @@
+---
+# 
+# Upload the required tests.
+#
+
+- name: Create the diriectory for saving results
+  file:
+    path: /tmp/zathras_archive/results_{{ timeval }}
+    recurse: yes
+    state: directory
+
+#
+# We do not care if this fails, so do not show any failure,
+# we just need the return code for the next block
+# 
+- name: obtain list of results
+  shell: "ls -d /tmp/results_* 2> /dev/null"
+  ignore_errors: yes
+  no_log: true
+  register: files_to_move
+  failed_when: "'IGNORE_IT' in files_to_move.stderr"
+
+- name: move files if need be
+  block:
+  - name: mv the files
+    command: mv "{{ item.1 }}"  "/tmp/zathras_archive/results_{{ timeval }}"
+    with_indexed_items: "{{ files_to_move.stdout_lines }}"
+  when: files_to_move.rc == 0

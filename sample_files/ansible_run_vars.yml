@@ -1,0 +1,23 @@
+ssh_i_option: "-i /home/user/zathras_aws_region/testing_m5.xlarge_1/config/user.pem_test"
+aws_uname: DValin
+aws_sec_grp: sg-0f23431c59e60e797
+aws_instance_id: i-00b0775d2d011d9e5
+test_hostname: ec2-52-202-29-165.compute-1.amazonaws.com
+cloud_zone: us-east-1c
+aws_net_instance_id: i-08bc555226d82096c
+net_hostname: ec2-18-207-189-17.compute-1.amazonaws.com
+aws_vpc_id: vpc-94188bee
+subnet:
+  - subnet-0b5ee7d13764760cf
+network_interface_client:
+  - 452958939641
+network_interface_attach_client:
+network_interface_server:
+  - 452958939641
+network_interface_attach_server:
+ct_client_ips:
+  - 172.31.160.10
+ct_server_ip:
+  - 172.31.160.9
+ct_uperf_server_ip: 172.31.160.9
+ct_uperf_client_list: 172.31.160.10

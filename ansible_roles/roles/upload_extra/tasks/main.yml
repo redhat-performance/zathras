@@ -1,0 +1,31 @@
+---
+# 
+# Upload the required tests.
+#
+
+- name: include_extra_uploads
+  include_vars:
+    file: "{{ working_dir }}/upload_files.yml"
+    name: extra
+
+- name: Load in configuration information
+  include_vars:
+    file: "{{ working_dir }}/ansible_vars.yml"
+
+#
+# Default status.
+#
+- name: Record default status of update sucess
+  lineinfile:
+    path: "/tmp/upload_extra_status"
+    line: "status: success"
+    create: yes
+
+#
+# If we are pulling a file
+#
+- name: Upload extra files
+  include_role:
+    name: upload_extra_files
+  when: config_info.cloud_execute_tests == 1
+

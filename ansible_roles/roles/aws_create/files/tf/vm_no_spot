@@ -1,0 +1,13 @@
+# Defines a VM
+resource "aws_instance" "ec2" {
+  ami                       = var.cloud_os_version
+  count                     = var.vm_count
+  instance_type             = var.machine_type
+  security_groups           = [var.security_group]
+  key_name                  = var.key_name
+  availability_zone         = var.avail_zone
+  tags = {
+    Name = "${var.run_label}-${var.machine_type}"
+  }
+}
+

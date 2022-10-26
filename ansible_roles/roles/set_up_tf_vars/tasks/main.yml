@@ -1,0 +1,70 @@
+---
+#
+# Parse the disk line
+#
+
+- name: create private copy
+  copy:
+    src: "../templates/tfvars.j2"
+    dest: "{{ working_dir }}/tfvars.j2"
+
+- name: Substitute terraform vars
+  template:
+    src: templates/tfvars.j2
+    dest: "{{working_dir}}/tf/env.tfvars"
+
+- name: Replace disk settings
+  block:
+  - name: Grab number of disks
+    shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 1 | cut -d\"'\" -f 2"
+    register: disk_count
+
+  - name: Grab disk type
+    shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 2"
+    register: disk_type
+
+  - name: Grab disk size
+    shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 3"
+    register: disk_size
+
+
+  - name: Update tfvars
+    blockinfile:
+      dest: "{{working_dir}}/tf/env.tfvars"
+      block: "{{ lookup('template', 'tfvars_disks.j2') }}"
+  when: config_info.cloud_disks != "none"
+
+#
+# Pbench disk if we are using pbench
+#
+- name: add ns pbench disk
+  block:
+  - name: Cloud specific right now
+    block:
+    - name: Local and not changed.
+      block:
+      - name: copy to workig_dir so we can cat it onto the end of main.tf
+        copy:
+          src: "{{ pbench_ns_tf }}"
+          dest: "{{ working_dir }}/tf/pbench.tf"
+        when: config_info.system_type != "aws"
+    - name: AWS.
+      block:
+      - name: copy to workig_dir so we can cat it onto the end of main.tf
+        shell: cat {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/{{ pbench_ns_tf }} | sed "s/REPLACE/{{ cloud_change_to }}/g" >> {{ working_dir }}/tf/pbench.tf
+        when: config_info.system_type == "aws"
+  when:
+    - config_info.pbench_disk_required == "yes"
+
+#
+# All because ansible removes a bare underscore.
+# So when the variables file is created, for sku we replace any
+# _ with a '_' so it does not get lost.  Here we do away with the 
+# ' 's.  Right now we just do this for azure sku.
+# 
+- name: Replace '_' with _rm vars
+  shell: "cat {{ working_dir }}/tf/env.tfvars | sed \"s/'_'/_/g\" > {{ working_dir }}/tf/env.tfvars.temp"
+
+- name: Move it back
+  shell: "mv {{ working_dir }}/tf/env.tfvars.temp {{ working_dir }}/tf/env.tfvars"
+

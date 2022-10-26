@@ -1,0 +1,19 @@
+---
+
+- name: Create resources
+  shell: |
+    terraform workspace select {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}
+    terraform apply plan.tfplan 2>&1 | tee {{ working_dir }}/tf/terraform_apply.out
+  args:
+    chdir: "{{ working_dir }}/tf"
+  register: create
+  ignore_errors: yes
+
+- name: Report tf create
+  debug:
+    var: create
+
+- name: Bail on tf_init failure
+  fail:
+    msg: "Failed on creating the terraform resource"
+  when: create.failed != false

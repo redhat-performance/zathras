@@ -1,0 +1,7 @@
+This directory contains files that set tunables in /proc and /sys.  Multiple files
+are allowed.  Format of the file is
+
+/proc/sys/net/core/netdev_max_backlog=10000
+
+
+Note, "none" is a reserved name, and means no tuning to cloud_tester.

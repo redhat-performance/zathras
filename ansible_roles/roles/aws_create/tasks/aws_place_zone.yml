@@ -1,0 +1,20 @@
+---
+#
+# Retrieve and record the AWS placement zone for future reference.
+#
+- name: include vars for vpc gathering
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+- name: get the general information for the instance
+  ec2_instance_info:
+    instance_ids:
+      - "{{ dyn_data.aws_instance_id }}"
+  register: zone_info
+
+- name: record the zone information
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "cloud_zone: {{ zone_info.instances[0].placement.availability_zone }}"
+

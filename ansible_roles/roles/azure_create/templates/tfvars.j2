@@ -1,0 +1,29 @@
+resource_group = "{{ config_info.cloud_resource_group }}"
+
+machine_type = "{{ config_info.host_or_cloud_inst }}"
+
+cloud_os_version = "{{ config_info.cloud_os_version }}"
+cloud_placement = "{{ config_info.cloud_placement }}"
+
+run_label = "{{ config_info.user_running }}-{{ config_info.run_label | lower() | replace ('.','-',63) | replace('_','-',63) | replace('/','-')}}"
+
+region = "{{ config_info.cloud_region }}"
+
+ssh_key_path = "{{ config_info.ssh_key }}"
+
+test_user = "{{ config_info.test_user }}"
+
+vm_image = "{{ config_info.cloud_os_version }}"
+sku = "{{ config_info.cloud_sku }}"
+azversion = "{{ config_info.cloud_os_version }}"
+offer = "{{ config_info.cloud_offer }}"
+
+pb_disk_type = "Premium_LRS"
+pb_disk_count = 1
+pb_vol_size = 500
+
+# Check "cloud_numb_networks", default value is "1" for both vars
+{% if config_info.cloud_numb_networks >= 1 %}
+vm_count = 2
+network_count = "{{ config_info.cloud_numb_networks }}"
+{% endif %}

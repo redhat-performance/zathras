@@ -1,0 +1,39 @@
+#!/bin/bash
+
+dnf install -y tuned
+mkdir /tmp/sysconfig_info
+numactl --hardware > /tmp/sysconfig_info/numactl.out
+cat /proc/meminfo > /tmp/sysconfig_info/proc_meminfo.out
+cat /etc/*release > /tmp/sysconfig_info/etc_release.out
+cat /proc/cmdline > /tmp/sysconfig_info/proc_cmdline.out
+uname -a > /tmp/sysconfig_info/uname.out
+tuned-adm list > /tmp/sysconfig_info/tuned.out
+cat /sys/kernel/debug/sched/features > /tmp/sysconfig_info/sched_features.out
+find /proc/sys/kernel -type f -exec grep -H  '.' {} \; > /tmp/sysconfig_info/kernel_info.out
+
+for i in /sys/devices/system/cpu/vulnerabilities/*
+do
+	echo -n "$i " >> /tmp/sysconfig_info/cves.out
+	cat $i >> /tmp/sysconfig_info/cves.out
+done
+
+find /proc/sys/kernel -type f -exec grep -H  '.' {} \; > /tmp/sysconfig_info/proc_sys_kernel.out
+find /sys/kernel/mm   -type f -exec grep -H  '.' {} \; > /tmp/sysconfig_info/sys_kernel_mm.out
+find /proc/sys/vm     -type f -exec grep -H  '.' {} \; > /tmp/sysconfig_info/proc_sys_vm.out
+
+sysctl -a | sort > /tmp/sysconfig_info/sysctl.out
+ps -ef | grep -i numa > /tmp/sysconfig_info/ps_numa.out
+
+yum install -y usbutils
+echo "cat /proc/cpuinfo > /tmp/sysconfig_info/proc_cpuinfo.out"
+cat /proc/cpuinfo > /tmp/sysconfig_info/proc_cpuinfo.out
+cat /proc/diskstats > /tmp/sysconfig_info/proc_diskstats.out
+dmidecode  > /tmp/sysconfig_info/dmidecode.out
+lshw -json > /tmp/sysconfig_info/lshw.json
+lscpu --json > /tmp/sysconfig_info/lscpu.json
+lsmem --json > /tmp/sysconfig_info/lsmem.json
+lspci -mm > /tmp/sysconfig_info/lspci.out
+lsscsi -LlsvUw > /tmp/sysconfig_info/lsscsi.out
+lsusb -v > /tmp/sysconfig_info/lsusb.out
+cd /tmp
+tar cf sysconfig_info.tar sysconfig_info

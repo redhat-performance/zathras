@@ -1,0 +1,8 @@
+---
+# Tasks file for create_nics_wrapper
+# Because ansible doesn't allow blocks to be looped and is absolutely
+# braindead when it comes to using loops and when statements together.
+
+- name: Create test network NICs
+  include_tasks: create_nics.yml
+  with_sequence: start=1 end={{ config_info.cloud_numb_networks }} format=%d

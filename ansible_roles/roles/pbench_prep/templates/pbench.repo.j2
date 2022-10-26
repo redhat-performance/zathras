@@ -1,0 +1,21 @@
+###########################################################################
+# pbench "official" repos
+# Internal repo
+[pbench]
+name=Pbench $releasever - $basearch
+baseurl=http://pbench.perf.lab.eng.bos.redhat.com/repo/{{ pbench_configuration_environment }}/$releasever/
+arch=$basearch
+enabled=1
+gpgcheck=0
+skip_if_unavailable=1
+
+# External COPR repo
+[copr-pbench]
+name=Copr repo for pbench
+baseurl={{ baseurl }}
+skip_if_unavailable=True
+gpgcheck= {{ gpgcheck }}
+gpgkey={{ gpgkey }}
+enabled=1
+enabled_metadata=1
+skip_if_unavailable=1

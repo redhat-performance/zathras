@@ -1,0 +1,27 @@
+---
+# 
+# Upload the required tests.
+#
+
+- name: include_extra_uploads
+  include_vars:
+    file: "{{ working_dir }}/upload_files.yml"
+    name: extra
+
+- name: Load in configuration information
+  include_vars:
+    file: "{{ working_dir }}/ansible_vars.yml"
+
+#
+# If we are pulling a file
+#
+- name: Upload the extra files
+  include_role:
+    name: actual_upload_extra
+  vars:
+    extra_file_upload: "{{ extra_file }}"
+  when: extra_file != "none"
+  loop:  "{{ extra.uploads }}"
+  loop_control:
+    loop_var: extra_file
+

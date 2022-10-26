@@ -1,0 +1,375 @@
+#!/bin/bash
+
+#
+#                       License
+#
+# Copyright (C) 2022  David Valin dvalin@redhat.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+# update_system is part of the Zathras automation framework.  When called, it will update
+#   OS version based on the passed arguments.,
+#
+
+image_parent="none"
+ssh_key_file=""
+target_system="none"
+user=root
+cleanup=0
+local_dir="."
+pid_requesting=0
+update_type=""
+prepare_update=0
+do_the_update=0
+
+usage()
+{
+	echo nothing right now
+	exit 1
+}
+
+error_out()
+{
+	echo Error: ${1}
+	exit 1
+}
+
+ftp_update()
+{
+	#
+	# Assumption, update only supported for rhel
+	#
+	attempts=0
+	if [[ $target_system == "none" ]]; then
+		yum install -y wget
+		if [ $? -ne 0 ]; then
+			error_out "Failed to install wget"
+		fi
+		cd /tmp
+		retrieve="baseos appstream crb"
+		rval=1
+		while [[ rval -ne 0 ]]; do
+			if [ $attempts -gt 1 ]; then
+				error_out "Failed to get ${image_parent}"
+			fi
+			let "attempts=${attempts}+1"
+			wget $image_parent
+			rval=$?
+		done
+		for i in $retrieve
+		do
+        		repo=`grep $i index.html | cut -d\" -f2`
+        		echo $repo
+        		cd /etc/yum.repos.d
+			rval=1
+			attempts=0
+			while [[ rval -ne 0 ]]; do
+				if [ $attempts -gt 1 ]; then
+					error_out "Failed to install ${repo}"
+				fi
+				let "attempts=${attempts}+1"
+        			wget $repo
+				rval=$?
+			done
+        		cd /tmp
+		done
+		rval=1
+		attempts=0
+		while [[ rval -ne 0 ]]; do
+			if [ $attempts -gt 1 ]; then
+				error_out "Failed to perform yum update"
+			fi
+			let "attempts=${attempts}+1"
+			yum update -y
+			rval=$?
+		done
+	else
+		scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/update_system $user@$target_system:/tmp/update_system
+		if [ $? -ne 0 ]; then
+			error_out "scp of $local_dir/tools_bin/update_system failed"
+		fi
+		ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/update_system
+		if [ $? -ne 0 ]; then
+			error_out "ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/update_system failed."
+		fi
+		ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --update_target $image_parent
+		if [ $? -ne 0 ]; then
+			error_out "ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --update_target $image_parent failed"
+		fi
+	fi
+	exit 0
+}
+
+iso_cleanup()
+{
+	install_disk=`df | grep iso_update | cut -d' ' -f1`
+	umount /iso_install
+	umount /iso_update
+	wipefs -a $install_disk
+	exit 0
+}
+
+iso_do_the_update()
+{
+	cd /iso_update
+	tar xf CRB.tar
+	if [ $? -ne 0 ]; then
+		error_out "tar xf CRB.tar failed"
+	fi
+	mkdir /iso_install
+	mount -o loop /iso_update/dvd1.iso /iso_install
+	if [ $? -ne 0 ]; then
+		error_out "mount -o loop /iso_update/dvd1.iso /iso_install failed"
+	fi
+	cp  /tmp/update_repo.file /etc/yum.repos.d/rhel-zathras-update.repo
+	chmod 644 /etc/yum.repos.d/rhel-zathras-update.repo
+	yum clean all
+	yum update -y
+	if [ $? -ne 0 ]; then
+		error_out "yum update failed"
+	fi
+	# We do not  unmount at this time.  We do that via another call.
+	exit 0
+}
+
+iso_prepare_update()
+{
+	mkdir /iso_update 2> /dev/null
+	chmod 777 /iso_update 
+	/tmp/grab_disks
+	#
+	# Just the first disk
+	#
+	read -r i<"disks"
+	i=`echo $i|cut -d' ' -f1`
+	disk="/dev/"$i
+	mkfs.xfs  $disk 2> /dev/null
+	mount $disk /iso_update
+	chmod 777 /iso_update 
+}
+
+iso_retrieve_image()
+{
+	if [[ ! -f  lock_file ]]; then
+		echo need to load image.
+		echo $pid_requesting > lock_file
+		rm dvd1.iso CRB.tar
+		rm -rf CRB
+		#
+		# First the iso image
+		#
+			iso_name=`echo $1 | rev | cut -d/ -f 1 | rev`
+		#
+		# Now the CBR, Note this positional dependent, field 5 from the end.
+		#
+		crb_parent_dir=`echo $1 | rev | cut -d/ -f 5- | rev`
+		
+		rm $iso_name 2> /dev/null
+		rm dvd1.iso 2> /dev/null
+		wget $1 2> /dev/null
+		if [ $? -ne 0 ]; then
+			echo Unable to wget $1
+			exit 1
+		fi
+		mv $iso_name dvd1.iso
+		crb=$crb_parent_dir/CRB/
+		rm -rf CRB 2> /dev/null
+		mkdir CRB
+		cd CRB
+		wget -r -nH --cut-dirs=6 -np -R "index.html*" $crb 2> /dev/null
+		if [ $? -ne 0 ]; then
+			echo unable to wget $crb
+			exit 1
+		fi
+		cd ..
+		tar cf CRB.tar CRB
+	fi
+}
+
+iso_cleanup_call()
+{
+	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --do_the_cleanup --update_type $update_type
+}
+
+iso_update_the_system()
+{
+	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/update_system $user@$target_system:/tmp/update_system
+	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/grab_disks $user@$target_system:/tmp/grab_disks
+	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/update_system
+	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/grab_disks
+	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --prepare_update --update_type $update_type
+	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/dvd1.iso $user@$target_system:/iso_update/dvd1.iso
+	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/CRB.tar $user@$target_system:/iso_update/CRB.tar
+	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/update_repo.file $user@$target_system:/tmp/update_repo.file
+	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --do_the_update --update_type iso
+}
+
+update_via_ftp()
+{
+
+	if [[ $image_parent != "none" ]]; then
+		ftp_update $image_parent
+	fi
+}
+
+update_via_iso()
+{
+	if [ $cleanup -eq 1 ]; then
+		# Will not return from here.
+		iso_cleanup_call
+	fi
+
+	if [[ $image_parent != "none" ]]; then
+		iso_retrieve_image $image_parent
+	fi
+
+	if [[ $target_system != "none" ]]; then
+		iso_update_the_system
+	fi
+}
+
+ARGUMENT_LIST=(
+	"update_type"
+	"update_target"
+	"target_system"
+	"ssh_key_file"
+	"requestor"
+	"user"
+	"local_dir"
+)
+
+NO_ARGUMENTS=(
+
+	"do_the_update"
+	"prepare_update"
+	"usage"
+	"install_it"
+	"do_the_cleanup"
+)
+
+# read arguments
+opts=$(getopt \
+    --longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")" \
+    --longoptions "$(printf "%s," "${NO_ARGUMENTS[@]}")" \
+    --name "$(basename "$0")" \
+    --options "hi:" \
+    -- "$@"
+)
+eval set --$opts
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--update_type)
+		  	update_type=$2
+			shift 2
+		;;
+		--requestor)
+			pid_requesting=$2
+			shift 2
+		;;
+		--local_dir)
+			local_dir=$2
+			shift 2
+		;;
+		--do_the_cleanup)
+			if [[ $update_type == "iso" ]]; then
+				iso_cleanup
+			fi
+			shift 1
+		;;
+		--update_target)
+			image_parent=$2
+
+			if [[ -z $update_type ]]; then
+				if [[ $image_parent == *iso* ]]; then
+					update_type="iso"
+				fi
+				if [[ $image_parent == *ftp* ]]; then
+					update_type="ftp"
+				fi
+			fi
+			shift 2
+		;;
+		--user)
+			user=$2
+			shift 2
+		;;
+		--target_system)
+			target_system=$2
+			shift 2
+		;;
+		--prepare_update)
+			prepare_update=1
+			shift 1
+		;;
+		--do_the_update)
+			do_the_update=1
+			shift 1
+		;;
+		--ssh_key_file)
+			ssh_key_file="-i "$2
+			shift 2
+		;;
+		-i)
+			ssh_key_file="-i "$2
+			shift 2
+		;;
+		--)
+			break;
+		;;
+		--usage)
+			usage
+			shift 1
+		;;
+		-h)
+			usage
+			shift 1
+		;;
+		*)
+			echo not found $1
+			usage
+			shift 1
+		;;
+	esac
+done
+
+if [[ -z $update_type ]]; then
+	echo Do not know what update type we are doing.
+	exit 1
+fi
+
+if [ $do_the_update -eq 1 ]; then
+	if [[ $update_type == "iso" ]]; then
+		iso_do_the_update
+	fi
+	exit 0
+fi
+
+if [ $prepare_update -eq 1 ]; then
+	if [[ $update_type == "iso" ]]; then
+		iso_prepare_update
+	fi
+	exit 0
+fi
+
+if [[ $update_type == "iso" ]]; then
+	update_via_iso
+fi
+
+if [[ $update_type == "ftp" ]]; then
+	update_via_ftp
+fi
+
+exit 0

@@ -1,0 +1,23 @@
+#!/bin/bash
+delete_it=0
+for i in `aws ec2 describe-subnets --filters "Name=vpc-id,Values=${1}"`;
+do
+	if [[ $i == "available" ]]; then
+		delete_it=1
+		continue
+	fi
+	if [[ $i == "subnet"* ]]; then
+		if [ $delete_it -eq 1 ]; then
+			length=`echo $i | wc -c`
+			if [[ $length == "25" ]]; then
+				echo deleting subnet $i
+		                aws ec2 delete-subnet --subnet-id $i
+			else
+				echo Did not delete subnet $i, appears to be core subnet
+			fi
+			delete_it=0
+		else
+			echo Did not delete subnet $i, not marked as available
+		fi
+	fi
+done

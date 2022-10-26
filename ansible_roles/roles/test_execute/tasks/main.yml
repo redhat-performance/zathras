@@ -1,0 +1,52 @@
+---
+#
+# We could combine this with test_generic, but the file
+# would get a bit long.  
+#
+- name: include dynamic variables for text execution 
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+#
+# Retrieve the yml file containing the information pertaining
+# to the test being run.
+#
+- name: include_test_file
+  include_vars:
+    file: "tests_to_run/{{ test_exec }}.yml"
+    name: test_data
+
+#
+# Time we are starting the test.
+#
+- name: grab test start time
+  command: "date +%s"
+  register: start_time
+#
+# Execute the test.
+#
+- name: test_execution
+  include_role:
+    name: test_generic
+  vars:
+    test_exec_location: "{{ test_exec_loca }}"
+    test_def_file: "tests_to_run/{{ test_exec }}.yml"
+    test_name: "{{ test_exec }}"
+
+#
+# Time we are ending the test.
+#
+- name: grab test end time
+  command: "date +%s"
+  register: end_time
+
+#
+# Report the time to run the test.
+#
+- name: record test date
+  lineinfile:
+    path: "/tmp/test_times"
+    line: "test: {{test_item }} execution time {{ ((end_time.stdout) | int) - ((start_time.stdout) | int) | int }}"
+    create: yes
+  when: config_info.cloud_execute_tests == 1

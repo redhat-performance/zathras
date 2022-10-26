@@ -1,0 +1,33 @@
+---
+# Report package install errors
+#
+- name: Fail on error
+  block:
+  - name: indicate terminate system
+    lineinfile:
+      path: "{{ results_file }}"
+      line: "status: failed"
+      create: yes
+  - name: Report errors
+    debug:
+      msg: "Failed to install one of the packages {{ packages }}"
+  when: config_info.error_repo_errors == 1 and rtc_val != "0"
+- name: Failed but ignore
+  block:
+  - name: Record ignore
+    lineinfile:
+      path: "{{ results_file }}"
+      line: "status: ignore"
+      create: yes
+  - name: Report errors
+    debug:
+      msg: "Failed to install one of the packages {{ packages }}"
+  when: config_info.error_repo_errors == 0 and rtc_val != "0"
+
+- name: Record success
+  lineinfile:
+    path: "{{ results_file }}"
+    line: "status: success"
+    create: yes
+  when: rtc_val == "0"
+

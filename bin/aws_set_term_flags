@@ -1,0 +1,5 @@
+#!/bin/bash
+disks=`echo $2 | sed "s/\[//g" | sed "s/]//g" | sed "s/,//g" | sed "s/'//g"`
+for disk in $disks; do
+	aws ec2 modify-instance-attribute --instance-id $1 --block-device-mappings "[{\"DeviceName\": \"${disk}\",\"Ebs\":{\"DeleteOnTermination\":true}}]"
+done

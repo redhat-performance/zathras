@@ -1,0 +1,36 @@
+---
+# add host to test and install groups
+
+- name: set_test_host
+  add_host:
+    name: "{{ public_ip_address[0] }}"
+    groups: test_group
+    ansible_user: "{{ config_info.test_user }}"
+
+- name: now add it to the test_group file
+  include_role:
+    name: add_to_host_group
+  vars:
+    working_group_file: "{{ working_dir }}/ansible_test_group"
+    group_name: "test_group_list"
+    host_to_add: "{{ item }}"
+  with_items:
+    - "{{ public_ip_address }}"
+
+- name: set_install_group
+  add_host:
+    name: "{{ item }}"
+    groups: install_group
+    ansible_user: "{{ config_info.test_user }}"
+  with_items:
+    - "{{ public_ip_address }}"
+
+- name: now add it to the install_group file
+  include_role:
+    name: add_to_host_group
+  vars:
+    working_group_file: "{{ working_dir }}/ansible_install_group"
+    group_name: "install_group_list"
+    host_to_add: "{{ item }}"
+  with_items:
+    - "{{ public_ip_address }}"

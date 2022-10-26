@@ -1,0 +1,129 @@
+---
+# tasks file for ansible_roles/roles/gcp_create_instance
+- name: include info
+  include_vars:
+    file: "{{ working_dir }}/ansible_vars.yml"
+
+- name: move files
+  copy:
+    src: "tf/{{ item }}"
+    dest: "{{working_dir}}/tf/"
+  loop:
+    - main.tf
+    - vars.tf
+    - output.tf
+    - network.tf
+
+- name: Get project_id
+  shell: gcloud config get-value project
+  register: project_id
+
+- name: Substitute terraform vars
+  template:
+    src: templates/tfvars.j2
+    dest: "{{working_dir}}/tf/env.tfvars"
+
+# - name: Init terraform tasks
+#   include_tasks: tf_init.yml
+
+- name: grab create start time
+  command: "date -u +%s"
+  register: create_time_start
+
+# - name: terraform apply tasks
+#   include_tasks: tf_apply.yml
+
+- name: GCP, create instance
+  include_role:
+    name: tf_create
+  vars:
+    tf_var_file: "env.tfvars"
+
+- name: Record ip addresses in ansible_run_vars.yml 
+  include_tasks: record_ip_info.yml
+
+# checks for only one system in case of uperf workloads
+- name: wait for ssh to come up
+  local_action: wait_for
+    host={{ public_ip_list[0] }}
+    port=22
+    state=started
+    delay=10
+    timeout=1200
+
+- name: Create user's bin dir if it doesn't already exist
+  delegate_to: "{{ item }}"
+  file:
+    path: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/bin"
+    mode: "0755"
+    state: directory
+  with_items:
+    - "{{ public_ip_list }}"
+
+- name: Copy ssh key setup tools
+  delegate_to: "{{ public_ip_list[0] }}"
+  copy:
+    src: "{{ config_info.local_run_dir }}/bin/{{item}}"
+    dest: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/bin/{{ item }}"
+    mode: "0755"
+  with_items:
+    - ssh_net_setup
+    - ssh_net_copy
+
+- name: Copy ssh key setup tools
+  delegate_to: "{{ public_ip_list[1] }}"
+  copy:
+    src: "{{ config_info.local_run_dir }}/bin/{{item}}"
+    dest: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/bin/{{ item }}"
+    mode: "0755"
+  with_items:
+    - ssh_net_setup
+    - ssh_net_copy
+  when: config_info.cloud_numb_networks|int >= 1
+
+
+- name: Create root .ssh directory
+  delegate_to: "{{ item }}"
+  become: yes
+  file:
+    path: /root/.ssh
+    state: directory
+    mode: "0700"
+  with_items:
+    - "{{ public_ip_list }}"
+
+- name: Run the script to set up our ssh key
+  delegate_to: "{{ item }}"
+  become: yes
+  command: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/bin/ssh_net_setup"
+  with_items:
+    - "{{ public_ip_list }}"
+
+- name: ssh key exchange
+  include_role:
+    name: ssh_key_exchange
+  vars:
+    ip_list: "{{ public_ip_list }}"
+  when: config_info.cloud_numb_networks|int >= 1
+
+- name: grab create end time
+  command: "date -u +%s"
+  register: create_time_end
+
+- name: Report creation time
+  lineinfile:
+    path: "{{ working_dir }}/cloud_timings"
+    line: "instance start_time: {{ create_time_end.stdout | int  - (create_time_start.stdout) | int }}"
+    create: yes
+
+- name: Add host to test and install groups
+  include_tasks: add_host_to_groups.yml
+
+- name: Create and attach disks to instance
+  include_tasks: disks.yml
+  vars:
+    disk_params: "{{ disks }}"
+  loop: "{{ config_info.cloud_disks }}"
+  loop_control:
+    loop_var: disks
+  when: config_info.cloud_disks is defined

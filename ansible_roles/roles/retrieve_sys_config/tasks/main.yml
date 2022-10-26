@@ -1,0 +1,15 @@
+---
+#
+# Retrieve the various system configuration information
+#
+#
+#
+- name: create sys_config_out_dir
+  file:
+    path: "/tmp/sysconfig_info"
+    state: directory
+    mode: 0775
+  ignore_errors: yes
+
+- name: rhel_sysconfig obtain
+  shell: tools_bin/grab_sys_config

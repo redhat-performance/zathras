@@ -1,0 +1,48 @@
+Example 1:  Run linpack
+burden -t linpack -j 1 -c "m5.xlarge[zone=c&region=us-east-1]" -d 1 -i 1 -p testing -P virtual-guest -o rhel -T 1 -v aws -O ami-myaminumber -C 1
+
+Will run linpack with the following settings
+	Java version: 11
+	cloud vendor: aws
+        cloud instance: m5.xlarge
+	cloud region: us-east-1
+	cloud zone: c
+	will use ssh perm file located in config
+        will run linpack 1 pass
+	run directory will be prefixed with testing
+	will use tuned virtual-guest
+	RHEL is the os vendor
+	will terminate the image once the test is completed
+	OS image from AWS is ami-myaminumber
+	run the test
+
+Example 2: Simply create a cloud image
+burden -j 1 -c "m5.xlarge" -d 1 -i 1 -P virtual-guest -o rhel -T 0 -v aws -O ami-myaminumber -C 0
+
+	Java version: 11
+	cloud vendor: aws
+        cloud instance: m5.xlarge
+	cloud region: user default
+	cloud zone: random
+	will use ssh perm file located in config
+	RHEL is the os vendor
+	OS image from AWS is ami-myaminumber
+
+Example 3: Simply create a cloud image, and upload all packages and tools
+burden -j 1 -c "m5.xlarge" -d 1 -i 1 -P virtual-guest -o rhel -T 0 -v aws -O ami-myaminumber -C 0 -U
+	Only difference from example #2 is the -U option.  That will force the upload of all packages
+        and tools.
+
+Example 4: Create an m5.xlarge image with 4 disks, size=1300G, and run pbench_fio
+burden -t fio_via_pbench -j 1 -c "m5.xlarge:Disks;number=4;size=1300" -d 1 -i 1 -p testing -P virtual-guest -o rhel -T 1 -v aws -O ami-myaminumber -C 1
+	Note the change to -c option, we added Dissk;lnumber=4;size=1300
+
+Example 5: Create an m5.xlarge image with 4 disks, size=1300G, 2 networks and run pbench_fio, and pbench_uperf
+burden -t fio_via_pbench,uperf -j 1 -c "m5.xlarge:Disks;number=4;size=1300&Networks;number=2" -d 1 -i 1 -p testing -P virtual-guest -o rhel -T 1 -v aws -O ami-myaminumber -C 1
+	That will create an m5xlarge image with 4 disks, size=1300G, and 2 networks between a secondary system created.
+
+Example 6: Create an m5.xlarge image with 4 disks, size=1300G, 2 networks and run pbench_fio, and pbench_uperf using 
+           the sys_ctl settings in udp_fix
+burden -t fio_via_pbench,uperf -j 1 -c "m5.xlarge:Disks;number=4;size=1300&Networks;number=2&Sys_settings=udp_fix" -d 1 -i 1 -p testing -P virtual-guest -o rhel -T 1 -v aws -O ami-myaminumber -C 1
+	That will create an m5xlarge image with 4 disks, size=1300G, and 2 networks between a secondary system created
+        and use the sysctl settings in udp_fix

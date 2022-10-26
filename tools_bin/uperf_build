@@ -1,0 +1,5 @@
+#!/bin/bash
+autoreconf -f -i
+./configure
+touch *
+make install

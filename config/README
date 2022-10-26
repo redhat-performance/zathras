@@ -1,0 +1,24 @@
+If not pulling test_defs from a git repo (--test_def_dir), then Zathras will
+look here for the various configuration information.
+
+Files:
+example.yml: test template file for auto_hpl
+entry_order: the order the entries will be in when the template and test_defs.yml
+  are merged.
+inventory: Ansible inventory file
+java_pkg_def.yml:  Defined java versions, and the associated package
+setup.conf is used for overriding various values.  Currently supported are
+  AWS_USER: which designates the AWS user to use
+  AWS_SEC_GRP: which designates the AWS security group.
+
+  Note none of the values provided are verified before they are used.
+
+  Format
+
+  AWS_USER: user1
+  AWS_SEC_GRP: user1_secgrp
+
+spot_price.cfg: Spot pricing for clouds
+test_defs.yml: The test definitions file.  When Zathras is executed the test_defs.yml
+  and template files are merged in to a single file, full_test_defs.yml.
+

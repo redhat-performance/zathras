@@ -1,0 +1,4 @@
+resource "aws_placement_group" "testing" {
+  name     = "${var.run_label}-${var.machine_type}"
+  strategy = var.cloud_placement
+}

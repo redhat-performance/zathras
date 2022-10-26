@@ -1,0 +1,18 @@
+---
+#
+# set the required /proc value.
+#
+# File format is
+# <what setting>=<value>
+#
+# Example
+#   /proc/sys/kernel/numa_balancing=0
+#
+
+- name: Report what is being set
+  debug:
+    var: sysctl_settings
+
+- name: set_system_configuration
+  command: "{{ cd_homedir }}/tools_bin/set_sysctl_tunings {{ cd_homedir }}/sysctl_settings/{{ sysctl_settings }}"
+  when: sysctl_settings != "none"

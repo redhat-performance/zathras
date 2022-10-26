@@ -1,0 +1,46 @@
+---
+# tasks file to verify cpu type is what we asked for.
+#
+#
+- name: Obtain cpu type
+  command: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ ip_addr }} 'lscpu | grep \"Model name:\" | cut -d: -f 2 | sort -u'"
+  register: cpu_info
+
+- name: Report cpu type
+  debug:
+    var: cpu_info
+
+- name: Record cpu type
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "cpu_type: {{ cpu_info.stdout }}"
+    create: yes
+
+
+- name: Check for cpu match
+  shell: "grep cpu_type: {{ working_dir }}/ansible_run_vars.yml | grep {{ config_info.cpu_type_request }}"
+  register: cpu_check_results
+  ignore_errors: yes
+
+- name: Handle mismatch
+  block:
+  - name: report info
+    debug:
+      msg: "grep cpu_type: {{ working_dir }}/ansible_run_vars.yml | grep {{ config_info.cpu_type_request }}"
+  - name: Record the failure for use by kickoff.sh
+    lineinfile:
+      path: "{{ working_dir }}/cpu_type_failure"
+      line: "failed to get proper CPU type"
+      create: yes
+  - name: Remove mismatch on cpu.
+    shell: "grep -v cpu_type: {{ working_dir }}/ansible_run_vars.yml > {{ working_dir }}/ansible_run_vars.yml_updated"
+  - name: Update run vars
+    shell: "mv {{ working_dir }}/ansible_run_vars.yml_updated {{ working_dir }}/ansible_run_vars.yml"
+
+  - name: Report mismatch on cpu.
+    fail:
+      msg: "Abort: CPU mismtach {{ config_info.cpu_type_request }}"
+  when: cpu_check_results.rc != 0
+
+- name: Success, remove any tfs that had the wrong cpu type
+  shell: "{{ working_dir }}/remove_wrong_cpus ${{ working_dir }}"

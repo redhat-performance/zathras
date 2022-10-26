@@ -1,0 +1,9 @@
+---
+# tasks file for retrieving the status of the last operation
+#
+
+- name: retrieve package status
+  fetch:
+    src: "/tmp/{{ status_file }}"
+    dest: "{{ working_dir }}/{{ status_file }}"
+    flat: yes

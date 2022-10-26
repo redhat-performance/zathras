@@ -1,0 +1,32 @@
+---
+#
+# Create the aws instance based on range
+# 
+
+#
+# Include the various config files for system definition
+#
+- name: include_test_file
+  include_vars:
+    file: ansible_vars.yml
+
+- name: include dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+- name: preset rtc to be false
+  lineinfile:
+    path: "{{ working_dir }}/tf.rtc"
+    line: "rtc: 1"
+    create: yes
+
+- name: only do if we have a range
+  block:
+  - name: aws_tf_spot_create
+    include_tasks: aws_tf_spot_create_needed.yml
+    vars:
+      spot_price: price
+    loop: "{{ config_info.spot_range }}"
+    loop_control:
+      loop_var: price 

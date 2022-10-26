@@ -1,0 +1,24 @@
+machine_type = "{{ config_info.host_or_cloud_inst }}"
+
+cloud_os_version = "{{ config_info.cloud_os_version }}"
+
+# This should be the project ID in GCP 
+project_id = "{{ project_id.stdout }}"
+
+run_label = "{{ config_info.run_label | lower() | replace('.','-',63) | replace('_', '-', 63)}}"
+
+region = "{{ config_info.cloud_region }}"
+
+zone = "{{ config_info.cloud_zone }}"
+
+ssh_key_path = "{{ config_info.ssh_key }}"
+
+test_user = "{{ config_info.test_user }}" 
+
+vm_image = "{{ config_info.cloud_os_version }}"
+
+# Check "cloud_numb_networks", default value is "1" for both vars
+{% if config_info.cloud_numb_networks >= 1 %}
+vm_count = 2
+network_count =  "{{ config_info.cloud_numb_networks }}"
+{% endif %}

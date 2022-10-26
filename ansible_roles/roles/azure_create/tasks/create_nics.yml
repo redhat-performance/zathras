@@ -1,0 +1,45 @@
+---
+# Tasks file for create_nics
+# Because ansible doesn't allow blocks to be looped.  Thanks ansible.
+
+#
+# In short, we create each NIC, then add it to the list of NICs to add to the host
+# (because you add NICs at host creation time).
+# Then we grab the IP addresses of each secondary NIC and store them for use in
+# networking tests such as uperf.  Those will get added to ct_uperf_client_list later.
+#
+- name: Create secondary Azure virtual NIC(s)
+  azure_rm_networkinterface:
+    resource_group: "{{ config_info.cloud_resource_group }}"
+    name: "{{ config_info.cloud_resource_group }}-{{ instance_type }}-nic{{ item }}"
+    virtual_network: "{{ config_info.cloud_resource_group }}-vnet"
+    subnet: "{{ config_info.cloud_resource_group }}-subnet{{ item }}"
+    enable_accelerated_networking: yes
+    security_group: "{{ config_info.cloud_resource_group }}-nsg"
+    ip_configurations:
+      - name: ipconfig1
+        primary: False
+
+- name: Create nic name
+  set_fact:
+    this_nic: "{{ config_info.cloud_resource_group }}-{{ instance_type }}-nic{{ item }}"
+
+- name: Add NIC to list
+  set_fact:
+    nic_list: "{{ nic_list + ',' + this_nic }}"
+
+- name: Get IP address for list
+  azure_rm_networkinterface_info:
+    resource_group: "{{ config_info.cloud_resource_group }}"
+    name: "{{ config_info.cloud_resource_group }}-{{ instance_type }}-nic{{ item }}"
+  register: this_nic_info
+
+- name: Add IP address to list
+  set_fact:
+    ip_addr_list: "{{ ip_addr_list }},{{ this_nic_info.networkinterfaces[0].ip_configurations[0].private_ip_address }}"
+  when: ip_addr_list != ""
+
+- name: Create IP address list
+  set_fact:
+    ip_addr_list: "{{ this_nic_info.networkinterfaces[0].ip_configurations[0].private_ip_address }}"
+  when: ip_addr_list == ""

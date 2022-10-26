@@ -1,0 +1,10 @@
+#!/bin/bash
+cd $1
+tf_delete=`ls -d tf_delete* 2> /dev/null`
+if [ $? -eq 0 ]; then
+	for terminate in ${tf_delete}; do
+		ansible-playbook -i ./inventory --extra-vars "working_dir=${1} ansible_python_interpreter=/usr/bin/python3 delete_tf=$terminate" ${1}/ten_of_us.yml
+		rm -rf $terminate
+	done
+fi
+exit 0

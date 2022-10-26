@@ -1,0 +1,17 @@
+---
+# Locate the pbench_disk
+#
+- name: get cloud_info
+  include_vars:
+    file: "{{ tf_file }}"
+    name: cloud_data
+
+- name: get pbench disk
+  include_role:
+    name: retrieve_pbench_disk
+  vars:
+    disk_info: "{{ resource_info.instances }}"
+  when: resource_info.name == "pbench_volume"
+  loop: "{{ cloud_data.resources }}"
+  loop_control:
+    loop_var: resource_info

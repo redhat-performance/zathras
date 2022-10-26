@@ -1,0 +1,47 @@
+---
+# Records ip addresses of the network interafaces(internal) and instance(public)
+
+- name: Output public ip address to ansible var
+  shell: terraform output -json public_ip_list 
+  args:
+    chdir: "{{ working_dir}}/tf"
+  register: instance_public_ip_list
+
+- name: Output internal ip address list to ansible var
+  shell: terraform output -json internal_ip_list
+  args:
+    chdir: "{{ working_dir}}/tf"
+  register: instance_internal_ip_list
+
+# HACK: Convert terraform output to ansible list/array
+- name: set public Ips address list
+  set_fact:
+    public_ip_list: "{{ instance_public_ip_list.stdout_lines[0] }}"
+    internal_ip_list: "{{ instance_internal_ip_list.stdout_lines[0] }}"
+
+- name: Write server ip address to ansible_run_vars.yml
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "test_hostname: {{ public_ip_list[0] }}"
+
+- name: Write client ip address to ansible_run_vars.yml
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "net_hostname: {{ public_ip_list[1] }}"
+  when: config_info.cloud_numb_networks|int >= 1
+
+- name: record internal IPs for uperf server
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "ct_uperf_server_ip: {{ internal_ip_list[1][1:] | join(', ') }}"
+  when: config_info.cloud_numb_networks|int >= 1
+
+- name: record internal IPs for uperf clients
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "ct_uperf_client_list: {{ internal_ip_list[0][1:] | join(', ') }}"
+  when: config_info.cloud_numb_networks|int >= 1
+
+- name: Display Ip address
+  debug:
+    msg: "{{ public_ip_list }}"

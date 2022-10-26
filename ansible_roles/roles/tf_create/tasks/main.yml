@@ -1,0 +1,10 @@
+#
+# As ansible does not present an easy way to break out of the loop, we handle
+# it via a check here.  Skip the operation if we created the instance.
+#
+
+- name: Init terraform tasks
+  include_tasks: tf_init.yml
+
+- name: terraform apply tasks
+  include_tasks: tf_apply.yml

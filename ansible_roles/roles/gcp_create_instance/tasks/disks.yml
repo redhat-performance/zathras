@@ -1,0 +1,27 @@
+- name: Grab number of disks
+  shell: "echo {{ disk_params }} | cut -d: -f 1"
+  register: disk_count
+
+- name: Grab disk type
+  shell: "echo {{ disk_params }} | cut -d: -f 2"
+  register: disk_type
+
+- name: Grab disk size
+  shell: "echo {{ disk_params }} | cut -d: -f 3"
+  register: disk_size
+
+- name: move files
+  copy:
+    src: tf/disks.tf
+    dest: "{{working_dir}}/tf"
+
+- name: Update tfvars
+  blockinfile:
+    dest: "{{working_dir}}/tf/env.tfvars"
+    block: "{{ lookup('template', 'tfvars_disks.j2') }}"
+
+- name: GCP, create instance
+  include_role:
+    name: tf_create
+  vars:
+    tf_var_file: "env.tfvars"

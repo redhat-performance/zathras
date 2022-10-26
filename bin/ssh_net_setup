@@ -1,0 +1,7 @@
+#!/bin/bash
+cd /root;
+echo "" | ssh-keygen   -t rsa -N ""
+cat .ssh/id_rsa.pub >> .ssh/authorized_keys
+cp .ssh/id_rsa.pub /tmp/id_rsa.pub
+chmod 755 /tmp/id_rsa.pub
+

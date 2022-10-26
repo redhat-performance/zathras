@@ -1,0 +1,53 @@
+---
+# tasks file for update_os_image
+
+- name: include dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+- name: Update the system if need be.
+  block:
+  - name: update the os image via iso if requested
+    block:
+    - name: update os image via iso.
+      block:
+      #
+      # Update via an iso.  This can take a bit, as we have to download
+      # the iso to the local system first, and then load it up.  We do this
+      # due to the fact the system that the iso is coming from may be isolated and
+      # can only be seen from the local system.
+      # 
+      - name: iso update
+        debug:
+          msg: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system }} {{ dyn_data.ssh_i_option }} --local_dir {{ config_info.local_run_dir }} --update_type iso"
+      - name: iso execute the update command
+        command: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system}} {{ dyn_data.ssh_i_option }} --local_dir {{ config_info.local_run_dir }} --update_type iso"
+        ignore_errors: yes
+        register: update_results
+      when:
+        - config_info.update_type == "iso"
+
+  - name: update the os image via ftp if requested.
+    block:
+    - name: ftp give command line
+      debug:
+        msg: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system }} {{ dyn_data.ssh_i_option }} --local_dir {{ config_info.local_run_dir }} --update_type {{ config_info.update_type }} --update_target {{ config_info.update_os_version }}"
+    - name: ftp execute the update command
+      command: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system }} {{ dyn_data.ssh_i_option }} --local_dir {{ config_info.local_run_dir }} --update_type {{ config_info.update_type }} --update_target {{ config_info.update_os_version }}"
+      ignore_errors: yes
+      register: update_results
+    when:
+      - config_info.update_os_version != "none"
+
+  - name: Record default status of update sucess
+    lineinfile:
+      path: "{{ working_dir }}/os_update_status"
+      line: "status: failed"
+      create: yes
+    when: update_results.failed != false
+  when:
+    - config_info.os_vendor == "rhel"
+    - config_info.update_os_version != "none"
+    - config_info.init_system == "yes"
+

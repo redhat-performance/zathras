@@ -1,0 +1,31 @@
+---
+# tasks file for create_disks
+# 
+# Disk params format:
+#    Disks:number=<number of disks>;size=<size of disk in gig>;type=<type of disk>
+#
+- name: Grab number of disks
+  shell: "echo {{ disk_params }} | cut -d: -f 1"
+  register: number_disks
+
+- name: Grab disk type
+  shell: "echo {{ disk_params }} | cut -d: -f 2"
+  register: disk_type
+
+- name: Grab disk size
+  shell: "echo {{ disk_params }} | cut -d: -f 3"
+  register: disk_size
+
+- name: Grab disk create_index
+  shell: "echo {{ disk_params }} | cut -d: -f 4"
+  register: disk_create_index
+
+- name: Create the disks
+  include_role:
+    name: "{{ disk_create_routine }}"
+  vars:
+    cloud_disk_type: "{{ disk_type.stdout }}"
+    cloud_number_disk: "{{ number_disks.stdout }}"
+    cloud_disk_size: "{{ disk_size.stdout }}"
+    cloud_create_index: "{{ disk_create_index.stdout }}"
+  when: number_disks.stdout != "0"

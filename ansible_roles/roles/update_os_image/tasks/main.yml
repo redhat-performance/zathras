@@ -1,0 +1,35 @@
+---
+# tasks file for update_os_image
+
+- name: include dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+#
+# Default status.
+#
+- name: Record default status of update sucess
+  lineinfile:
+    path: "{{ working_dir }}/os_update_status"
+    line: "status: success"
+    create: yes
+
+
+- name: update the os image on the test system
+  block:
+    - name: perform single test system update
+      include_role:
+        name: actual_os_update
+      vars:
+        update_system: "{{ dyn_data.test_hostname }}"
+  when: config_info.update_os_version != "none" and (config_info.update_type == "iso" or config_info.update_type == "ftp")
+
+- name: update the os image on the network client system
+  block:
+    - name: perform networked test system update
+      include_role:
+        name: actual_os_update
+      vars:
+        update_system: "{{ dyn_data.net_hostname }}"
+  when: config_info.cloud_numb_networks  > 0 and config_info.update_os_version != "none" and (config_info.update_type == "iso" or config_info.update_type == "ftp")

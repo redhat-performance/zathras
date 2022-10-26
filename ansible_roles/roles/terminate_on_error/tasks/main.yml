@@ -1,0 +1,28 @@
+---
+# tasks file for termination on failure deletion
+#
+#
+#- name: Obtain install status
+#  shell: "grep -q failed {{ working_dir }}/{{ status_file }} > /dev/null"
+#  register: status
+#  ignore_errors: yes
+- name: Read status file
+  shell: cat {{ working_dir }}/{{ status_file }} 2> /dev/null
+  register: status
+  ignore_errors: yes
+  no_log: true
+  failed_when: "'IGNORE_IT' in status.stderr"
+
+- name: terminate
+  block:
+  - name: Terraform terminate
+    include_role:
+      name: tf_delete
+    vars:
+      tf_dir: "tf"
+    when: config_info.cloud_terminate_instance == 1 and config_info.term_system == "yes"
+  - name: Aborting test
+    fail:
+      msg: "{{ exit_msg }}"
+  when: status.rc == 1
+

@@ -1,0 +1,140 @@
+#
+# Create the Azure instance
+#
+
+#
+# Set up the various terraform files.
+#
+- name: copy general tf files, no network
+  block:
+  - name: copy main.tf to tf/main_net.tf
+    copy:
+      src: "tf/main_no_net.tf"
+      dest: "{{ working_dir }}/tf/main.tf"
+  - name: copy output.tf
+    copy:
+      src: "tf/output_no_net.tf"
+      dest: "{{ working_dir }}/tf/output.tf"
+  when: config_info.cloud_numb_networks|int == 0
+
+- name: copy general tf files, network
+  block:
+  - name: copy main.tf to tf/main_net.tf
+    copy:
+      src: "tf/main_net.tf"
+      dest: "{{ working_dir }}/tf/main.tf"
+  - name: copy output.tf to tf/output_net.tf
+    copy:
+      src: "tf/output_net.tf"
+      dest: "{{ working_dir }}/tf/output.tf"
+  when: config_info.cloud_numb_networks|int >= 1
+
+
+- name: copy general tf vars file
+  copy:
+    src: "tf/vars.tf"
+    dest: "{{ working_dir }}/tf/vars.tf"
+
+- name: Activate proximity group
+  copy:
+    src: "tf/main.tf"
+    dest: "{{ working_dir }}/tf/main.tf"
+  when: config_info.cloud_placement == "none"
+
+- name: Activate placement group
+  block:
+  - name: copy main and update placement group
+    shell: sed "s/#   proximity_placement_group_id/   proximity_placement_group_id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main.tf >> {{ working_dir }}/tf/main.tf
+  - name: add placement group info.
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/placement >> {{ working_dir }}/tf/main.tf"
+  when: config_info.cloud_placement != "none"
+
+- name: Handle disks
+  block:
+  - name: copy to work location
+    copy:
+      src: "tf/disks.tf"
+      dest: "{{ working_dir }}/tf/disks.tf"
+  when: config_info.cloud_disks != "[0:na:na:0]"
+
+- name: include variables etc.
+  include_vars:
+    file: "{{ working_dir }}/ansible_vars.yml"
+
+- name: include net dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+#
+# Set up the terraform variables, includes setting the disk parameters.
+#
+- name: Set up terraform variables
+  include_role:
+    name: set_up_tf_vars
+  vars:
+    pbench_ns_tf: tf/pbench_disks.tf
+    pbench_spot_tf: tf/pbench_spot_disks.tf
+
+- name: grab azure create start time
+  command: "date -u +%s"
+  register: azure_create_time_start
+
+- name: Azure create server
+  include_role:
+    name: tf_create
+  vars:
+    tf_var_file: "env.tfvars"
+
+- name: Record IP addresses
+  include_tasks: record_ip_info.yml
+
+# Wait for the server to come up
+- name: wait for ssh to come up
+  local_action: wait_for
+    host={{ public_ip_address[0] }}
+    port=22
+    state=started
+    delay=10
+    timeout=1200
+
+- name: Handle wrong cpu types
+  block:
+  - name: Verfiy Azure CPU
+    include_role:
+      name: verify_cpu
+    vars:
+      ip_addr: "{{ public_ip_address[0] }}"
+  - name: Remove wrong cpu type systems
+    shell: "{{ working_dir }}/remove_wrong_cpus {{ working_dir }}"
+  when: config_info.cpu_type_request != "none"
+
+- name: Azure set up pbench disk
+  include_role:
+    name: pbench_disk_set
+  vars:
+    tf_file: "{{ working_dir }}/tf/terraform.tfstate.d/{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}/terraform.tfstate"
+  when: config_info.pbench_disk_required == "yes"
+
+- name: create end time
+  command: "date -u +%s"
+  register: azure_create_time_end
+
+#
+# Report how long it took to create the instance.
+#
+- name: Report creation time
+  lineinfile:
+    path: "{{ working_dir }}/cloud_timings"
+    line: "instance start_time: {{ (azure_create_time_start.stdout) | int - (azure_create_time_start.stdout) | int }}"
+    create: yes
+
+- name: Add host(s) to test and install groups
+  include_tasks: add_host_to_groups.yml
+
+- name: ssh key exchange
+  include_role:
+    name: ssh_key_exchange
+  vars:
+    ip_list: "{{ public_ip_address }}"
+  when: config_info.cloud_numb_networks|int >= 1

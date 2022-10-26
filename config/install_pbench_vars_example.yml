@@ -1,0 +1,12 @@
+---
+pbench_config_url: "{{ 'http://<replace with appropriate pbench repo>/git/pbench.git/plain/agent/production/config/' }}"
+
+pbench_key_url: "{{ 'http://<replace with appropriate pbench repo>/git/pbench.git/plain/agent/production/ssh/' }}"
+
+gpgkey: "{{ 'http://<replace with appropriate pbench repo>/pubkey.gpg' }}"
+
+testgpgkey: "{{ '<http://<replace with appropriate pbench repo>/pubkey.gpg' }}"
+
+gpgcheck: "{{ 1 }}"
+
+test_enabled: false

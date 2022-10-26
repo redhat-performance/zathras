@@ -1,0 +1,16 @@
+---
+- name: now add it to the install_group file
+  include_role:
+    name: add_to_host_group
+  vars:
+    working_group_file: "{{ working_dir }}/ansible_install_group"
+    group_name: "install_group_list"
+    host_to_add: "{{ hostname }}"
+
+- name: add to install_group
+  add_host:
+    name: "{{ hostname }}"
+    groups: install_group
+    ansible_user: "{{ config_info.test_user }}"
+    ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
+

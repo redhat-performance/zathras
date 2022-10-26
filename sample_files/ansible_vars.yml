@@ -1,0 +1,34 @@
+---
+config_info:
+  run_from_dir: /home/user/zathras_aws_region/ssh_known_hosts
+  system_type: aws
+  host_config: m5.xlarge
+  host_config_info: m5.xlarge
+  host_or_cloud_inst: m5.xlarge
+  config_dir: testing_m5.xlarge_1
+  test_repos: /perf1
+  uperf_required: 0
+  force_upload: 0
+  cloud_terminate_instance: 1
+  cloud_os_version: ami-myaminumber
+  ssh_key: 1
+  java_version: 1
+  rhel_tuned_setting: virtual-guest
+  cloud_execute_tests: 1
+  pbench_disk_required: 0
+  os_vendor: rhel
+  test_to_run: ["1"]
+  cloud_region: us-east-1c
+  cloud_delete_region: us-east-1
+  cloud_number_disk: 0
+  cloud_disk_type: gp2
+  cloud_disk_size: 512
+  cloud_numb_networks: 0
+  test_iterations: 1
+  user_parent_home_dir: /home
+  user_running: user
+  test_user: ec2-user
+  pbench_install: 0
+  sys_config: "none"
+  init_system: "yes"
+  term_system: "yes"

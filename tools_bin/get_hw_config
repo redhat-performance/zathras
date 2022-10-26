@@ -1,0 +1,255 @@
+#!/bin/bash
+
+#
+#                       License
+#
+# Copyright (C) 2022  David Valin dvalin@redhat.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+# get_hw_config is part of the Zathras automation framework.  It returns various
+#  pieces of information on the hardware.
+#
+lscpu > /tmp/lscpu
+NUMB_CPUS=`grep "^CPU(s):" /tmp/lscpu | cut -d: -f 2`
+CORES_PER_SOCKET=`grep "Core(s) per socket" /tmp/lscpu | cut -d: -f 2`
+THREADS_PER_CORE=`grep "Thread(s) per core" /tmp/lscpu | cut -d: -f 2`
+NUMB_SOCKETS=`grep "Socket(s):" /tmp/lscpu | cut -d: -f 2`
+
+
+cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -nu > /tmp/hyper_list
+hyper=`egrep '(-|,)' /tmp/hyper_list`
+
+echo numb_cpus: $NUMB_CPUS
+echo cores_per_socket: $CORES_PER_SOCKET
+echo threads_per_core: $THREADS_PER_CORE
+echo numb_sockets: $NUMB_SOCKETS
+
+cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -nu > /tmp/hyper_list
+
+hyper=`egrep '(-|,)' /tmp/hyper_list`
+
+
+if [ -z "$hyper" ]; then
+	rm /tmp/cpus_in_sock
+	for socket in 0 `seq 1 1 $NUMB_SOCKETS`
+	do
+		if [ $socket -lt $NUMB_SOCKETS ]; then
+			cpus_in_socket=""
+			for core in 0 `seq 1 1 $CORES_PER_SOCKET`
+				do
+				if [ $core -lt $CORES_PER_SOCKET ]; then
+					if [ $core -gt 0 ]; then
+						cpus_in_socket+=","
+					fi
+					cpus_in_socket+=`echo "$socket * $CORES_PER_SOCKET + $core" | bc`
+					if [ $socket -eq 0 ]; then
+						max_threads=$[$max_threads +1]
+					fi
+				fi
+			done
+			echo $cpus_in_socket >> /tmp/cpus_in_sock
+		fi
+	done
+	input="/tmp/cpus_in_sock"
+	while IFS= read -r line
+	do
+		cpus_in_sock+=("$line")
+	done < "$input"
+else
+	hyper_range=`grep \- /tmp/hyper_list`
+	input="/tmp/hyper_list"
+	while IFS= read -r line
+	do
+		hyper_mapping+=("$line")
+		numb_hyper_mappings=$[$numb_hyper_mappings +1]
+	done < "$input"
+	#
+	# Build two list.  One list is primary cpus, 2nd list is the hyper threads
+	# At this time, we assume max 2 values per line.
+	#
+	if [ -z "$hyper_range" ]; then
+		#
+		# list is , separated
+		#
+		rm /tmp/non_hyper
+		rm /tmp/hyper
+		for hyper_index in 0 `seq 1 1 $numb_hyper_mappings`
+		do
+			if [ $hyper_index -lt $numb_hyper_mappings ]; then
+				echo ${hyper_mapping[$hyper_index]} | cut -d',' -f 1 >> /tmp/non_hyper
+				echo ${hyper_mapping[$hyper_index]} | cut -d',' -f 2 >> /tmp/hyper
+			fi
+		done
+	else
+		range_entries=0
+
+		input="/tmp/hyper_list"
+		while IFS= read -r line
+        	do
+                	range+=("$line")
+			range_entries=$[$range_entries +1]
+        	done < "$input"
+
+		for index in `seq 0 $range_entries`
+		do
+			if [ $index -lt $range_entries ]; then
+				val1=`echo ${range[$index]} | cut -d'-' -f 1`
+				echo $val1 >> /tmp/non_hyper
+				val1=$[val1 +1]
+				val2=`echo ${range[$index]} | cut -d'-' -f 2`
+				for cpu in `seq ${val1} ${val2}`
+				do
+					echo $cpu >> /tmp/hyper
+				done
+			fi
+		done
+	fi
+	#
+	# populate now
+	#
+	# Assumption:  CPUS are distributed evenly across sockets
+	#
+
+	#
+	# First populate the non hyper sockets
+	#
+	cpus_per_socket=`echo "$CORES_PER_SOCKET*$THREADS_PER_CORE" | bc`
+	input="/tmp/non_hyper"
+	while IFS= read -r line
+	do
+		socket_index=`echo "$line/$cpus_per_socket" | bc`
+		if [ -z ${non_hyper_cpus[$socket_index]} ]; then
+			non_hyper_cpus[$socket_index]=$line;
+		else
+		
+			non_hyper_cpus[$socket_index]+=","
+			non_hyper_cpus[$socket_index]+=$line
+		fi
+		if [ $socket_index -eq 0 ]; then
+			max_threads=$[$max_threads +1]
+		fi
+	done < "$input"
+	input="/tmp/hyper"
+	while IFS= read -r line
+	do
+		socket_index=`echo "$line/$cpus_per_socket" | bc`
+		if [ -z ${hyper_cpus[$socket_index]} ]; then
+			hyper_cpus[$socket_index]=$line;
+		else
+		
+			hyper_cpus[$socket_index]+=","
+			hyper_cpus[$socket_index]+=$"line";
+		fi
+		if [ $socket_index -eq 0 ]; then
+			max_threads=$[$max_threads +1]
+		fi
+	done < "$input"
+fi
+
+
+
+	echo number cpus: $NUMB_CPUS
+	echo cores per socket: $CORES_PER_SOCKET
+	echo number_sockets: $NUMB_SOCKETS
+	echo threads per core: $THREADS_PER_CORE
+	max_socket=$NUMB_SOCKETS
+	((max_socket--))
+	if [ -z "$hyper" ]; then
+		echo No hyperthreading
+		for socket in 0 `seq 1 1 $max_socket`
+		do
+			echo socket: $socket: ${cpus_in_sock[$socket]}
+		done
+	else
+		for socket in 0 `seq 1 1 $NUMB_SOCKETS`
+		do
+			if [ $socket -lt $NUMB_SOCKETS ]; then
+				echo non Hyperthreads socket $socket: ${non_hyper_cpus[$socket]}
+			fi
+		done
+		for socket in 0 `seq 1 1 $NUMB_SOCKETS`
+		do
+			if [ $socket -lt $NUMB_SOCKETS ]; then
+				echo hyper threads socket $socket: ${hyper_cpus[$socket]}
+			fi
+		done
+	fi
+
+
+#
+# Get the cpus assoicated with each node
+grep "NUMA node" /tmp/lscpu | grep CPU | cut -d: -f2 > /tmp/cpu_mappings
+cpu_node_index=0
+input="/tmp/cpu_mappings"
+while IFS= read -r line
+	do
+		worker=${line//,/ }
+		pass=0
+		for val in $worker
+		do
+			start=`echo $val | cut -d'-' -f 1`
+			if [ -z $start ]; then
+				if [ $pass -gt 0 ]; then
+					cpu_list[$cpu_node_index]+=" "
+				fi
+				cpu_list[$cpu_node_index]+=$val
+				let "pass=$pass + 1"
+			else
+                                end=`echo $val |  cut -d'-' -f 2`
+				for cpu in `seq ${start} ${end}`
+				do	
+					if [ $pass -gt 0 ]; then
+						cpu_list[$cpu_node_index]+=" "
+					fi
+					cpu_list[$cpu_node_index]+=$cpu
+					let "pass=$pass + 1"
+				done
+			fi
+		done
+	let "cpu_node_index=$cpu_node_index + 1"
+done < "$input"
+
+let "cpu_node_index=$cpu_node_index - 1"
+for index in `seq 0 $cpu_node_index`
+do
+	echo CPU$index mapping: ${cpu_list[$index]}
+done
+
+
+# build core mappings
+core_index=0
+core_cpu=0
+for index in `seq 0 $cpu_node_index`
+do
+	for cpu in ${cpu_list[$index]}
+	do
+		if [ $core_cpu -gt 0 ]; then
+			cores[$core_index]+=" "
+		fi
+		cores[$core_index]+=$cpu
+		let "core_cpu=$core_cpu + 1"
+		if [ $core_cpu -eq $THREADS_PER_CORE ]; then
+			core_cpu=0
+			let "core_index=$core_index+ 1"
+		fi
+	done
+done
+
+let "core_index=$core_index - 1"
+for index in  `seq 0 $core_index`
+do
+    echo core$index: ${cores[$index]}
+done

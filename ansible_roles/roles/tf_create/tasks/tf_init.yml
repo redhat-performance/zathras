@@ -1,0 +1,47 @@
+---
+
+- name: Initialize terraform
+  shell: terraform init
+  args:
+    chdir: "{{ working_dir }}/tf"
+  register: init
+
+- name: Display terraform init output
+  debug:
+    var: init
+
+- name: Create terraform workspace
+  shell: |
+    terraform workspace new {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }};
+    terraform workspace select {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }};
+  args:
+    chdir: "{{ working_dir }}/tf"
+  register: cr_info
+  ignore_errors: yes
+
+- name: create workspace debug
+  debug:
+    var: cr_info
+
+- name: Bail on create terraform workspace failure
+  fail:
+    msg: "Failed on setting up terraform workspace"
+  when: cr_info.failed != false
+
+- name: Create terraform resources plan
+  shell: |
+    terraform plan -var-file=env.tfvars -out=plan.tfplan 2>&1 | tee {{ working_dir }}/tf/terraform_plan.out
+  args:
+    chdir: "{{ working_dir }}/tf"
+  register: create_plan
+  ignore_errors: yes
+
+- name: Display terraform plan
+  debug:
+    var: create_plan
+
+- name: Bail on failure to create the terraform plan
+  fail:
+    msg: "Failed creating the terraform plan"
+  when: create_plan.failed != false
+

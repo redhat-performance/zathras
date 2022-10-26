@@ -1,0 +1,43 @@
+---
+# 
+# Upload the required tests.
+#
+
+- name: test retrieve include dynamic variables
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+- name: include_test_description
+  include_vars:
+    file: "tests_to_run/{{ test_exec }}.yml"
+    name: test_data
+
+#
+# If we are pulling a file
+#
+- name: copy git file in
+  shell: "wget -O  {{ working_dir }}/tests_to_use/{{ test_exec }}_{{ test_data.repo_file }} {{ test_data.location }}/{{ test_data.repo_file }}"
+  ignore_errors: yes
+  register: get_test
+  no_log: true
+  failed_when: "'IGNORE_IT' in get_test.stderr"
+
+- name: Record status of yum config sucess
+  include_role:
+    name: record_status
+  vars:
+    results: "{{ get_test }}"
+    status_file: "{{ working_dir }}/copy_git_file_status"
+ 
+- name: local test run
+  shell: "unzip tests_to_use/*zip"
+  when: config_info.test_exec_location == "local"
+
+- name: Terminate on repo failure
+  include_role:
+    name: terminate_on_error
+  vars:
+    status_file: "copy_git_file_status"
+    exit_msg: "Failed to load {{ test_data.location }}/{{ test_data.repo_file }}"
+

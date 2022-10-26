@@ -1,0 +1,42 @@
+---
+#
+# Create the aws instance.
+# 
+
+#
+# Include the various config files for system definition
+#
+- name: include_test_file
+  include_vars:
+    file: ansible_vars.yml
+
+- name: include dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+- name: trying spot price
+  debug:
+    msg: "spot_price: {{ price }}"
+
+- name: remove the current spot price file.
+  command: rm "{{ working_dir }}"/ansible_spot_price.yml
+
+- name: Set the spot price
+  lineinfile:
+    path: "{{ working_dir }}/ansible_spot_price.yml"
+    line: "cur_spot_price: {{ price }}"
+    create: yes
+
+- name: include spot info
+  include_vars:
+    file: "{{ working_dir }}/ansible_spot_price.yml"
+    name: spot_data
+
+- name: Create aws spot
+  block:
+  - name: aws_tf_create
+    include_role:
+      name: tf_create
+    vars:
+      tf_var_file: "env.tfvars"

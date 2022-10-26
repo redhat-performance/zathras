@@ -1,0 +1,41 @@
+---
+#
+# When we have done an ISO installation, we took an available disk and used it to store
+# the ISO image on.  When we have completed the installation we need to return the disk
+# back for available use (unmount /iso_install /iso_update and then wipe the disk).
+# For other installation types, this a no op.
+#
+- name: include dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+#
+# The cleanup process is in the bash script that performs the updates.
+#
+- name: Cleanup after the installation is complete.
+  block:
+  - name: give command line
+    debug:
+      msg: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ dyn_data.test_hostname }} --do_the_cleanup {{ dyn_data.ssh_i_option }} --update_type {{ config_info.update_type }}"
+  - name: execute the update command
+    command: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ dyn_data.test_hostname }} --do_the_cleanup {{ dyn_data.ssh_i_option }} --update_type {{ config_info.update_type }}"
+    ignore_errors: yes
+    register: update_status
+
+  - name: If we failed update, bail out
+    block:
+    #
+    # Note Azure needs to move to terraform to work here.
+    # 
+    - name: terminate it.
+      include_role:
+        name: tf_delete
+      vars:
+        tf_dir: "tf"
+    - name: Report failure, and exit
+      fail:
+        msg: Failed to update the system.
+    when: update_status.failed != false
+  when: config_info.update_os_version != "none"
+

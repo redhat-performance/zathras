@@ -1,0 +1,146 @@
+---
+- name: include_test_data_file
+  include_vars:
+    file: "{{ test_def_file }}"
+    name: test_data
+
+- name: Handle pre setup script
+  block:
+  - name: Copy start script to test system
+    copy:
+      src: "{{ test_data.pre_setup }}"
+      dest: "/tmp/pre_script"
+      mode: 0555
+  - name: execute the pre script
+    shell: "/tmp/pre_script"
+  when:
+    - test_data.pre_setup != "none"
+    - config_info.cloud_execute_tests == 1
+
+- name: Execute test if local type matches
+  block:
+  - name: include_test_file
+    include_vars:
+      file: ansible_vars.yml
+
+  - name: include dynamic variables
+    include_vars:
+      file: "{{ working_dir }}/ansible_run_vars.yml"
+      name: dyn_data
+
+  - name: handle local operations
+    set_fact:
+      dest_dir: "{{ working_dir }}/workloads"
+    when: test_location == "local"
+
+  - name: handle remote operations
+    set_fact:
+      dest_dir: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
+    when: test_location == "remote"
+
+  - name: Ensure directory exists
+    file:
+      path: "{{ dest_dir }}"
+      state: directory
+
+  - name: copy git tar up
+    unarchive:
+      src: "{{ working_dir }}/tests_to_use/{{ test_name }}_{{ test_data.repo_file }}"
+      dest:  "{{ dest_dir }}"
+      mode: '0555'
+
+  - name: handle reboot
+    block:
+    - name: Reboot the system before execution if required.
+      block:
+      - name: Reboot system before test
+        reboot:
+          reboot_timeout: 1800
+      when:
+        - test_data.reboot_system == "before" or test_data.reboot_system == "both"
+    when:  test_location == "remote"
+
+  - name: report local type
+    debug:
+      msg: "local type: {{ test_location }}"
+
+  - name: Get current time
+    command: date +"%T_%m%d%Y"
+    register: time_period
+
+  - name: Move old results to archive
+    include_role:
+      name: archive_exist_data
+    vars:
+      timeval: "{{ time_period.stdout }}"
+
+  - name: command running
+    debug:
+      msg: "{{ dest_dir }}/{{ test_data.exec_dir }}/{{ test_data.test_script_to_run }} --run_user {{ config_info.test_user }} --home_parent {{ config_info.user_parent_home_dir }} --iterations {{ config_info.test_iterations }} --tuned_setting {{ sys_confg }} --host_config \"{{ config_info.host_config_info }}\" --sysname \"{{ config_info.host_or_cloud_inst }}\" --sys_type {{ config_info.system_type }} {{ test_data.test_specific }}"
+
+  - name: record the shell using
+    shell: "echo \"#/bin/bash\" >> /tmp/{{ test_data.test_name }}.cmd"
+    
+  - name: provide the comamnd runnig
+    shell: "echo \"{{ dest_dir }}//{{ test_data.exec_dir }}/{{ test_data.test_script_to_run }} --run_user {{ config_info.test_user }} --home_parent {{ config_info.user_parent_home_dir }} --iterations {{ config_info.test_iterations }} --tuned_setting {{ sys_confg }} --host_config \"{{ config_info.host_config_info }}\" --sysname \"{{ config_info.host_or_cloud_inst }}\" --sys_type {{ config_info.system_type }} {{ test_data.test_specific }}\" | sed \"s/}//g\" >> /tmp/{{ test_data.test_name }}.cmd"
+
+  - name: Make runnable
+    shell: "chmod 755 //tmp/{{ test_data.test_name }}.cmd"
+
+  - name: retrieve the command file
+    fetch:
+       src: "/tmp/{{ test_data.test_name }}.cmd"
+       dest: "{{ working_dir }}/"
+       flat: yes
+
+  - name: execute the test
+    shell: "/tmp/{{ test_data.test_name }}.cmd"
+    ignore_errors: yes
+    register: test_out
+
+#
+# This is commented out because with tests like uperf and fio the stdout can be thousands of lines.
+# 
+#  - name: Report on test run
+#   debug:
+#      var: test_out
+
+  - name: finish remote system only
+    block:
+    - name: archive data if required
+      block:
+      - name: What we are looking for
+        debug:
+          msg: "/tmp/results_{{ test_data.test_name }}_{{ sys_confg }}.tar"
+      - name: retrieve data
+        fetch:
+          src: "/tmp/results_{{ test_data.test_name }}_{{ sys_confg }}.tar"
+          dest: "{{ working_dir }}/"
+          flat: yes
+        ignore_errors: yes
+      when: (test_data.archive_results == "yes") or
+            (test_data.pbench_local_results == "yes")
+
+    - name: Reboot the system after execution if required.
+      block:
+      - name: Reboot system after test
+        reboot:
+          reboot_timeout: 1800
+      when:
+        - test_data.reboot_system == "after" or test_data.reboot_system == "both"
+    when: test_location == "remote"
+  when: test_location == test_data.test_run_from
+
+- name: Handle post op script
+  block:
+  - name: Copy post op script to test system
+    copy:
+      src: "{{ test_data.post_script }}"
+      dest: "/tmp/post_script"
+      mode: 0555
+    ignore_errors: yes
+  - name: execute the pre script
+    shell: "/tmp/post_script"
+  when:
+    - test_data.post_script != "none"
+    - config_info.cloud_execute_tests == 1

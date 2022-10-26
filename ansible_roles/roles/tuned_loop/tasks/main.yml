@@ -1,0 +1,31 @@
+---
+
+- name: make sure tuned is enabled
+  command: "systemctl enable tuned"
+- name: make sure tuned is started
+  command: "systemctl start tuned"
+- name: run tuned
+  command: "tuned-adm profile {{ tuned_adm_profile }}"
+  ignore_errors: yes
+  register: tuned_status
+- name: save status
+  include_role:
+    name: record_status
+  vars:
+    results: "{{ tuned_status }}"
+    status_file: "/tmp/tuned_status"
+- name: Give current tuned setting
+  command: "tuned-adm active"
+- name: Reboot the system after tuned setting if requested.
+  reboot:
+    reboot_timeout: 1800
+  when: config_info.rhel_tuned_reboot == 1
+
+- name: execute the test
+  include_role:
+    name: test_execute
+  vars:
+    test_exec_loca: "{{ test_location }}"
+    test_exec: "{{ test_item }}"
+    sys_confg: "tuned_{{ tuned_adm_profile }}_sys_file_{{ config_info.sys_config }}"
+

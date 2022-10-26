@@ -1,0 +1,80 @@
+---
+# Records ip addresses of the network interafaces(internal) and instance(public)
+
+- name: Output public ip address to ansible var
+  shell: terraform output -json public_ip_address 
+  args:
+    chdir: "{{ working_dir}}/tf"
+  register: instance_public_ip_address
+  ignore_errors: yes
+
+- name: Present info
+  debug:
+    var: instance_public_ip_address
+
+- name: Bail if public ip error
+  block:
+  - name: Record cpu type
+    lineinfile:
+      path: "{{ working_dir }}/cpu_type_failure"
+      line: "cpu_type: no_ip_provided"
+      create: yes
+  - name: terminate instance, failure.
+    include_role:
+      name: tf_delete
+    vars:
+      tf_dir: "tf"
+  - name: System abort
+    fail:
+      msg: "Failed to get an ip address"
+  when: instance_public_ip_address.rc != 0
+
+- name: set public IPs address list
+  set_fact:
+    public_ip_address_all: "{{ instance_public_ip_address.stdout_lines }}"
+
+- name: set public IPs address list
+  set_fact:
+    public_ip_address: "{{ instance_public_ip_address.stdout_lines[0] }}"
+
+- name: Write ip address to ansible_run_vars.yml
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "test_hostname: {{ public_ip_address[0] }}"
+
+- name: Write uperf client ip address to ansible_run_vars.yml
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "net_hostname: {{ public_ip_address[1] }}"
+  when: config_info.cloud_numb_networks|int >= 1
+
+- name: record internal IPs for internal networks server
+  block:
+  - name: Output internal ip address to ansible var
+    shell: terraform output -json internal_ip_list 
+    args:
+      chdir: "{{ working_dir}}/tf"
+    register: internal_ip_list
+    ignore_errors: yes
+  - name: set internal IPs address list
+    set_fact:
+      internal_ip_address: "{{ internal_ip_list.stdout_lines[0] }}"
+
+  - name: Recorder server addr
+    lineinfile:
+      path: "{{ working_dir }}/ansible_run_vars.yml"
+      line: "ct_uperf_server_ip: {{ internal_ip_address[0] }}"
+  - name: record internal IPs for uperf clients
+    lineinfile:
+      path: "{{ working_dir }}/ansible_run_vars.yml"
+      line: "ct_uperf_client_list: {{ internal_ip_address[1] }}"
+  when: config_info.cloud_numb_networks|int >= 1
+
+- name: Display Ip address
+  debug:
+    msg: "{{ public_ip_address }}"
+
+- name: Display internal Ip address
+  debug:
+    msg: "{{ internal_ip_address }}"
+  when: config_info.cloud_numb_networks|int >= 1

@@ -1,0 +1,130 @@
+Example 1: 
+Run the linpack benchmark an AWS m5.xlarge instance running a RHEL kernel.  Run
+the test just once and delete the instances when done.
+
+	Test: Linpack
+	host config: m5.xlarge
+	ssh key file: /home/me/.ssh/my_key_file
+	test iterations: 1
+	results prefix: testing
+	tuned: virtual-guest
+	OS vendor: rhel
+	terminate cloud: yes
+	system type: aws
+	OS id (cloud): ami-043fbed28a389c721
+	
+./burden --tests linpack --host_config m5.xlarge --ssh_key_file /home/me/.ssh/my_key_file --test_iter 1 --results_prefix testing --tuned_profiles virtual-guest --os_vendor rhel --terminate_cloud 1 --system_type aws --cloud_os_id ami-043fbed28a389c721
+
+Example 2:
+Run the linpack benchmark on the following AWS instances m5.xlarge and m5.4xlarge.  Use
+a RHEL image, and run the linpack just once and delete the instances when done.
+	Test: Linpack
+	host config: m5.xlarge,m5.4xlarge
+	ssh key file: /home/me/custom/my_key_file
+	test iterations: 1
+	results prefix: testing
+	tuned: virtual-guest
+	OS vendor: rhel
+	terminate cloud: yes
+	system type: aws
+	OS id (cloud): ami-043fbed28a389c721
+
+Example 3:
+Create an AWS m5.4xlarge instance, with 3 disks, of size 100GB for future use.  Do not run any workloads or install any packages.
+	host config: m5.xlarge
+	ssh key file: /home/me/custom/my_key_file
+	OS vendor: rhel
+	create_only: yes
+	system type: aws
+	OS id (cloud): ami-043fbed28a389c721
+
+./burden --host_config m5.xlarge:Disks;number=3;size=100 --ssh_key /home/me/custom/my_key_file --os_vendor rhel --system_type aws --cloud_os_id ami-043fbed28a389c721 --create_only
+
+Example 4:
+Create an AWS m5.4xlarge instance, connected to a second m5.4xlarge system via 2 networks.
+	host config: m5.xlarge
+	ssh key file: /home/me/custom/my_key_file
+	OS vendor: rhel
+	create_only: yes
+	system type: aws
+	OS id (cloud): ami-043fbed28a389c721
+
+./burden --host_config m5.xlarge:Networks;number=2 --ssh_key /home/me/custom/my_key_file --os_vendor rhel --system_type aws --cloud_os_id ami-043fbed28a389c721 --create_only
+
+Example 5:
+Create two AWS systems.  System 1, is an m5.xlarge, with 2 disks, size of 1300GB, type gpt.  System 2 is an
+an m5.4xlarge, with 4 disks, sizeof 1100GB, type gpt.
+	host config: m5.xlarge,m5.4xlarge
+	ssh key file: /home/me/custom/my_key_file
+	OS vendor: rhel
+	create_only: yes
+	system type: aws
+	OS id (cloud): ami-043fbed28a389c721
+
+./burden --host_config m5.xlarge:Disks;number=2;size=1300;type=gpt,m5.4xlarge:Disks;number=4;size=1100;type=gpt --ssh_key 1 --os_vendor rhel --system_type aws --cloud_os_id ami-043fbed28a389c721 --create_only
+
+Example 6:
+Run specjbb on an AWS m5.xlarge, for 5 iterations, using Java 11.
+	tests: specjbb
+	java version: 11
+	host config: m5.xlarge
+	ssh key file: /home/me/custom/my_key_file
+	OS vendor: rhel
+	system type: aws
+	OS id (cloud): ami-043fbed28a389c721
+
+./burden --tests specjbbb --java_version 1 --host_config m5.xlarge --ssh_key /home/me/custom/my_key_file  --test_iter 1 --results_prefix testing --tuned_profiles virtual-guest --os_vendor rhel --terminate_cloud 1 --system_type aws --cloud_os_id ami-043fbed28a389c721
+
+Example 7
+Run specjbb on an AWS m5.xlarge, for 5 iterations, using Java 8
+	tests: specjbb
+	java version: 8
+	host config: m5.xlarge
+	ssh key file: /home/me/custom/my_key_file
+	OS vendor: rhel
+	system type: aws
+	OS id (cloud): ami-043fbed28a389c721
+
+./burden --tests specjbbb --java_version 0 --host_config m5.xlarge --ssh_key /home/me/custom/my_key_file  --test_iter 1 --results_prefix testing --tuned_profiles virtual-guest --os_vendor rhel --terminate_cloud 1 --system_type aws --cloud_os_id ami-043fbed28a389c721
+
+Example 8
+Run linpack on AWS m5.xlarge, with the tuneds throughput-performance,virtual-guest.
+	tests: linpack
+	host config: m5.xlarge
+	ssh key file: /home/me/custom/my_key_file
+	OS vendor: rhel
+	system type: aws
+	tuneds: throughput-performance,virtual-guest
+
+./burden --tests linpack --host_config m5.xlarge --ssh_key /home/me/custom/my_key_file --test_iter 1 --results_prefix testing --tuned_profiles "throughput-performance,virtual-guest" --os_vendor rhel --terminate_cloud 1 --system_type aws --cloud_os_id ami-043fbed28a389c721
+
+Example 9
+Run linpack on AWS m5.xlarge, with 2 different sysctl setting files.
+	tests: linpack
+	host config: m5.xlarge
+	ssh key file: /home/me/custom/my_key_file
+	OS vendor: rhel
+	system type: aws
+	sysctl settings: sysctl1 and sysctl2
+
+./burden --tests linpack --host_config m5.xlarge:Sysctl_settings=sysctl1+sysctl2 --ssh_key /home/me/custom/my_key_file --test_iter 1 --results_prefix testing --os_vendor rhel --terminate_cloud 1 --system_type aws --cloud_os_id ami-043fbed28a389c721
+
+Example 10
+Run the benchmarks linpack, specjbb and streams on AWS instances, m5.xlarge, m5.4xlarge, and m5.12xlarge.
+	tests: linpack, specjjb and streams
+	java version: 11
+	host config: m5.xlarge, m5.4xlarge and m5.12xlarge.
+	ssh key file: /home/me/custom/my_key_file
+	OS vendor: rhel
+	system type: aws
+
+./burden --tests linpack,specjjb,streams --java_version 1  --host_config m5.xlarge,m5.4xlarge,m5.12xlarge --ssh_key /home/me/custom/my_key_file --test_iter 1 --results_prefix testing --os_vendor rhel --terminate_cloud 1 --system_type aws --cloud_os_id ami-043fbed28a389c721
+
+Example 11
+Create an  aws  m5.xlarge image, update it to RHEL-8.2.0-Snapshot-3.0 before running the test.
+	tests: linpack, specjjb and streams
+	host config: m5.xlarge
+	OS vendor: rhel
+	system type: aws
+  ./burden --tests linpack --java_version 2 --host_config "m5.xlarge:Disks;number=1;size=100;type=gp2" --ssh_key_file /home/user/user.pem_test --test_iter 1 --results_prefix testing --tuned_profiles virtual-guest --os_vendor rhel --terminate_cloud 0 --system_type aws --cloud_os_id ami-0b5680374d3be7ba6 --update_image http://update_from.com/rhel-8/RHEL-8-update.iso
+

@@ -1,0 +1,12 @@
+---
+#
+# Wait to be able to ssh into the designated system
+#
+#
+- name: wait for ssh to come up
+  local_action: wait_for
+    host="{{ hostname }}"
+    port=22
+    state=started
+    delay=10
+    timeout=1200

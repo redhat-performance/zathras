@@ -1,0 +1,28 @@
+#!/bin/bash
+if test -f "hw_config.yml"; then
+	disks=`grep storage hw_config.yml | cut -d: -f 2 | sed "s/,/ /g"`
+else
+	ALLSTG=$(mktemp /tmp/allstgdsk.XXXXX)
+	USEDDSK=$(mktemp /tmp/useddsk.XXXXX)
+	ALLDSK=$(mktemp /tmp/alldsk.XXXXX)
+	MNTDDSK=$(mktemp /tmp/mntddsk.XXXXX)
+	lsblk -l > ${ALLSTG}
+	rootdisk=$(grep -e "part /$" -e boot$ ${ALLSTG} | awk '{print $1}')
+
+	if [[ $rootdisk =~ nvme* ]]; then
+		grep part ${ALLSTG}| grep -e / -e swap | awk '{print $1}' | sed s/p[[:digit:]]*$// | sort | uniq > $USEDDSK
+	else
+		grep -e disk -e part ${ALLSTG}| grep -e / -e swap | awk '{print $1}' | sed s/[[:digit:]]*$// | sort | uniq > $USEDDSK
+	fi
+	#
+	# Now the mounted disks
+	#
+	for i in `df | grep /dev | cut -d' ' -f1 | grep /`
+	do 
+		echo ${i##*/} >> $USEDDSK
+	done
+
+	grep disk ${ALLSTG} | awk '{print $1}' | sort | uniq > ${ALLDSK}
+	disks=`echo $(grep -F -x -v -f ${USEDDSK} ${ALLDSK})`
+fi
+echo "$disks"  | awk '{ for (i=NF; i > 1; i--) printf("%s ",$i); print $1; }' > disks

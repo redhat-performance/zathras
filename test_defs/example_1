@@ -1,0 +1,23 @@
+#
+# Designation of test options.  Anything defined in systems: will override the global values.
+#
+# For explantion of the fields, see burden --verbose or user documentation.
+#
+#
+global:
+  results_prefix: rhel_8.2
+  ssh_key_file: /home/user/more_update_install/config/user.pem_test
+  test_iter: 1
+  tests: linpack
+  terminate_cloud: 1
+  java_version: 2
+  cloud_os_id: ami-myaminumber
+  os_vendor: rhel
+  update_image: http://update_from.com/rhel-8/RHEL-8-update.iso
+systems:
+  system1:
+    host_config: "m5.xlarge:Disks;number=1;size=20;type=gp2"
+    system_type: aws
+  system2:
+    host_config: "m5.4xlarge:Disks;number=1;size=20;type=gp2"
+    system_type: aws

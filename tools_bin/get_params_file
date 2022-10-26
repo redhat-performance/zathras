@@ -1,0 +1,40 @@
+#!/bin/bash
+
+while getopts "c:d:t:" o; do
+	case "${o}" in
+	c)
+		config_name=${OPTARG}
+	;;
+	d)
+		directory=${OPTARG}
+	;;
+	t)
+		test=${OPTARG}
+	;;
+	esac
+done
+shift $((OPTIND-1))
+
+#
+# First config specific test
+#
+file="${directory}/test_params/${config_name}.${test}"
+if test -f "$file"; then
+	echo $file 
+	exit
+fi
+
+#
+# Now for light version of the test.
+#
+file="${directory}/test_params/zathras_light.${test}"
+
+if test -f "$file"; then
+	echo $file 
+	exit
+fi
+
+#
+# None
+#
+echo No config file

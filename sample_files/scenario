@@ -1,0 +1,11 @@
+global:
+  ssh_key_file: [ssh_key_file]
+  terminate_cloud: 1
+  cloud_os_id: [cloud_os_id]
+  os_vendor: [os_vendor]
+  results_prefix: [results_prefix]
+  system_type: [cloud_type]
+systems:
+  system1:
+    tests: linpack
+    host_config: "[no_storage]"

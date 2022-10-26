@@ -1,0 +1,17 @@
+[rhel-baseos-update]
+name=RHEL-baseos-update
+baseurl=file:///iso_install/BaseOS
+enabled=1
+gpgcheck=0
+     
+[rhel-appstream-update]
+name=RHEL-appstream-update
+baseurl=///iso_install/AppStream/
+enabled=1
+gpgcheck=0
+     
+[rhel-CRB-update]
+name=RHEL-CRB-update
+baseurl=///iso_update/CRB
+enabled=1
+gpgcheck=0

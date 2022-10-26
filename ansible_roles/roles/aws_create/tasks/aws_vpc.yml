@@ -1,0 +1,27 @@
+---
+#
+# Retrieve the vpc for the provided instance.  We need the vpc in order
+# to create the networks
+#
+# Variables passed in:
+#   working_dir: the directory we are running from.
+#
+- name: include vars for vpc gathering
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+- name: aws vpc id
+  ec2_instance_info:
+    instance_ids:
+      - "{{ dyn_data.aws_instance_id }}"
+  register: vpc_info
+
+
+#- name: set aws vpc id
+
+- name: record vpc
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "aws_vpc_id: {{ vpc_info.instances[0].vpc_id }}"
+

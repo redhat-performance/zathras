@@ -1,0 +1,30 @@
+Created by the ansible playbooks
+==========================================
+ansible_install_group:
+  inventory file of what systems we are to install packages and tests on.
+ansible_test_group
+  inventory file for what systems we are to run the test on.
+
+ansible_run_vars.yml:
+  ansible data file, contains the run time data, including disks, networks, system names
+
+Created by burden
+=========================================
+ansible_vars.yml
+  The parameters required to perform the testing (including creating the image)
+
+Created by kick_off.sh
+=========================================
+ansible_vars_main.yml
+  Inherits ansible_vars.yml, and then adds in 
+   1) init_system: do we need to do all the system setup
+   2) term_system: terminate the cloud image once testing is done
+   3) sys_config: File containing sysctly values to set.
+
+Example of using config vars file
+=========================================
+scenario, the scenario file to run
+config_vars the scenario variables file
+
+To execute
+./burden --scenario scenario --scenario_vars scenario_vars --system_type aws

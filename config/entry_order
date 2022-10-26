@@ -1,0 +1,31 @@
+#
+# This file contains the order we will place the test entries in.
+# The match is on the spacing and string.  ^ at the star of the line
+# indicates that the checking is from the start of the line.
+#
+^  test
+^    test_template:
+^    test_name:
+^    test_description:
+^    repository_type:
+^    location:
+^    test_grouping:
+^    version:
+^    reboot_system:
+^    test_run_from:
+^    os_supported:
+^    repo_file:
+^    rhel_pkgs:
+^    ubuntu_pkgs:
+^    amazon_pkgs:
+^    pbench_required:
+^    pbench_local_results:
+^    storage_required:
+^    network_required:
+^    java_required:
+^    archive_results:
+^    test_script_to_run:
+^    test_specific:
+^    upload_extra:
+^    post_script:
+^    pre_setup:

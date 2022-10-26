@@ -1,0 +1,12 @@
+--- 
+java_defs:
+  java_config1:
+    java_version: java-11
+    amazon: java-11-amazon-corretto-headless
+    rhel: java-11-openjdk-devel
+    ubuntu: openjdk-11-jre-headless
+  java_config2:
+    java_version: java-8
+    amazon: java-1.8.0-openjdk
+    rhel: java-1.8.0-openjdk-devel
+    ubuntu: openjdk-8-jdk

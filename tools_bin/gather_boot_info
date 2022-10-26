@@ -1,0 +1,21 @@
+#!/bin/bash
+cd /tmp
+mkdir $1_boot_info
+for info in time blame critical-chain "dump"; do
+	echo ==================== >> $1_boot_info/boot_info
+	echo systemd-analyze $info >> $1_boot_info/boot_info
+	systemd-analyze $info >> $1_boot_info/boot_info
+done
+#
+# Grab the top 5
+# This is dependent on line location
+service=`grep -A 5 "systemd-analyze blame" $1_boot_info/boot_info | tail -5`
+for sv in $service; do
+	echo $sv >> $1_boot_info/boot_info
+	echo ============== >> $1_boot_info/boot_info
+	journalctl -u $sv >> $1_boot_info/boot_info
+done
+
+systemd-analyze plot > $1_boot_info/bootup.svg
+systemd-analyze dot | dot -Tsvg > $1_boot_info/systemd.svg
+tar cf $1_boot_info.tar $1_boot_info

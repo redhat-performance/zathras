@@ -1,0 +1,12 @@
+---
+# tasks file for install_dev_environment
+
+- name: install dev environment group
+  block:
+  - name: install dev tools
+    include_role:
+      name: install_packages
+    vars:
+      results_file: "/tmp/dev_env_status"
+      pkg_install: "@Development Tools"
+  when: config_info.os_vendor == "rhel"

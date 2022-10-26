@@ -1,0 +1,12 @@
+Contained in this directory is the configuration files for each local system to
+use.  This informtion provides the disk and network tests the devices/ips
+that are to be used. This file is pulled in by the tests that actually need the data.
+
+Nameing convention: <hostname>.config
+Format of file
+
+server_ips: net1,net2
+client_ips: cnet1,cnet2
+storage: nvme2n1,nvme1n1
+
+If the line is not present, and is required by the test, ansible will bail out.

@@ -1,0 +1,26 @@
+---
+- name: execute the test
+  include_role:
+    name: tuned_setting
+  vars:
+    test_exec_loca: "{{ test_location }}"
+    test_exec: "{{ test_item }}"
+  loop: "{{ config_info.test_to_run }}"
+  loop_control:
+    loop_var: test_item
+  when: config_info.rhel_tuned_setting != "none" and config_info.os_vendor == "rhel"
+
+- name: Run non tuned
+  block:
+  - name: execute test
+    include_role:
+      name: test_execute
+    vars:
+      test_exec_loca: "{{ test_location }}"
+      test_exec: "{{ test_item }}"
+      sys_confg: "tuned_none_sys_file_{{ none }}"
+    loop: "{{ config_info.test_to_run }}"
+    loop_control:
+      loop_var: test_item
+  when: config_info.rhel_tuned_setting == "none" or config_info.os_vendor != "rhel"
+

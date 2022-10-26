@@ -1,0 +1,15 @@
+---
+# tasks file for terraform deletion
+#
+
+
+- name: terraform create delete plan
+  shell: terraform -chdir="{{ working_dir }}/{{ tf_dir }}" plan -var-file=env.tfvars -destroy -out=destroy.tfplan
+
+- name: terraform delete
+  shell: terraform -chdir="{{ working_dir }}/{{ tf_dir }}" apply  destroy.tfplan
+
+#- name: rm .terraform dircetory
+#  file:
+#    path:  "{{ working_dir }}/{{ tf_dir }}/.terraform"
+#    state: absent

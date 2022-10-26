@@ -1,0 +1,46 @@
+---
+# tasks file for local_setup
+
+#
+# Add the system to both the test_group and install_group.
+# user is root.
+#
+- name: set_test_host
+  add_host:
+    name: "{{ config_info.host_or_cloud_inst }}"
+    groups: test_group
+    ansible_user: root
+
+- name: install host
+  add_host:
+    name: "{{ config_info.host_or_cloud_inst }}"
+    groups: install_group
+    ansible_user: root
+
+- name: now add it to the test_group file
+  include_role:
+    name: add_to_host_group
+  vars:
+    working_group_file: "{{ working_dir }}/ansible_test_group"
+    group_name: "test_group_list"
+    host_to_add: "{{ config_info.host_or_cloud_inst }}"
+
+#
+# Record the hostname for future reference
+#
+- name: record local hostname
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "test_hostname: {{  config_info.host_or_cloud_inst }}"
+
+#
+# Record the install group for future reference.
+#
+- name: now add it to the install group file
+  include_role:
+    name: add_to_host_group
+  vars:
+    working_group_file: "{{ working_dir }}/ansible_install_group"
+    group_name: "install_group_list"
+    host_to_add: "{{ config_info.host_or_cloud_inst }}"
+

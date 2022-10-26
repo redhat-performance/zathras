@@ -1,0 +1,23 @@
+#
+# First save it for later use.
+#
+- name: pull tf data
+  shell: "terraform show > {{ working_dir }}/terraform_data.yml"
+  args:
+    chdir: "{{ working_dir }}/tf"
+
+#
+# Now tell the world
+#
+- name: pull tf data for display
+  shell: "terraform show"
+  args:
+    chdir: "{{ working_dir }}/tf"
+  register: tf_data
+
+#
+# Now give it to the user
+#
+- name: Present terraform data
+  debug:
+    var: tf_data

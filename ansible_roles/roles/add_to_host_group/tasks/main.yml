@@ -1,0 +1,39 @@
+---
+#
+# Creates a host file containing a list of all the systems we are using.
+# Note we have one file per grouping.
+#
+# Passed in
+# working_group_file:  File we are adding the host to.
+# group_name: Name of the grouping (only used once).
+# host_to_add: host we are adding to the file
+#
+
+- name: Check for the file, does it exist
+  stat:
+    path:  "{{ working_group_file }}"
+  register: stat_result
+
+#
+# If need be, create the file and add the front matter.
+#
+- name: create the test group file if need be
+  block:
+  - name: Add first line
+    lineinfile:
+      path: "{{ working_group_file }}"
+      line: "---"
+      create: yes
+  - name: Add the second line
+    lineinfile:
+      path: "{{ working_group_file }}"
+      line: "{{ group_name }}:"
+  when: stat_result.stat.exists == False
+
+#
+# Add the host to the file
+# 
+- name: add the line to the host group file
+  lineinfile:
+    path: "{{ working_group_file }}"
+    line: "  - {{ host_to_add }}"

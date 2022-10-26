@@ -1,0 +1,18 @@
+---
+#
+# Create the aws instance.
+# 
+
+#
+# Include the various config files for system definition
+#
+- name: include_rtc
+  include_vars:
+    file: "{{ working_dir}}/tf.rtc"
+    name: tf
+
+- name: include dynamic info
+  include_tasks: aws_tf_spot_create.yml
+  vars:
+    spot_price: price
+  when: tf.rtc != 0

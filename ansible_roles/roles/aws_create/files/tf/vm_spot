@@ -1,0 +1,15 @@
+# Defines a VM 
+resource "aws_spot_instance_request" "ec2" {
+  ami			    = var.cloud_os_version
+  count                     = var.vm_count
+  instance_type             = var.machine_type
+  availability_zone         = "${var.avail_zone}"
+  security_groups           = [var.security_group]
+  key_name                  = var.key_name
+  tags = {
+    Name = "${var.run_label}-${var.machine_type}"
+  }
+  spot_price		    = var.spot_price
+  spot_type                 = "one-time"
+  wait_for_fulfillment  = "true"
+}

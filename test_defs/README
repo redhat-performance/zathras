@@ -1,0 +1,78 @@
+The test_def files designates the a set of tests to be run, via a YAML format.
+The idea here, is to have a preset test that can be run by anyone, by simply
+checking the appropriate sceantio file out of git.
+
+NOTE:
+At this time, we will use the FIRST update image encountered for all machines.
+There is an issue open to allow for different update images for each machine.
+
+Format of test_def file
+global:
+  < list of global options, they are the default for each of the systems >
+systems:
+  system1:
+    < list of options specific to this system.  The options here override
+      the default options>
+  system2:
+    < options>
+
+
+The options specified in the file are the same as the cli, but are minus the -- option.
+Note, the update_image on system1.  Thbis means system1 will run with the updated image, and
+system2 will have OS defined in global
+
+There is a special system type called "SYS_BARRIER".  This designates that before continuing with
+running further systems, we are to wait until everything started so far completes.  There is no cli
+equivalent.
+  system3:
+    host_config: "SYS_BARRIER"
+
+Example
+cli
+./burden --results_prefix rhel_8.2 --ssh_key_file /home/user/more_update_install/config/user.pem_test
+--test_ier 1 --tests linpack --terminate_cloud 1 --java_version 2 -cloud_os_id=ami-myaminumber
+--os_vendor rhel --host_config "m5.xlarge:Disks;number=1;size=20;type=gp2,m5.4xlarge:Disks;number=1;size=20;type=gp2"
+--system_type aws
+
+The test_def file would appear as
+
+global:
+  results_prefix: rhel_8.2
+  ssh_key_file: /home/user/more_update_install/config/user.pem_test
+  test_iter: 1
+  tests: linpack
+  terminate_cloud: 1
+  cloud_os_id: ami-myaminumber
+  os_vendor: rhel
+systems:
+  system1:
+    update_image: http://update_from.com/rhel-8/RHEL-8-update.iso
+    host_config: "m5.xlarge:Disks;number=1;size=20;type=gp2"
+    system_type: aws
+  system2:
+    host_config: "m5.4xlarge:Disks;number=1;size=20;type=gp2"
+    system_type: aws
+
+One feature available via the test_def file that is not available via the command line is that each system defition
+is a self-contained entity.  That means, you can have different OS images on the system, different tests running and
+so forth.
+
+Example: Same as the cli above, except we want linpack on the m5.xlarge and streams on m5.4xlarge
+The test_def file would appear as
+
+global:
+  results_prefix: rhel_8.2
+  ssh_key_file: /home/user/more_update_install/config/user.pem_test
+  test_iter: 1
+  terminate_cloud: 1
+  cloud_os_id: ami-myaminumber
+  os_vendor: rhel
+system:
+  system1:
+    host_config: "m5.xlarge:Disks;number=1;size=20;type=gp2"
+    tests: linpack
+    system_type: aws
+  system2:
+    host_config: "m5.4xlarge:Disks;number=1;size=20;type=gp2"
+    tests: streams
+    system_type: aws

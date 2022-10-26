@@ -1,0 +1,19 @@
+ssh_key_file: /home/user/permissions/aws_region_2_ssh_key
+os_vendor: rhel
+results_prefix: full_testing
+#
+#
+aws_system_type: aws
+aws_cloud_os_id: ami-0fdea47967124a409
+aws_no_storage_x86: i3en.xlarge,i3en.2xlarge,i3en.6xlarge,i3en.12xlarge,i3en.24xlarge,m5.xlarge,m5.2xlarge,m5.8xlarge,m5.16xlarge,m5.24xlarge
+aws_no_storage_non_x86: m5a.xlarge,m5a.2xlarge,m5a.4xlarge,m5a.8xlarge,m5a.16xlarge,m5a.24xlarge
+aws_no_storage: i3en.xlarge,i3en.2xlarge,i3en.6xlarge,i3en.12xlarge,i3en.24xlarge,m5.xlarge,m5.2xlarge,m5.8xlarge,m5.16xlarge,m5.24xlarge,m5a.xlarge,m5a.2xlarge,m5a.4xlarge,m5a.8xlarge,m5a.16xlarge,m5a.24xlarge
+aws_networks: i3en.xlarge,i3en.2xlarge,i3en.6xlarge,i3en.12xlarge,i3en.24xlarge,m5.xlarge,m5.2xlarge,m5.8xlarge,m5.16xlarge,m5.24xlarge,m5a.xlarge,m5a.2xlarge,m5a.4xlarge,m5a.8xlarge,m5a.16xlarge,m5a.24xlarge
+#
+aws_hammer_storage: i3en.2xlarge:Disks;type=internal,i3en.6xlarge:Disks;type=internal,i3en.12xlarge:Disks;type=internal,i3en.24xlarge:Disks;type=internal,m5.2xlarge:Disks;type=gp2;size=6000;number=2,m5.8xlarge:Disks;type=gp2;size=6000;number=4,m5.16xlarge:Disks;type=gp2;size=6000;number=8,m5.24xlarge:Disks;type=gp2;size=6000;number=8,m5a.2xlarge:Disks;type=gp2;size=6000;number=2,m5a.4xlarge:Disks;type=gp2;size=6000;number=2,m5a.8xlarge:Disks;type=gp2;size=6000;number=4,m5a.16xlarge:Disks;type=gp2;size=6000;number=8,m5a.24xlarge:Disks;type=gp2;size=6000;number=8
+#
+aws_storage: i3en.xlarge:Disks;type=internal,i3en.2xlarge:Disks;type=internal,i3en.2xlarge:Disks;type=internal,i3en.6xlarge:Disks;type=internal,i3en.12xlarge:Disks;type=internal,i3en.24xlarge:Disks;type=internal,m5.xlarge:Disks;type=gp2;size=6000;number=2,m5.2xlarge:Disks;type=gp2;size=6000;number=2,m5.8xlarge:Disks;type=gp2;size=6000;number=4,m5.16xlarge:Disks;type=gp2;size=6000;number=8,m5.24xlarge:Disks;type=gp2;size=6000;number=8,m5a.xlarge:Disks;type=gp2;size=6000;number=2,m5a.2xlarge:Disks;type=gp2;size=6000;number=2,m5a.4xlarge:Disks;type=gp2;size=6000;number=2,m5a.8xlarge:Disks;type=gp2;size=6000;number=4,m5a.16xlarge:Disks;type=gp2;size=6000;number=8,m5a.24xlarge:Disks;type=gp2;size=6000;number=8
+#
+#
+azure_no_storage: az_system
+azure_cloud_os_id: az_os_info

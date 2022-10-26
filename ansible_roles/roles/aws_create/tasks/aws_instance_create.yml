@@ -1,0 +1,233 @@
+---
+#
+# Create the aws instance.
+# 
+
+#
+# Include the various config files for system definition
+#
+- name: include_test_file
+  include_vars:
+    file: ansible_vars.yml
+
+#
+# Start up the image.
+#
+
+#
+# Non spot operation
+#
+- name: Create aws non spot
+  block:
+  - name: aws_tf_create
+    include_role:
+      name: tf_create
+    vars:
+      tf_var_file: "env.tfvars"
+  when: config_info.spot_range == 0
+
+- name: Create aws spot
+  include_tasks: aws_tf_spot.yml
+  when: config_info.spot_range != 0
+
+#
+# Wait for the dns name(s) to appear in the results file.
+#
+- name: wait for dns name to appear.
+  include_tasks: aws_wait_for_dns.yml
+  vars:
+    look_for:  public_dns_host0 
+- name: wait for dns name to appear.
+  include_tasks: aws_wait_for_dns.yml
+  vars:
+    look_for:  public_dns_host1
+  when:
+    - config_info.cloud_numb_networks != 0
+    - config_info.cloud_numb_network_type != "public"
+
+- name: Present terraform data.
+  include_role:
+    name: tf_show
+
+- name: obtain AWS vars
+  include_vars:
+    file: "{{ working_dir }}/tf/terraform.tfstate.d/{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}/terraform.tfstate"
+    name: aws_data
+
+- name: Record aws data
+  include_tasks: aws_record_info.yml
+
+- name: report aws data values
+  debug:
+    msg: "{{ aws_data }}"
+
+- name: read in aws tf values
+  include_vars:
+    file: "{{ working_dir }}/tf_results"
+    name: aws_tf_info
+
+- name: AWS wait for ssh to come up
+  include_role:
+    name: wait_for_ssh
+  vars:
+    hostname: "{{ aws_tf_info.public_dns_host0 }}"
+  when: aws_tf_info.public_dns_host0 != ""
+
+- name: AWS bail if no public dns
+  fail: msg="Did not get a dns name for the server system."
+  when: aws_tf_info.public_dns_host0 == ""
+
+#
+# All though this could be a common item between the clouds we do it here
+# as we want to delete the wrong instance types as quickly as possible.
+#
+- name: Handle wrong cpu types
+  block:
+  - name: Verfiy AWS CPU
+    include_role:
+      name: verify_cpu
+    vars:
+      ip_addr: "{{ aws_tf_info.public_dns_host0 }}"
+  - name: Remove wrong cpu type systems
+    shell: "{{ working_dir }}/remove_wrong_cpus {{ working_dir }}"
+  when: config_info.cpu_type_request != "none"
+#
+# Set tags for host0
+# 
+- name: Record host data
+  block:
+  - name: host 0 tag
+    ec2_tag:
+      resource: "{{  aws_tf_info.aws_instance_id0 }}"
+      region: "{{ config_info.cloud_delete_region }}"
+      state: present
+      tags:
+        Name: "{{ config_info.user_running }}_{{ config_info.run_label }}"
+        Env: "perf_test"
+  - name: host 1 tag
+    ec2_tag:
+      resource: "{{  aws_tf_info.aws_instance_id1 }}"
+      region: "{{ config_info.cloud_delete_region }}"
+      state: present
+      tags:
+        Name: "{{ config_info.user_running }}_{{ config_info.run_label }}"
+        Env: "perf_test"
+    when: config_info.cloud_numb_networks != 0
+  when: config_info.spot_range != 0
+
+#
+# When we go to allowing multiple systems, this will need to be a loop
+#
+- name: handle aws network ssh
+  block:
+  - name: AWS wait for ssh to come up
+    include_role:
+      name: wait_for_ssh
+    vars:
+      hostname: "{{ aws_tf_info.public_dns_host1 }}"
+    when: aws_tf_info.public_dns_host1 != ""
+
+  - name: AWS bail if no public dns
+    fail: msg="Did not get a dns name for the client system."
+    when: aws_tf_info.public_dns_host1 == ""
+  when: config_info.cloud_numb_networks != 0
+
+- name: record hostname
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "test_hostname: {{ aws_tf_info.public_dns_host0 }}"
+
+- name: Add to run vars group
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "test_hostname: {{ aws_tf_info.public_dns_host0 }}"
+
+- name: save dns0 information
+  include_tasks: aws_save_dns_info.yml
+  vars:
+    hostname: "{{ aws_tf_info.public_dns_host0 }}"
+
+- name: record instance id
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "aws_instance_id: {{ aws_tf_info.aws_instance_id0 }}"
+
+#
+# We will need a loop here when we support more then 1 network
+# 
+- name: record network info
+  block:
+  - name: record network instance id
+    lineinfile:
+      path: "{{ working_dir }}/ansible_run_vars.yml"
+      line: "aws_net_instance_id: {{ aws_tf_info.aws_instance_id1 }}"
+  - name: record network hostname
+    lineinfile:
+      path: "{{ working_dir }}/ansible_run_vars.yml"
+      line: "net_hostname: {{ aws_tf_info.public_dns_host1 }}"
+  - name: record network instance id
+    lineinfile:
+      path: "{{ working_dir }}/ansible_run_vars.yml"
+      line: "aws_net_instance_id: {{ aws_tf_info.aws_instance_id1 }}"
+  - name: save network dns information
+    include_tasks: aws_save_dns_info.yml
+    vars:
+      hostname: "{{ aws_tf_info.public_dns_host1 }}"
+  when: config_info.cloud_numb_networks > 0
+
+- name: save no net info
+  block:
+  - name: no net host
+    lineinfile:
+      path: "{{ working_dir }}/ansible_run_vars.yml"
+      line: "net_hostname: none"
+  - name: no net id
+    lineinfile:
+      path: "{{ working_dir }}/ansible_run_vars.yml"
+      line: "aws_net_instance_id: none"
+  when: config_info.cloud_numb_networks == 0
+
+- name: avalability zone
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "cloud_zone: {{ aws_tf_info.aws_zone_id0 }}"
+
+- name: aws_post_pbench
+  include_role:
+    name: pbench_disk_set
+  vars:
+    tf_file: "{{ working_dir }}/tf/terraform.tfstate.d/{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}/terraform.tfstate"
+    sys_index: "0"
+  when: config_info.pbench_disk_required == "yes"
+
+- name: aws_post_pbench network
+  include_role:
+    name: pbench_disk_set
+  vars:
+    tf_file: "{{ working_dir }}/tf/terraform.tfstate.d/{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}/terraform.tfstate"
+    sys_index: "1"
+  when:
+   - config_info.pbench_disk_required == "yes"
+   - config_info.cloud_numb_networks != 0
+
+- name: Make sure python3 is installed
+  become: no
+  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} ec2-user@{{ aws_tf_info.public_dns_host0 }} sudo yum install -y python3
+  when: config_info.os_vendor == "rhel"
+
+- name: Make sure python3 is installed
+  become: no
+  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} ec2-user@{{ aws_tf_info.public_dns_host1 }} sudo yum install -y python3
+  when:
+   - config_info.cloud_numb_networks != 0
+   - config_info.os_vendor == "rhel"
+
+- ec2_instance_info:
+    instance_ids:
+      - "{{ aws_tf_info.aws_instance_id0 }}"
+  register: ec2_metadata
+
+- local_action:
+    module: copy 
+    content: "{{ ec2_metadata | to_nice_yaml( width=50, explicit_start=True, explicit_end=True) }}"
+    dest: "{{ working_dir }}/meta_data.yml"

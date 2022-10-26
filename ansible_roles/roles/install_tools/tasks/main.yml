@@ -1,0 +1,13 @@
+---
+#
+# Simply copy the various tarballs required to the test system
+#
+- name: copy up the various tar balls
+  include_role:
+    name: unarchive
+  vars:
+    tball: "{{ item }}"
+  loop:
+    - tools_bin.tar
+    - bin.tar
+    - sysctl_settings.tar

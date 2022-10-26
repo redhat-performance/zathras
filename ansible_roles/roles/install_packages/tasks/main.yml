@@ -1,0 +1,54 @@
+---
+# tasks file for install_packages
+#
+
+#
+# Install packages on rhel/amazon images.
+#
+- name: install rhel packages
+  block:
+  - name: install yum packages
+    yum:
+      name: "{{ pkg_install }}"
+      state: latest
+    ignore_errors: yes
+    register: install_results
+  - name: Error check
+    include_role:
+      name: package_install_error
+    vars:
+      rtc_val: "{{ install_results.rc }}"
+      packages: "{{ pkg_install }}"
+  when: config_info.os_vendor == "rhel"
+
+- name: install amazon packages
+  block:
+  - name: install yum packages
+    shell: "yum -y install `echo {{ pkg_install }} | sed \"s/\\[//g\" | sed \"s/]//g\" | sed \"s/,//g\"`"
+    ignore_errors: yes
+    register: install_results
+  - name: Error check
+    include_role:
+      name: package_install_error
+    vars:
+      rtc_val: "{{ install_results.rc }}"
+      packages: "{{ pkg_install }}"
+  when: config_info.os_vendor == "amazon"
+
+#
+# Install packages on ubuntu images.
+#
+- name: Install ubuntu packages
+  block:
+  - name: ubuntu package install
+    apt:
+      pkg: "{{ pkg_install }}"
+    ignore_errors: yes
+    register: install_results
+  - name: Error check
+    include_role:
+      name: package_install_error
+    vars:
+      rtc_val: "{{ install_results.rc }}"
+      packages: "{{ pkg_install }}"
+  when: config_info.os_vendor == "ubuntu"

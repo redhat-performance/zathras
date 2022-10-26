@@ -1,0 +1,16 @@
+---
+# tasks file for uploading tar balls and handling errors
+#
+- name: copy up the tar ball
+  unarchive:
+    src: "{{ config_info.local_run_dir }}/{{ tball }}"
+    dest: "{{ cd_homedir }}"
+  ignore_errors: yes
+  register: tar_rval
+
+- name: Record status of yum config sucess
+  include_role:
+    name: record_status
+  vars:
+    results: "{{ tar_rval }}"
+    status_file: "/tmp/tar_status"

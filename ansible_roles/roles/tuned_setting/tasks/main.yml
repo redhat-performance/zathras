@@ -1,0 +1,12 @@
+---
+
+- name: set tuned then execute
+  block:
+  - name: set tuned
+    include_role:
+      name: tuned_loop
+    vars:
+      tuned_using: "{{ tuned_adm_profile }}"
+    loop: "{{ config_info.rhel_tuned_setting }}"
+    loop_control:
+      loop_var: tuned_adm_profile

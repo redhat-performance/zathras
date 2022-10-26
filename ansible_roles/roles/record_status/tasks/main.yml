@@ -1,0 +1,16 @@
+---
+# tasks file for recording the status of the  operation
+#
+#
+- name: Record status of run sucess
+  lineinfile:
+    path: "{{ status_file }}"
+    line: "status: success"
+    create: yes
+  when: results.failed == false
+- name: Record status of run failure
+  lineinfile:
+    path: "{{ status_file }}"
+    line: "status: failed"
+    create: yes
+  when: results.failed != false

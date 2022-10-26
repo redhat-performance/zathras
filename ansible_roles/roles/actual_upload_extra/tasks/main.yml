@@ -1,0 +1,29 @@
+---
+- name: include dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+# 
+# Upload the required tests.
+#
+- name: upload the extra file info
+  shell: "scp -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ extra_file_upload }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }}:/mnt/uploads"
+  register: upload_status
+  ignore_errors: yes
+
+#
+# Terminate on upload failure
+# 
+- name: Terminate on upload failure
+  block:
+  - name: Terraform terminate
+    include_role:
+      name: tf_delete
+    vars:
+      tf_dir: "tf"
+    when: config_info.cloud_terminate_instance == 1 and config_info.term_system == "yes"
+  - name: Aborting test
+    fail:
+      msg: "Upload of {{ extra_file_upload }} failed"
+  when: upload_status.failed != false

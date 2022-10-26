@@ -1,0 +1,230 @@
+#
+# Copyright (C) 2021  David Valin dvalin@redhat.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+# Zathras is an automation framework built in 5 layers.  It is designed to be easily
+# extendable to other cloud types, works on bare metal systems, and have new tests easily
+# added to it.
+#
+General Requirements
+  1) Have an account on targeted cloud provider
+  2) Ansible installed on the system
+  3) ssh files in config setup properly.
+
+Description
+Zathras is an automation framework built in 5 layers.  It is designed to be easily
+extendable to other cloud types, works on bare metal systems, and have new tests easily
+added to it.
+
+Name: The name Zathras is from the name of a character in the science fiction series,
+Babylon 5.  Zathras did not say much, but was instrumental in keeping The Great Machine
+on Epsilon III running.  One of the few things he did say was "Zathras is used to being beast
+of burden to other peoples needs...very sad life...probably have very sad death...but,
+at least there is symmetry!".  For many reasons, that seems fitting for this automation
+tool, thus the name.
+
+Layer 1: CLI
+Usage: ./bin/burden --verbose
+Version: 3.0
+General options
+  --archive <dir>/<results>:  location to save the archive information to
+  --child: tells burden it is a child of another burden process and not to
+  --dir_index: designates an index value to add to the run directory, default is 0
+  --force_upload: upload all packages and tools to the cloud instance.
+  --git_timeout: Number of seconds to timeout on git requests.  Default is 60
+  --system_type <vendor>: aws, azure or local
+  --host_config <config options>: Specification of the system and configuration
+	If the --system_type option is local, then this is simply the system name
+	to run on, and it will pull the config value from the file <hostname>.conf
+	in local_configs
+	  local_configs format:
+	    server_ips:  <xx.xx.xx.xx>,<xx.xx.xx.xx>
+	    client_ips: <xx.xx.xx.xx>,<xx.xx.xx.xx>
+	    storage: /dev/nvme2n1,/dev/nvme1n1
+
+	If the --system_type option is a cloud environment, then the following can
+	be specified
+	    config_file format:
+	    Fields definition:
+	      instance_type: The cloud instance size (ie i3en.xlarge).
+          [region=<value>&zone=<value>] is totally optional
+          region: the region the cloud is created in, defaults to
+             whatever the user's default region is
+          zone: The zone in the region the cloud is to be created in, if not specified
+                will randomly pick one
+	      number_networks: number of internal networks to create
+	      sysctl_settings: files in sysctl_setting to use.  Each file
+	                    sets a set of tunables, separator is +
+	      number_of_disks: How many disks to create and attach
+	      disk_size: How large is the disk in gigabytes
+	      disk_type: Type of disk to be created
+    or
+	  <instance>:<Disks>&<Networks>&<Sysctl_settings>
+	    Fields definition:
+	      <instance[region=<val>&zone=<val]>: The cloud instance name (ie i3en.xlarge).
+	        includes region and zone requests, both are optional.
+	      <Disks;number=n;size=n;type=n>
+	         number: How many disks to create and attach
+	         size: How large is the disk in gigabytes
+	         type: Type of disk creating
+	      <Networks;number=n>
+	         number_networks: number of internal networks to create
+	      <Sysctl_settings=n+n...>
+	      sysctl_settings: files in sysctl_setting to use.  Each file
+	                    sets a set of tunables, separator is +
+   System config file Examples
+     Example 1: Designate 2 systems, no config options
+	     m5.xlarge,m5.4xlarge
+	   Example 2: Designate m5.24xlarge, 8 gp2 disks of 1200 Gig
+	     m5.24xlarge:Disks;number=8;size=1200;type=gp2
+	   Example 3: Designate m5.24xlarge with 4 networks
+	     m5.24xlarge:Networks;number=4
+	   Example 4: Designate m5.24xlarge with sys tunings udp_fix and none
+	     m5.24xlarge:Sysctl_settings=none+udp_fix
+	   Example 5: Designate m5.xlarge to be created in us-east-1 and zone b
+	     "m5.xlarge[region=us-east-1&zone=b]"
+  --java_version: java version to install, java-8, java-11
+  --max_systems <n>:  Maximum number of systems to be running at once.  3 is the default
+  --no_yq_checks: skips checking for proper yq installation
+  --persistent_log: enable persistent logging, 0/1
+  --results_prefix <prefix>: Run directory prefix
+  --scenario <scenario definition file>: Reads in a scenario and then runs it
+    (if used, host configs are designated in the file).  If the scenario name starts with https: or git:
+    then we are retrieving the scenario from a git repo. If the line in the scenario file starts with #
+    , then that line is a comment.  If the line starts with a %, it indicates to replace the string.
+    Format to replace a string  % <current string>=<new string>
+  --selinux_state: disabled/enabled
+  --ssh_key_file: Designates the ssh file we are to use.
+  --show_os_versions: given the cloud type, and OS vendor, show the available os versions
+  --show_tests:  list the available test as defined in config/test_defs.yml
+  --test_def_file <file>: test definition file to use.
+  --test_def_dir <dir>: test definition directory.  Default is <execution dir>/config.  If
+     https: or git: is at the start of the location, then we will pull from a git repo.
+  --test_override <options>:  Overrides the given options for a specific test in the scenario file
+    Example:
+      global:
+        ssh_key_file: /home/test_user/permissions/aws_region_2_ssh_key
+        terminate_cloud: 1
+        cloud_os_id: aminumber
+        os_vendor: rhel
+        results_prefix: linpack
+        system_type: aws
+      systems:
+        system1:
+          java_version: java-8
+          tests: linpack
+          system_type: aws
+          host_config: "m5.xlarge"
+        system2:
+          java_version: java-8
+          tests: linpack
+          system_type: aws
+          host_config: "m5.4xlarge"
+    To override java_version for system1:
+       --test_override "system1:java_version=java-11"
+  --tests <test>: testname, you may use "test1,test2" to execute test1 and test2.
+     Note if the option is present, we will ignore all other options passed in.
+  --test_iter <iterations>: how many iterations of the test to run (includes linpack).
+     For cloud instances, this will terminate the cloud image and start
+     a new one for each iteration
+  --test_version <test>,<test>....: Shows the versions of the test the are available
+    and brief description of the version.  This only applies to git repos
+  --test_version_check: Checks to see if we are running the latest versions of the tests and
+    exits out when done. Default is no
+  --tuned_profiles <comma separated list of tuned profiles>, only for RHEL
+  --verbose: Verbose usage message
+  --update_target: Image to update
+    Note:  only 1 update image can be used, makes no difference
+           if designate a different one for each system in the
+           scenario file, the first one will be used
+  -h --usage: condensed usage information
+Cloud options only
+  --cloud_os_id <os id>: Image of the OS to install (example aws aminumber)
+  --create_only:  Only do the VM creation and OS installaction.
+  --os_vendor <os vendor>: currently rhel, ubuntu, amazon
+  --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running.
+      Default is to terminate
+  --use_spot: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not
+      to use spot_pricing
+
+Layer 2: Cloud Creation
+  This layer creates the required cloud instances, and attaches any required devices.  Note,
+  if doing network testing, another system of the same instance type is created and connected
+  via a private network.
+
+Layer 3: Test automation wrapper
+  This layer is a script that is wrapped around an existing test.  Purpose of this wrapper is
+  to look at the system and configuration and determine what the test options should be.  Each
+  of these automation scripts have their own set of parameters, which are expected to have a default
+  value that is either determined by the system configuration or simply a hard coded value.
+  This layer is also expected to handle the results if layer 4 does not.
+
+Layer 4: test
+  This later is the actual test running.  It can be anything that can be automated.  The test 
+  are not part of the kit, but are currently stored in 1 of 2 places on perf1.perf.lab.eng.bos.redhat.com:/pub, either in
+
+Layer 5:  Cleanup
+  This layer tears down the cloud instance, and any associated resources.
+
+RSA files
+inventory: start of the ansible inventory file, simply localhost to start with
+
+Need following packages
+dnf install python2-boto.noarch
+dnf install python2-boto3.noarch
+dnf install python2-botocore.noarch
+dnf install python3-boto.noarch
+dnf install dialog.x86_64
+
+Using scenario_vars 
+To run the general scenario regression
+
+./burden --scenario regression_scenario --system_type aws --scenario_vars definition_vars
+
+That will run the regression scenario in the AWS environment.
+
+Order of option selection
+
+There are 3 places that the options to burden may be placed in.  The following is the order in
+which those options are acquired.  
+
+1) command line options to burden.  These override any options designated in the scenario vars
+   file, or the scenario file
+2) scenario vars file (--scenario_vars), these are overridden by the cli, but override the options
+   designated in the scenario file.
+3) scenario file (--scenario), these are overriden by the options designated either via the cli or
+   the scenario vars file.
+
+Execution example
+
+aws_example:
+
+global:
+  ssh_key_file: /home/user/permissions/aws_region_2_ssh_key
+  terminate_cloud: 1
+  cloud_os_id: ami-myaminumbe
+  os_vendor: rhel
+  results_prefix: linpack
+  system_type: aws
+systems:
+  system1:
+    tests: linpack
+    host_config: "m5.xlarge"
+
+
+# ./burden --scenario aws_sample --test_def_dir https://git.com/user/zathras_config
+
+https://git.com/user/zathras_config: where the test config files can be found.

@@ -1,0 +1,5 @@
+test_defs:
+  test1:
+    test_template: example.yml
+    test_name: example_test
+    test_description:  Example test instance.

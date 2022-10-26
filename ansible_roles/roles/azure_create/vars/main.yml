@@ -1,0 +1,2 @@
+---
+ssh_key_data: "{{ lookup('file', '/home/'+config_info.user_running+'/.ssh/id_rsa.pub') }}"

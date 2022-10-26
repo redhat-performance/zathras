@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+# Takes the config string from burden and generate something that bash canuse easier.
+#
+# Input format
+# <system>:<config> 
+#     Note <config> can be more one field grouping, each grouping is seperated by '&'
+# Output format:
+#  <system>:<disk size>:<disk type>:<number disks>
+#
+# Input example
+#  m5.xlarge:Disks;number=2;size=6000;type=gp2
+# Output example
+#  m5.xlarge:6000:gp2:2
+#
+dfield=""
+disk_size=100
+disk_type=gp2
+number_disks=0
+set_disk_field()
+{
+	value=`echo ${dfield} | cut -d'=' -f 2`
+	if [[ $dfield == *"number"* ]]; then
+		number_disks=$value
+	fi
+	if [[ $dfield == *"type"* ]]; then
+		disk_type=$value
+	fi
+	if [[ $dfield == *"size"* ]]; then
+		disk_size=$value
+	fi
+}
+
+#
+# The argument being pased in will have an '&' as a seperator field.  To allow bash to work
+# with the stirng, we will replace it with a ' '
+#
+instance_type=`echo $1 | cut -d: -f1`
+fields=`echo "$1" | sed "s/&/ /g"`
+
+for i in $fields
+do
+	if [[ $i == *"Disks"* ]]; then
+		ct_config=$i
+	fi
+done
+
+if [[ $ct_config == *"Disks"* ]]; then
+	index=1
+	let "index=$index+1"
+	field=`echo $ct_config | cut -d: -f${index}`
+	dindex=1
+	dfield=`echo $ct_config | cut -d';' -f${dindex}`
+	while [ $dfield != "" ]; do
+		set_disk_field
+		let "dindex=$dindex+1"
+		new_dfield=`echo $ct_config | cut -d';' -f${dindex}`
+		if [ -z $new_dfield ] ; then
+			break
+		fi
+		if [ $new_dfield == $dfield ]; then
+			break
+		fi
+		dfield=$new_dfield
+	done
+else
+	instance_type=$ct_config
+fi
+echo $instance_type:$disk_size:$disk_type:$number_disks
