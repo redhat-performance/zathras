@@ -172,17 +172,8 @@
   include_role:
     name:  set_up_tf_vars
   vars:
-    pbench_ns_tf: tf/pbench_disks.tf
+    pbench_ns_tf: pbench_disks.tf
     cloud_change_to: aws_instance
-  when: config_info.spot_start_price == 0
-
-- name: Set up terraform vars spot
-  include_role:
-    name:  set_up_tf_vars
-  vars:
-    pbench_ns_tf: tf/pbench_disks.tf
-    cloud_change_to: later
-  when: config_info.spot_start_price != 0
 
 - name: grab aws create start time
   command: "date -u +%s"
