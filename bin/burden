@@ -1428,6 +1428,9 @@ create_ansible_options()
 		#
 		# Verify the cloud os version is valid
 		verify_cloud_os_version
+		if [[ $gl_cloud_os_version == "" ]]; then
+				cleanup_and_exit "You need to designate an os versions (cloud_os_id:) " 1
+		fi
 		#
 		# We are forced to have some azure specific information.
 		#
