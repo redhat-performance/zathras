@@ -16,4 +16,4 @@
 - name: Bail on tf_init failure
   fail:
     msg: "Failed on creating the terraform resource"
-  when: create.failed != false
+  when: "'Error' in create.stdout"
