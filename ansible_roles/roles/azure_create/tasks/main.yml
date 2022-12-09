@@ -126,7 +126,7 @@
 - name: Report creation time
   lineinfile:
     path: "{{ working_dir }}/cloud_timings"
-    line: "instance start_time: {{ (azure_create_time_start.stdout) | int - (azure_create_time_start.stdout) | int }}"
+    line: "instance start_time: {{ (azure_create_time_end.stdout) | int - (azure_create_time_start.stdout) | int }}"
     create: yes
 
 - name: Add host(s) to test and install groups
