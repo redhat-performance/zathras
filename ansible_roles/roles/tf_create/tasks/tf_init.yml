@@ -43,5 +43,4 @@
 - name: Bail on failure to create the terraform plan
   fail:
     msg: "Failed creating the terraform plan"
-  when: create_plan.failed != false
-
+  when: "'Error' in create_plan.stdout"
