@@ -81,13 +81,11 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #
 # Global values specific to the configuration.
 #   host_uses_nvme: is the disk expected to be nvme
-#   gl_cloud_networks: The number of extra networks to create.
 #   cloud_region: region to create the instance in.
 #   gl_cloud_region_zone: zone to create the instance in.
 #
 value_not_set="none"
 gl_host_uses_nvme=0
-gl_cloud_networks=0
 gl_cloud_net_type="default"
 #
 # We will default to eastus
@@ -110,6 +108,7 @@ gl_package_name=$value_not_set
 gl_show_tests=0
 gl_create_attempts=5
 gl_cloud_placement=${value_not_set}
+gl_cloud_networks_sys="duplicate"
 #
 # Global values
 #   gl_sys_file: sysctl files to use.
@@ -933,12 +932,7 @@ reduce_options()
 	# Set network information.
 	#
 	if [[ $option_string == *"Network"* ]]; then
-		networks_string=`bin/parse_net_line \"${entry}\"`
-		gl_networks_present=`echo $networks_string | cut -d':' -f1 | sed "s/\"//g"`
-		gl_cloud_net_type=`echo $networks_string | cut -d':' -f2 | cut -d'"' -f1`
-		if [ $gl_networks_present -gt 1 ]; then
-			cleanup_and_exit "Error: we only support one test network connection at this time, there is ${gl_cloud_networks} designated." 1
-		fi
+		obtain_network_info $entry
 		found=1
 	fi
 
@@ -1518,6 +1512,11 @@ create_ansible_options()
 		gl_disk_cloud_index=0
 		echo "  host_uses_nvme: ${gl_host_uses_nvme}" >> ansible_vars_main.yml
 		echo "  cloud_numb_networks: ${gl_networks_present}" >> ansible_vars_main.yml
+		if [[ ${gl_cloud_networks_sys} == *"number=1"* ]]; then
+			echo "  cloud_network_systems: none" >> ansible_vars_main.yml
+		else
+			echo "  cloud_network_systems: ${gl_cloud_networks_sys}" >> ansible_vars_main.yml
+		fi
 		echo "  cloud_numb_network_type: ${gl_cloud_net_type}" >> ansible_vars_main.yml
 		echo "  test_iterations: ${gl_test_iterations}" >> ansible_vars_main.yml
 		echo "  user_running: ${user_name}" >> ansible_vars_main.yml
@@ -1557,7 +1556,6 @@ create_ansible_options()
 		# Reset everything for the next round. 
 		#
 		gl_disks_asking_for=""
-		gl_cloud_networks=0
 		#
 		# Start the test in the background, record the pid and bump the index.
 		#
@@ -1958,6 +1956,27 @@ verify_java_version()
 	
 }
 
+obtain_network_info()
+{
+	entry=$1
+
+	echo bin/parse_net_line \"${entry}\"
+	networks_string=`bin/parse_net_line \"${entry}\"`
+	entries=`echo $networks_string | wc -w`
+	if [ $entries -lt 2 ]; then
+		cleanup_and_exit "$entry\nYou designated networks, but did not provide any extra system information.  Please resolve, aborting." 1
+	fi
+	gl_cloud_net_type=`echo $networks_string | cut -d' ' -f1`
+	echo here we are
+	if [[ $entry == *"Number"* ]]; then
+		echo here we are1
+		gl_networks_present=`echo $entry | cut -d'=' -f2`
+	else
+		gl_cloud_networks_sys=`echo $networks_string | cut -d' ' -f2- | sed "s/\"//g" | sed "s/ EndList//g"`
+		gl_networks_present=`echo $gl_cloud_networks_sys | wc -w`
+	fi
+}
+
 #
 # Verify that the host config is valid, and has sane values.
 #
@@ -2010,12 +2029,7 @@ verify_host_config()
 		fi
 
 		if [[ $entry == *"Network"* ]]; then
-			networks_string=`bin/parse_net_line \"${entry}\"`
-			gl_cloud_networks=`echo $networks_string | cut -d':' -f1 | sed "s/\"//g"`
-			gl_cloud_net_type=`echo $networks_string | cut -d':' -f2 | cut -d'"' -f1`
-			if [[ $gl_cloud_networks -lt "1" ]]; then
-				cleanup_and_exit "$entry\nYou designated networks, but gave an invalid value for the number of networks.  Please resolve, aborting." 1
-			fi
+			obtain_network_info $entry
 		fi
 	done
 }
@@ -2819,9 +2833,10 @@ usage()
 		echo "             number: How many disks to create and attach"
 		echo "             size: How large is the disk in gigabytes"
 		echo "             type: Type of disk creating"
-		echo "          <Networks;number=n;type=x"
-		echo "             number_networks: number of internal networks to create. Each network will"
-		echo "             create another system to connect to."
+		echo "          <Networks;<system>;<system>;....;type=x"
+		echo "             <system>: in case of cloud systems, it is the VM to use.  In case of local systems, it will"
+		echo "             the name of the system working with.  In the case of the cloud, if the second system"
+		echo "		   is not designated, we will use the original vm type."
                 echo "             type:"
 		echo "               default, uses the default cloud network type"
                 echo "               public, uses the public dns connections"
@@ -2834,11 +2849,9 @@ usage()
 		echo "           m5.xlarge,m5.4xlarge"
 		echo "         Example 2: Designate m5.24xlarge, 8 gp2 disks of 1200 Gig"
 		echo "           m5.24xlarge:Disks;number=8;size=1200;type=gp2"
-		echo "         Example 3: Designate m5.24xlarge with 4 networks"
-		echo "           m5.24xlarge:Networks;number=4"
-		echo "         Example 4: Designate m5.24xlarge with sys tunings udp_fix and none"
+		echo "         Example 3: Designate m5.24xlarge with sys tunings udp_fix and none"
 		echo "           m5.24xlarge:Sysctl_settings=none+udp_fix"
-		echo "         Example 5: Designate m5.xlarge to be created in us-east-1 and zone b"
+		echo "         Example 4: Designate m5.xlarge to be created in us-east-1 and zone b"
 		echo "           \"m5.xlarge[region=us-east-1&zone=b]\""
 	fi
 	echo "  --ignore_repo_errors: If present we will ignore repo errors. The default is to abort the run"
