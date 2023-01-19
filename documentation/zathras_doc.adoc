@@ -210,6 +210,7 @@ General options
   --no_clean_up: Do not cleanup at the end of the test
   --no_packages: Do not install any packages, default is no
   --no_pbench_install: Do not install pbench.  The default is 0 (install pbench).
+  --no_spot_recover: Do not recover from a spot system going away.
   --package_name &lt;name&gt;: Use this set of packages to override the default in the test config
     file instead of the default. Default format  package name &lt;os&gt;_pkg, new name &lt;os&gt;_pkg_&lt;ver&gt;.
   --persistent_log: enable persistent logging

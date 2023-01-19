@@ -873,6 +873,15 @@
       dest: "{{ working_dir }}/"
       flat: yes
 
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Add test start file file.
+    lineinfile:
+      path: "{{ working_dir }}/test_started"
+      line: "Test started"
+      create: yes
 #
 # execute the test
 # 
@@ -906,6 +915,11 @@
         name: test_execute_loop
       vars:
         test_location: "remote"
+    - name: Add completion file.
+      lineinfile:
+        path: "{{ working_dir }}/test_returned"
+        line: "Test completed"
+        create: yes
     - name: Remove the file if need be
       file:
         path="{{ working_dir }}/test_times"
@@ -915,6 +929,17 @@
         src: "/tmp/test_times"
         dest: "{{ working_dir }}/test_times"
         flat: yes
+    when: config_info.test_exec_location == "remote"
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Add test complete file.
+    lineinfile:
+      path: "{{ working_dir }}/test_returned"
+      line: "Test returned"
+      create: yes
     when: config_info.test_exec_location == "remote"
 
 #
