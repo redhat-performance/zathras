@@ -18,10 +18,11 @@
 #			             in this pass is completed.
 #			
 #
+spot_recover=1
 create_attempts=5
 remove_dirs=0
 ssh_key_file=""
-while getopts "a:c:d:f:s:r" o; do
+while getopts "a:c:d:f:s:r:S:" o; do
         case "${o}" in
 		a)
 			create_attempts=${OPTARG}
@@ -37,6 +38,9 @@ while getopts "a:c:d:f:s:r" o; do
 		;;
 		r)
 			remove_dirs=1
+		;;
+		S)
+			spot_recover=${OPTARG}
 		;;
 		s)
 			ssh_key_file=${OPTARG}
@@ -119,6 +123,44 @@ do
 		mkdir tf
 		echo ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3" ten_of_us.yml
 		ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml
+		#
+		if [ $spot_recover -eq 1 ] &&[[ ! -f "test_returned" ]]; then
+			#
+			# Check to see if we used spot, and we are to recover if the system goes away.
+			#
+			if [[ -f test_started ]]; then
+				sp_check=`grep spot_range: ansible_vars_main.yml`
+				if [[ $sp_check == *","* ]]; then
+					rm -rf tf
+					#
+					# Next attempt is with out spot pricing.
+					#
+					grep -v "spot_range:" ansible_vars_main.yml | grep -v spot_range: > spot_repair
+					echo "  spot_start_price: 0" >> spot_repair
+					echo "  spot_range: 0" >> spot_repair
+					mv spot_repair ansible_vars_main.yml
+					grep -v "spot_range:" ansible_vars.yml | grep -v spot_range: > spot_repair
+					echo "  spot_start_price: 0" >> spot_repair
+					echo "  spot_range: 0" >> spot_repair
+					mv spot_repair ansible_main.yml
+					mkdir tf
+					echo ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3" ten_of_us.yml
+					ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml
+				else
+					#
+					# Not spot, test started, system died.
+					#
+					echo Error: test started, system died.
+					exit
+				fi
+			else
+				#
+				# Rarely will happen.
+				#
+				echo Error: did not start the test.
+				exit
+			fi
+		fi
 		if [[ ! -f "cpu_type_failure" ]]; then
 			break;
 		fi
