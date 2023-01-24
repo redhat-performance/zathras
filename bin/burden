@@ -908,6 +908,8 @@ reduce_options()
 		data=`parse_disk_line "${string}"`
 		gl_cloud_number_disks=`echo ${data} | cut -d: -f4 | bc`
 		gl_cloud_disk_type=`echo ${data} | cut -d: -f3`
+		gl_cloud_iops=`echo ${data} | cut -d: -f5`
+		gl_cloud_tp=`echo ${data} | cut -d: -f6`
 		cloud_disk_size=`echo ${data} | cut -d: -f2 | bc`
 		if [[ $cloud_disk_size -eq 0 ]]; then
 			cleanup_and_exit "Error: invalid disk size designated ${data}" 1
@@ -917,7 +919,7 @@ reduce_options()
 		else
 			gl_disks_asking_for=${gl_disks_asking_for}","
 		fi
-		gl_disks_asking_for=${gl_disks_asking_for}${gl_cloud_number_disks}:${gl_cloud_disk_type}:${cloud_disk_size}:${gl_disk_cloud_index}
+		gl_disks_asking_for=${gl_disks_asking_for}${gl_cloud_number_disks}:${gl_cloud_disk_type}:${cloud_disk_size}:${gl_disk_cloud_index}:${gl_cloud_iops}:${gl_cloud_tp}
 		let "gl_disk_cloud_index=${gl_disk_cloud_index}+1"
 		#
 		# indication if we are using nvme storage.  AWS is always nvme.
@@ -1515,6 +1517,7 @@ create_ansible_options()
 		else
 			echo "  cloud_disks: ${gl_disks_asking_for}" >> ansible_vars_main.yml
 		fi
+		echo "  cloud_disk_type: ${gl_cloud_disk_type}" >> ansible_vars_main.yml
 		gl_disk_cloud_index=0
 		echo "  host_uses_nvme: ${gl_host_uses_nvme}" >> ansible_vars_main.yml
 		echo "  cloud_numb_networks: ${gl_networks_present}" >> ansible_vars_main.yml

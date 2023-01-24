@@ -55,7 +55,13 @@
     shell: sed "s/REPLACE_ID/id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE/aws_instance/g" >> {{ working_dir }}/tf/output.tf
     when: config_info.cloud_numb_networks != 0
   - name: Handle disks
-    shell: sed "s/REPLACE/aws_instance/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks.tf >> {{ working_dir }}/tf/disks.tf
+    block:
+    - name: GP2 disks
+      shell: sed "s/REPLACE/aws_instance/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks_gp2.tf | sed "s/terraform_id/id/g" >> {{ working_dir }}/tf/disks.tf
+      when: config_info.cloud_disk_type == "gp2"
+    - name: GP3 disks
+      shell: sed "s/REPLACE/aws_instance/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks_gp3.tf | sed "s/terraform_id/id/g" >> {{ working_dir }}/tf/disks.tf
+      when: config_info.cloud_disk_type == "gp3"
     when: config_info.cloud_disks != "none"
   when: config_info.spot_start_price == 0
 
@@ -67,7 +73,13 @@
     shell: sed "s/REPLACE_ID/spot_instance_id"/g < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE/aws_spot_instance_request/g" >> {{ working_dir }}/tf/output.tf
     when: config_info.cloud_numb_networks != 0
   - name: Handle disks
-    shell: sed "s/REPLACE/aws_spot_instance_request/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks.tf >> {{ working_dir }}/tf/disks.tf
+    block:
+    - name: GP2 disks
+      shell: sed "s/REPLACE/aws_spot_instance_request/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks_gp2.tf | sed "s/terraform_id/spot_instance_id/g" >> {{ working_dir }}/tf/disks.tf
+      when: config_info.cloud_disk_type == "gp2"
+    - name: GP3 disks
+      shell: sed "s/REPLACE/aws_spot_instance_request/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks_gp3.tf | sed "s/terraform_id/spot_instance_id/g" >> {{ working_dir }}/tf/disks.tf
+      when: config_info.cloud_disk_type == "gp3"
     when: config_info.cloud_disks != "none"
   when: config_info.spot_start_price != 0
 

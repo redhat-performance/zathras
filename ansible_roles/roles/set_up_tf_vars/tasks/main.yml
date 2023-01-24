@@ -27,11 +27,23 @@
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 3"
     register: disk_size
 
+  - name: Grab iops
+    shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 5"
+    register: disk_iops
+  - name: Grab throughput
+    shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 6 | cut -d\"'\" -f 1"
+    register: disk_throughput
 
-  - name: Update tfvars
+  - name: Update tfvars non gp3
     blockinfile:
       dest: "{{working_dir}}/tf/env.tfvars"
       block: "{{ lookup('template', 'tfvars_disks.j2') }}"
+    when: disk_type.stdout != "gp3"
+  - name: Update tfvars non gp3
+    blockinfile:
+      dest: "{{working_dir}}/tf/env.tfvars"
+      block: "{{ lookup('template', 'tfvars_gp3_disks.j2') }}"
+    when: disk_type.stdout == "gp3"
   when: config_info.cloud_disks != "none"
 
 #

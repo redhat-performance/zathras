@@ -17,6 +17,8 @@ dfield=""
 disk_size=100
 disk_type=gp2
 number_disks=0
+disk_tp=125
+disk_iops=3000
 set_disk_field()
 {
 	value=`echo ${dfield} | cut -d'=' -f 2`
@@ -28,6 +30,12 @@ set_disk_field()
 	fi
 	if [[ $dfield == *"size"* ]]; then
 		disk_size=$value
+	fi
+	if [[ $dfield == *"iops"* ]]; then
+		disk_iops=$value
+	fi
+	if [[ $dfield == *"throughput"* ]]; then
+		disk_tp=$value
 	fi
 }
 
@@ -66,4 +74,8 @@ if [[ $ct_config == *"Disks"* ]]; then
 else
 	instance_type=$ct_config
 fi
-echo $instance_type:$disk_size:$disk_type:$number_disks
+if [[ $disk_type != "gp3" ]]; then
+	echo $instance_type:$disk_size:$disk_type:$number_disks:NA:NA
+else
+	echo $instance_type:$disk_size:$disk_type:$number_disks:$disk_iops:$disk_tp
+fi
