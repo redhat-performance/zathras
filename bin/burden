@@ -122,6 +122,9 @@ gl_cloud_placement=${value_not_set}
 #   gl_internal_disk: disk is internal to the system.
 #   gl_top_dir: Directory we are executing from
 #
+gl_tf_terminate=0
+gl_tf_term_list=""
+gl_tf_list=0
 gl_sys_file=$value_not_set
 gl_cloud_execute_tests=1
 gl_install_pbench=0
@@ -2749,6 +2752,79 @@ integrate_templates()
 }
 
 #
+# List the active systems created by tf
+#
+tf_list()
+{
+	dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
+	for tf_show in $dirs; do
+		pushd $tf_show > /dev/null
+		terraform show > tf_list_info
+		grep subnet tf_list_info >& /dev/null
+		if [ $? -eq 0 ]; then
+			work_dir=`pwd | rev | cut -d'/' -f 2 | rev`
+			grep  azure tf_list_info >& /dev/null
+			if [ $? -eq 0 ]; then
+				vm_size=`grep size tf_list_info | grep -v disk | cut -d'"' -f2`
+				public_ip=`grep public_ip_address tf_list_info | head -1 | cut -d'"' -f2 | sort -u`
+				name_tag=`grep environment tf_list_info | cut -d'"' -f4 | sort -u`
+				printf "work_dir: %s\n" $work_dir
+				printf "\tfull_path: %s\n" $tf_show
+				printf "\tvm_size: %s\n" $vm_size
+				printf "\tpublic_ip: %s\n" $public_ip
+				printf "\tname_tag: %s\n" $name_tag
+			fi
+			grep  aws tf_list_info >& /dev/null
+			if [ $? -eq 0 ]; then
+				vm_size=`grep instance_type tf_list_info | cut -d'"' -f2`
+				inst_state=`grep instance_state tf_list_info | cut -d'"' -f2`
+				public_dns=`grep public_dns tf_list_info | cut -d'"' -f2 | sort -u`
+				name_tag=`grep Name tf_list_info | cut -d'"' -f4 | sort -u`
+				printf "work_dir: %s\n" $work_dir
+				printf "\tfull_path: %s\n" $tf_show
+				printf "\tvm_size: %s\n" $vm_size
+				printf "\tinstance_state: %s\n" $inst_state
+				printf "\tpublic_dns: %s\n" $public_dns
+				printf "\tname_tag: %s\n" $name_tag
+			fi
+		fi
+		rm tf_list_info
+		popd > /dev/null
+	done
+	exit
+}
+#
+# Walk all the tf directories and attempt to remove the instance.
+#
+tf_terminate()
+{
+
+	if [[ $gl_tf_term_list == "" ]]; then
+		dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
+	else
+		dirs=`echo $gl_tf_term_list | sed "s/,/ /g"`
+		echo $gl_tf_term_list
+		echo $dirs
+	fi
+	for tf_del in $dirs; do
+		pushd $tf_del > /dev/null
+		terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
+		if [ $? -eq 0 ]; then
+			terraform apply "destroy.tfplan"
+			#
+			# Now get arid of the tf directory.
+			#
+			if [ $gl_tf_terminate -eq 0 ]; then
+				cd ..
+				rm -rf tf
+			fi
+		fi
+		popd > /dev/null
+	done
+	exit
+}
+
+#
 # If the test_def_dir has https or git in it, we will pull from
 # the git repo.  If not simply check that the file exists.
 #
@@ -2899,6 +2975,9 @@ usage()
 	echo "    and brief description of the version.  This only applies to git repos"
 	echo "  --test_version_check: Checks to see if we are running the latest versions of the tests and"
 	echo "    exits out when done. Default is no"
+	echo "  --tf_list: list active systems created via tf"
+	echo "  --tf_terminate_list <list>: Delete the designated terraform systems."
+	echo "  --tf_terminate_all: Go into each terraform directory and attempt to remove the terraform instance"
 	echo "  --tuned_profiles <comma separated list of tuned profiles>, only for RHEL.  Designates the tuned"
 	echo "    profiles to use.  if the system type is a cloud environment, then each tuned profile is a"
 	echo "    distinct cloud instance."
@@ -2955,6 +3034,13 @@ set_general_value()
 			if [[ $gl_create_only -eq 0 ]]; then
 				echo "$1" >> $gl_cli_supplied_options
 				gl_create_only=1
+			fi
+			#
+			# We want to keep the tf around
+			#
+			if [[ $gl_no_clean_up -eq 0 ]]; then
+				echo "--no_clean_up" >> $gl_cli_supplied_options
+				gl_no_clean_up=1
 			fi
 			shift_by=1
 		;;
@@ -3178,6 +3264,19 @@ set_general_value()
 			fi
 			shift_by=2
  		;;
+		--tf_list)
+			gl_tf_list=1
+			shift_by=1
+		;;
+		--tf_terminate_all)
+			gl_tf_terminate=1
+			shift_by=1
+		;;
+		--tf_terminate_list)
+			gl_tf_terminate=1
+			gl_tf_term_list=$2
+			shift_by=2
+		;;
 		--tuned_profiles)
 			if [[ $gl_rhel_tuned_setting == $value_not_set ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -3260,6 +3359,7 @@ grab_cli_data()
 		"test_def_file"
 		"test_override"
 		"test_versions"
+		"tf_terminate_list"
 		"tuned_reboot"
 		"update_target"
 	)
@@ -3275,6 +3375,8 @@ grab_cli_data()
 		"show_os_versions"
 		"show_tests"
 		"test_version_check"
+		"tf_list"
+		"tf_terminate_all"
 		"update_test_versions"
 		"usage"
 		"use_spot"
@@ -3325,6 +3427,20 @@ grab_vars_data()
 cli_data="$@"
 grab_cli_data "$@"
 grab_vars_data
+
+#
+# Does not return
+#
+if [ $gl_tf_terminate -eq 1 ]; then
+	tf_terminate
+fi
+
+#
+# Does not return
+#
+if [ $gl_tf_list -eq 1 ]; then
+	tf_list
+fi
 
 if [[ $gl_run_prefix == "" ]]; then
 	gl_run_prefix=`id -un`
