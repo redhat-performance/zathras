@@ -797,7 +797,6 @@
     include_role:
       name: upload_extra
 
-
 - hosts: test_group
   vars_files:
     - ansible_vars.yml
@@ -873,6 +872,19 @@
       dest: "{{ working_dir }}/"
       flat: yes
 
+#
+# If we are creating the system only, bail out here.
+#
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: end it
+    fail:
+      msg: Do not execute the test.
+    when:
+      - config_info.cloud_terminate_instance == 0
+      - config_info.cloud_execute_tests == 0
 #
 # execute the test
 # 
