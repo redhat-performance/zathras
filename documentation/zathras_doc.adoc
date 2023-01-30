@@ -267,7 +267,8 @@ General options
     Note:  only 1 update image can be used, makes no difference
            if designate a different one for each system in the
            scenario file, the first one will be used
-  ----use_latest_version: Will update the templates so we are using the latest versions of the test (git repos only)
+  --upload_directory <directory>:  Directory location for any extra file uploads to occur to
+  --use_latest_version: Will update the templates so we are using the latest versions of the test (git repos only)
   -h --usage: condensed usage information
 Cloud options only
   --cloud_os_id &lt;os id&gt;: Image of the OS to install (example aws aminumber)

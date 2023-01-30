@@ -86,6 +86,7 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   gl_cloud_region_zone: zone to create the instance in.
 #
 value_not_set="none"
+gl_upload_directory="none"
 gl_host_uses_nvme=0
 gl_cloud_networks=0
 gl_cloud_net_type="default"
@@ -1444,6 +1445,7 @@ create_ansible_options()
 		echo "  update_os_version: ${gl_update_target}" >> ansible_vars_main.yml
 		echo "  update_type: ${gl_image_type}" >> ansible_vars_main.yml
 		echo "  persistent_log: ${gl_persistent_log}" >> ansible_vars_main.yml
+		echo "  upload_directory: ${gl_upload_directory}" >> ansible_vars_main.yml
 		if [[ $gl_ssh_key_file == "" ]]; then
 			echo "  ssh_key: $HOME/.ssh/id_rsa" >> ansible_vars_main.yml
 		else
@@ -2908,8 +2910,9 @@ usage()
 	echo "           if designate a different one for each system in the"
 	echo "           scenario file, the first one will be used"
 	echo "  --update_test_versions: Will update the templates so we are using the latest versions of the test (git repos only)"
-	echo "  --verbose: Verbose usage message"
+	echo "  --upload_directory <directory>:  Directory location for any extra file uploads to occur to."
 	echo "  -h --usage: condensed usage information"
+	echo "  --verbose: Verbose usage message"
 	echo "Cloud options only"
 	echo "  --cloud_os_id <os id>: Image of the OS to install (example aws aminumber)"
 	echo "    For multiple architectures, this is allowed"
@@ -3200,6 +3203,11 @@ set_general_value()
 			gl_update_test_versions=1
 			shift_by=1
 		;;
+		--upload_directory)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_upload_directory=$2
+			shift_by=2
+		;;
 		--usage)
 			usage "0"
 			shift_by=1
@@ -3262,6 +3270,7 @@ grab_cli_data()
 		"test_versions"
 		"tuned_reboot"
 		"update_target"
+		"upload_directory"
 	)
 
 	NO_ARGUMENTS=(

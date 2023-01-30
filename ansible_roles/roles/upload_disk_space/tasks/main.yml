@@ -1,0 +1,33 @@
+---
+# 
+# Determine mount point with most space available.  Upload will go there.
+#
+
+- name: include dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+# 
+# Determine location to uploads to.
+#
+- name: upload the extra file info, determine location
+  block:
+  - name: Get the free space
+    command: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} 'df --output=avail,target,source | grep -v Mounted | grep -v tmpfs | sort -n | tail -1 | xargs | sed \"s/ /:/g\" | cut -d: -f2'"
+    register: largest_dir
+
+  #
+  # Record the location to upload to
+  #
+  - name: Write upload dir to  ansible_run_vars.yml
+    lineinfile:
+      path: "{{ working_dir }}/ansible_run_vars.yml"
+      line: "upload_dir: {{ largest_dir.stdout }}"
+  when: config_info.upload_directory == "none"
+
+- name: Designated upload directory to use
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "upload_dir: {{ config_info.upload_directory }}"
+  when: config_info.upload_directory != "none"

@@ -767,6 +767,33 @@
         dest: "{{ working_dir }}/boot_info/"
         flat: yes
 
+ #
+ # Determine where to upload from, assumption is all test systems have the same
+ # disk space.
+ #
+- hosts: localhost
+  vars_files:
+    - ansible_vars.yml
+  gather_facts: no 
+  tasks:
+  - name: Determine disk space
+    include_role:
+      name: upload_disk_space
+ 
+
+- hosts: test_group
+  vars_files:
+    - ansible_vars.yml
+    - upload_files.yml
+  user: root
+  become: true
+  gather_facts: no
+  tasks:
+  - name: include dynamic info
+    include_vars:
+      file: "{{ working_dir }}/ansible_run_vars.yml"
+      name: dyn_data
+#
 #
 #
 - hosts: test_group
@@ -777,41 +804,35 @@
   become: true
   gather_facts: no
   tasks:
+  - name: include dynamic info
+    include_vars:
+      file: "{{ working_dir }}/ansible_run_vars.yml"
+      name: dyn_data
   - name: Make the workloads directory
     file:
-      path: /mnt/uploads
+      path: "{{ dyn_data.upload_dir }}/uploads"
       state: directory
       mode: 0777
+  - name: link the extras in
+    shell:
+      cmd: "ln -s {{ dyn_data.upload_dir }}/uploads /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
+      warn: false
+    ignore_errors: yes
+#    when: config_info.system_type != "local"
+
 
  #
  # Now upload the file.  Due to Ansible copying the file first to ~/.ans* we need to do an ssh.
- #
  #
 - hosts: localhost
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  gather_facts: no
+  gather_facts: yes 
   tasks:
   - name: upload extra files
     include_role:
       name: upload_extra
-
-
-- hosts: test_group
-  vars_files:
-    - ansible_vars.yml
-    - upload_files.yml
-  user: root
-  become: true
-  gather_facts: no
-  tasks:
-  - name: link the extras in
-    shell:
-      cmd: "ln -s /mnt/uploads/* /home/{{ config_info.test_user }}"
-      warn: false
-    ignore_errors: yes
-    when: config_info.system_type != "local"
 
 - hosts: test_group
   vars_files: ansible_vars.yml
@@ -884,17 +905,21 @@
   vars_files: ansible_vars.yml
   gather_facts: no
   tasks:
-  - name: set up to use /mnt not /home/user/
+  - name: include dynamic info
+    include_vars:
+      file: "{{ working_dir }}/ansible_run_vars.yml"
+      name: dyn_data
+  - name: set up to use the filesystem with the most free space.
     file:
-      path: /mnt/workloads
+      path: "{{ dyn_data.upload_dir }}/workloads"
       state: directory
       mode: 0777
   - name: link things in
     file:
-      src: "/mnt/workloads"
-      dest: "/home/{{ config_info.test_user }}/workloads"
+      src: "{{ dyn_data.upload_dir }}/workloads"
+      dest: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
       state: link
-    when: config_info.system_type != "local"
+#    when: config_info.system_type != "local"
   - name: execute remotely
     block:
     - name: delete the timing file if it exists
