@@ -257,6 +257,9 @@ General options
     and brief description of the version.  This only applies to git repos
   --test_version_check: Checks to see if we are running the latest versions of the tests and
     exits out when done. Default is no
+  --tf_list: list active systems created via tf
+  --tf_terminate_list <list>: Delete the designated terraform systems.
+  --tf_terminate_all: Go into each terraform directory and attempt to remove the terraform instance
   --tuned_profiles &lt;comma separated list of tuned profiles&gt;, only for RHEL. Designates the tuned
     profiles to use.  if the system type is a cloud environment, then each tuned profile is a
     distinct cloud instance.
@@ -448,6 +451,34 @@ systems:
     tests: uperf
     host_config: "m5.xlarge:Networks;number=1"
 ----
+Just create an AWS system, then list the system information and then delete it.
+----
+Scenario file m6a.xlarge_sys
+
+global:
+  ssh_key_file: replace_your_ssh_key
+  terminate_cloud: 0
+  os_vendor: rhel
+  results_prefix: create_only
+  os_vendor: rhel
+  system_type: aws
+
+systems:
+  system1:
+    cloud_os_id: ami-078cbc4c2d057c244
+    host_config: "m6a.xlarge"
+
+# ./burden --scenario m6a.xlarge_sys --create_only
+# ./burden --tf_list
+work_dir: m6a.xlarge_15
+	full_path: ./create_only/rhel/aws/m6a.xlarge_15/tf
+	vm_size: m6a.xlarge
+	instance_state: running
+	public_dns: ec2-18-118-185-212.us-east-2.compute.amazonaws.com
+	name_tag: dvalin_create-only-rhel-m6a.xlarge
+# ./burden --tf_terminate_all
+----
+
 == Configuration File formats
 === Java configuration
 Path: <zathras_directory>/config/java_pkg_def.yml +
