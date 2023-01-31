@@ -1173,18 +1173,30 @@ aws_specific_os_version()
 retrieve_spot_from_config()
 {
 	if [[ $gl_use_spot -eq 1 ]]; then
-		if [[ -e ${gl_test_def_dir}/spot_price.cfg ]]; then
-			spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
-			if [[ $? -eq 0 ]]; then
-				gl_spot_price=`echo ${spot_string} | cut -d':' -f2`
-				gl_spot_increment=`echo ${spot_string} | cut -d':' -f3`
-				gl_spot_cap=`echo ${spot_string} | cut -d':' -f4`
-			else
+		spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
+		if [[ $gl_system_type == "aws" ]]; then
+			#
+			# For AWS obtain the possible starting price.
+			#
+			gl_spot_price=`aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types ${1} | awk '{print $2}' | sort -n | tail -1`
+			if [[ $? -ne 0 ]]; then
+				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
+			fi
+			#
+			# We will default to 5 intervals
+			# 
+			gl_spot_cap=`curl -L ec2.shop?filter=$1 | grep $1 | awk '{print $12}'`
+			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*100)/5.00)/100" | bc`
+		else
+			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: no spot information present for $1" 1
 			fi
-		else
-			cleanup_and_exit "Error: no spot information present for $1" 1
+			gl_spot_price=`echo ${spot_string} | cut -d':' -f2`
+			gl_spot_increment=`echo ${spot_string} | cut -d':' -f3`
+			gl_spot_cap=`echo ${spot_string} | cut -d':' -f4`
 		fi
+	else
+		cleanup_and_exit "Error: no spot information present for $1" 1
 	fi
 }
 
