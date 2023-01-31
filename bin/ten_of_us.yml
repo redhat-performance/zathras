@@ -810,15 +810,14 @@
       name: dyn_data
   - name: Make the workloads directory
     file:
-      path: "{{ dyn_data.upload_dir }}/uploads"
+      path: "{{ dyn_data.kit_upload_directory }}/uploads"
       state: directory
       mode: 0777
   - name: link the extras in
     shell:
-      cmd: "ln -s {{ dyn_data.upload_dir }}/uploads /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
+      cmd: "ln -s {{ dyn_data.kit_upload_directory }}/uploads /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
       warn: false
     ignore_errors: yes
-#    when: config_info.system_type != "local"
 
 
  #
@@ -911,15 +910,14 @@
       name: dyn_data
   - name: set up to use the filesystem with the most free space.
     file:
-      path: "{{ dyn_data.upload_dir }}/workloads"
+      path: "{{ dyn_data.kit_upload_directory }}/workloads"
       state: directory
       mode: 0777
   - name: link things in
     file:
-      src: "{{ dyn_data.upload_dir }}/workloads"
+      src: "{{ dyn_data.kit_upload_directory }}/workloads"
       dest: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
       state: link
-#    when: config_info.system_type != "local"
   - name: execute remotely
     block:
     - name: delete the timing file if it exists

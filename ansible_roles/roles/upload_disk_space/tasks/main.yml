@@ -23,11 +23,11 @@
   - name: Write upload dir to  ansible_run_vars.yml
     lineinfile:
       path: "{{ working_dir }}/ansible_run_vars.yml"
-      line: "upload_dir: {{ largest_dir.stdout }}"
-  when: config_info.upload_directory == "none"
+      line: "kit_upload_directory: {{ largest_dir.stdout }}"
+  when: config_info.kit_upload_directory == "none"
 
 - name: Designated upload directory to use
   lineinfile:
     path: "{{ working_dir }}/ansible_run_vars.yml"
-    line: "upload_dir: {{ config_info.upload_directory }}"
-  when: config_info.upload_directory != "none"
+    line: "kit_upload_directory: {{ config_info.kit_upload_directory }}"
+  when: config_info.kit_upload_directory != "none"
