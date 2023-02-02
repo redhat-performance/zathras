@@ -1,8 +1,8 @@
 # Defines a VM
 resource "aws_instance" "ec2" {
+  for_each                  = local.system
   ami                       = var.cloud_os_version
-  count                     = var.vm_count
-  instance_type             = var.machine_type
+  instance_type             = each.value.sys
   security_groups           = [var.security_group]
   key_name                  = var.key_name
   availability_zone         = var.avail_zone
@@ -10,4 +10,3 @@ resource "aws_instance" "ec2" {
     Name = "${var.run_label}-${var.machine_type}"
   }
 }
-
