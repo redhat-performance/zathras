@@ -22,6 +22,10 @@
     src: "tf/main.tf"
     dest: "{{ working_dir }}/tf/main.tf"
 
+- name: add in vars for networks
+  include_role:
+    name:  add_networks
+
 #
 # For placement groups
 #
