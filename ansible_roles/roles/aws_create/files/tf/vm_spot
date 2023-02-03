@@ -1,8 +1,8 @@
 # Defines a VM 
 resource "aws_spot_instance_request" "ec2" {
   ami			    = var.cloud_os_version
-  count                     = var.vm_count
-  instance_type             = var.machine_type
+  for_each                  = local.system
+  instance_type             = each.value.sys
   availability_zone         = "${var.avail_zone}"
   security_groups           = [var.security_group]
   key_name                  = var.key_name

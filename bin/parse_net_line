@@ -2,7 +2,8 @@
 
 dfield=""
 
-net_numb=1
+sys_list=""
+separ=""
 net_type=default
 
 fields=`echo "$1" | sed "s/&/ /g"`
@@ -16,12 +17,22 @@ if [[ $ct_config == *";"* ]]; then
 	value=`echo "$ct_config" | cut -d';' -f2- | sed "s/;/ /g"`
 	for i in $value; do
 		field_value=`echo $i | cut -d'=' -f 2`
-		if [[ $i == *"number"* ]]; then
-			net_numb=$field_value
-		fi
 		if [[ $i == *"type"* ]]; then
 			net_type=$field_value
+			continue
 		fi
+		if [[ $i == "Number" ]]; then
+			sys_list=DEFAULT:$value
+			separ=" "
+			continue
+		fi
+		#
+		# Assume field is the sys/vm name
+		#
+		sys_list=${sys_list}${separ}${i}
+		separ=" "
+
 	done
+	sys_list=${sys_list}${separ}EndList
 fi
-echo $net_numb:$net_type
+echo $net_type $sys_list
