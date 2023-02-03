@@ -2851,8 +2851,8 @@ usage()
 		echo "           m5.24xlarge:Sysctl_settings=none+udp_fix"
 		echo "         Example 4: Designate m5.xlarge to be created in us-east-1 and zone b"
 		echo "           \"m5.xlarge[region=us-east-1&zone=b]\""
-		echo "         Example 5: Designate network systems with m5.xlarge and m5.2xlarge  to be created"
-		echo "           m5.xlarge:Newtworks;m5.2xlarge"
+		echo "         Example 5: Designate two different systems connected vial networks."
+		echo "           m5.xlarge:Networks;m5.2xlarge"
 	fi
 	echo "  --ignore_repo_errors: If present we will ignore repo errors. The default is to abort the run"
 	echo "    when a repo error occurs."
