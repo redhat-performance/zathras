@@ -133,13 +133,13 @@ do
 				if [[ $sp_check == *","* ]]; then
 					rm -rf tf
 					#
-					# Next attempt is with out spot pricing.
+					# Next attempt it without spot pricing.
 					#
-					grep -v "spot_range:" ansible_vars_main.yml | grep -v spot_range: > spot_repair
+					grep -v "spot_range:" ansible_vars_main.yml > spot_repair
 					echo "  spot_start_price: 0" >> spot_repair
 					echo "  spot_range: 0" >> spot_repair
 					mv spot_repair ansible_vars_main.yml
-					grep -v "spot_range:" ansible_vars.yml | grep -v spot_range: > spot_repair
+					grep -v "spot_range:" ansible_vars.yml > spot_repair
 					echo "  spot_start_price: 0" >> spot_repair
 					echo "  spot_range: 0" >> spot_repair
 					mv spot_repair ansible_main.yml
@@ -157,7 +157,7 @@ do
 				#
 				# Rarely will happen.
 				#
-				echo Error: did not start the test.
+				echo Error: did not start the test. >>  test_start_failure
 				exit
 			fi
 		fi
