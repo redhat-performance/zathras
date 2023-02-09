@@ -107,6 +107,7 @@ gl_valid_system_types="aws azure gcp local"
 gl_package_name=$value_not_set
 gl_show_tests=0
 gl_create_attempts=5
+gl_spot_recover=1
 gl_cloud_placement=${value_not_set}
 gl_cloud_networks_sys="duplicate"
 #
@@ -1596,9 +1597,9 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [[ "$gl_ssh_key_file" == "" ]]; then
-			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -c $gl_test_def_dir $rm_dirs &
+			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs &
 		else
-			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs &
+			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs &
 		fi
 		pids[${pindex}]=$!
 		let "pindex=$pindex+1"
@@ -2940,6 +2941,7 @@ usage()
 	echo "  --no_clean_up: Do not cleanup at the end of the test"
 	echo "  --no_packages: Do not install any packages. The default is no."
 	echo "  --no_pbench_install: Do not install pbench.  The default is 0 (install pbench)"
+	echo "  --no_spot_recover: Do not recover from a spot system going away."
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
 	echo "  --persistent_log: enable persistent logging"
@@ -3130,6 +3132,11 @@ set_general_value()
 			echo "$1 $2" >> $gl_cli_supplied_options
 			gl_no_pbench_install=$2
 			shift_by=2
+		;;
+		--no_spot_recover)
+			echo "$1" >> $gl_cli_supplied_options
+			gl_spot_recover=0
+			shift_by=1
 		;;
 		--os_vendor)
 			if [[ $gl_os_vendor == $value_not_set ]]; then
@@ -3384,6 +3391,7 @@ grab_cli_data()
 		"ignore_repo_errors"
 		"no_clean_up"
 		"no_packages"
+		"no_spot_recover"
 		"persistent_log"
 		"show_os_versions"
 		"show_tests"
