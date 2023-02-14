@@ -1181,8 +1181,10 @@ retrieve_spot_from_config()
 			#
 			# We will default to 5 intervals
 			# 
-			gl_spot_cap=`curl -L ec2.shop?filter=$1 | grep $1 | awk '{print $12}'`
-			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*100)/5.00)/100" | bc`
+			worker=`curl -L ec2.shop?filter=$1 | grep $1 | sed "s/Up to //g"`
+			gl_spot_cap=`echo $worker | awk '{print $10}'`
+			gl_spot_price=`echo $worker | awk '{print $12}'`
+			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*1.5)/5.00)" | bc`
 		else
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: no spot information present for $1" 1
@@ -1410,15 +1412,20 @@ create_ansible_options()
 		echo "  "do_not_install_packages: ${gl_no_packages} >> ansible_vars_main.yml
 		echo "  "error_repo_errors: ${gl_error_repo_errors} >> ansible_vars_main.yml
 		spot_pricing=0
-		if [[ $gl_spot_increment != "0" ]]; then
+			if [[ $gl_spot_price != "0" ]]; then
 			#
 			# Bash does not do floating point, must use bc
 			#
 			spot_pricing="["
 			spot_separ=""
 			cap=`echo ${gl_spot_cap}*100 | bc | cut -d'.' -f1`
-			increment_by=`echo ${gl_spot_increment}*100 | bc | cut -d'.' -f1`
 			spot_start=`echo ${gl_spot_price}*100 | bc | cut -d'.' -f1`
+			if [[ $gl_spot_increment != "0" ]]; then
+				increment_by=`echo ${gl_spot_increment}*100 | bc | cut -d'.' -f1`
+			else
+				increment_by=$gl_spot_cap
+			fi
+
 			spot_cur_price=`echo "${spot_start}+${increment_by}" | bc | cut -d'.' -f1`
 			while [[ ${spot_cur_price} -le ${cap} ]]; do
 				price_out=`printf '%4.2f\n' $(bc -l<<<${spot_cur_price}/100)`
