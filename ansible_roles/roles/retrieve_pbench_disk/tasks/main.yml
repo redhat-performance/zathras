@@ -4,12 +4,6 @@
     file: "{{ working_dir }}/ansible_run_vars.yml"
     name: dyn_data
 
-- name: DEBUG pbench
-  debug:
-    msg: "{{ debug_data }}"
-- name: DEBUG pbench
-  debug:
-    msg: "sys_index: {{ sys_index }}"
 #
 # Have the volid, now get the disk.
 #
@@ -31,7 +25,7 @@
         target_sys: "{{ dyn_data.test_hostname }}"
     when:
       - sys_index == "0"
-      - "'pbench_volume_{{ sys_index }}' in debug_data"
+      - "'pbench_volume_{{ sys_index }}' in pbench_disk_name"
 
   - name: Grab the volume id host 1
     block:
@@ -46,7 +40,7 @@
         target_sys: "{{ dyn_data.net_hostname }}"
     when:
       - sys_index != "0"
-      - "'pbench_volume_{{ sys_index }}' in debug_data"
+      - "'pbench_volume_{{ sys_index }}' in pbench_disk_name"
   when: config_info.system_type == "aws"
 
 # On Azure we always use LUN 10 for the pbench disk, and subsequent data disks start at 11
