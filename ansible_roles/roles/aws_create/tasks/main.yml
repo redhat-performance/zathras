@@ -58,9 +58,19 @@
   - name: Append for network
     shell: sed "s/REPLACE_ID/id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE/aws_instance/g" >> {{ working_dir }}/tf/output.tf
     when: config_info.cloud_numb_networks != 0
-  - name: Handle disks
-    shell: sed "s/REPLACE/aws_instance/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks.tf >> {{ working_dir }}/tf/disks.tf
-    when: config_info.cloud_disks != "none"
+  - name: Handle disks, no network
+    include_tasks: aws_disks.yml
+    vars:
+      instance_type: "aws_instance"
+      instance_id: "id"
+      index_in: 0
+  - name: Handle disks, with network
+    include_tasks: aws_disks.yml
+    vars:
+      instance_type: "aws_instance"
+      instance_id: "id"
+      index_in: 1
+    when: config_info.cloud_numb_networks != 0
   when: config_info.spot_start_price == 0
 
 - name: copy spot files
@@ -70,9 +80,19 @@
   - name: Append for network
     shell: sed "s/REPLACE_ID/spot_instance_id"/g < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE/aws_spot_instance_request/g" >> {{ working_dir }}/tf/output.tf
     when: config_info.cloud_numb_networks != 0
-  - name: Handle disks
-    shell: sed "s/REPLACE/aws_spot_instance_request/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks.tf >> {{ working_dir }}/tf/disks.tf
-    when: config_info.cloud_disks != "none"
+  - name: Handle disks, no network
+    include_tasks: aws_disks.yml
+    vars:
+      instance_type: "aws_spot_instance_request"
+      instance_id: "spot_instance_id"
+      index_in: 0
+  - name: Handle disks, with network
+    include_tasks: aws_disks.yml
+    vars:
+      instance_type: "aws_spot_instance_request"
+      instance_id: "spot_instance_id"
+      index_in: 1
+    when: config_info.cloud_numb_networks != 0
   when: config_info.spot_start_price != 0
 
 #
@@ -176,7 +196,7 @@
   include_role:
     name:  set_up_tf_vars
   vars:
-    pbench_ns_tf: pbench_disks.tf
+    pbench_ns_tf: pbench.tf
     cloud_change_to: aws_instance
 
 - name: grab aws create start time
