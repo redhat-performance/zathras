@@ -13,7 +13,14 @@
   debug:
     var: create
 
-- name: Bail on tf_init failure
-  fail:
-    msg: "Failed on creating the terraform resource"
-  when: "'Error' in create.stdout"
+#
+# update the return status, to be used by the calling module.  We could
+# use set facts here, but chose to use a file instead for debugabilty.
+#
+- name: Save the tf operation return code
+  lineinfile:
+    path: "{{ working_dir }}/tf.rtc"
+    regexp: '^(.*)rtc:(.*)$'
+    line: "rtc: {{ create.rc }}"
+    backrefs: yes
+
