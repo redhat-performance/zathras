@@ -205,6 +205,8 @@ General options
   --individ_vars: Contains various burden settings.  Takes precedence over the scenario file, but is overridden
     by the command line.  Default is config/zathras_specific_vals_def
   --java_version: java version to install, java-8, java-11
+  --kit_upload_directory: Full path to directory uploading to.  If not present, Zathras will locate
+      the filesystem with the most space on it and use that location.
   --max_systems &lt;n&gt;: Maximum number of burden subinstances that will be created from the parent.  Each subinstance
     is a cloud or local system. 3 is the default"
   --no_clean_up: Do not cleanup at the end of the test
