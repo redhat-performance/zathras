@@ -63,11 +63,11 @@
   - name: Recorder server addr
     lineinfile:
       path: "{{ working_dir }}/ansible_run_vars.yml"
-      line: "ct_uperf_server_ip: {{ internal_ip_address[0] }}"
+      line: "ct_uperf_server_ip: {{ internal_ip_address[1] }}"
   - name: record internal IPs for uperf clients
     lineinfile:
       path: "{{ working_dir }}/ansible_run_vars.yml"
-      line: "ct_uperf_client_list: {{ internal_ip_address[1] }}"
+      line: "ct_uperf_client_list: {{ internal_ip_address[0] }}"
   when: config_info.cloud_numb_networks|int >= 1
 
 - name: Display Ip address

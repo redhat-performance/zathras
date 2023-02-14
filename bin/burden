@@ -81,14 +81,12 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #
 # Global values specific to the configuration.
 #   host_uses_nvme: is the disk expected to be nvme
-#   gl_cloud_networks: The number of extra networks to create.
 #   cloud_region: region to create the instance in.
 #   gl_cloud_region_zone: zone to create the instance in.
 #
 value_not_set="none"
 gl_kit_upload_directory="none"
 gl_host_uses_nvme=0
-gl_cloud_networks=0
 gl_cloud_net_type="default"
 #
 # We will default to eastus
@@ -110,7 +108,9 @@ gl_valid_system_types="aws azure gcp local"
 gl_package_name=$value_not_set
 gl_show_tests=0
 gl_create_attempts=5
+gl_spot_recover=1
 gl_cloud_placement=${value_not_set}
+gl_cloud_networks_sys="duplicate"
 #
 # Global values
 #   gl_sys_file: sysctl files to use.
@@ -123,6 +123,9 @@ gl_cloud_placement=${value_not_set}
 #   gl_internal_disk: disk is internal to the system.
 #   gl_top_dir: Directory we are executing from
 #
+gl_tf_terminate=0
+gl_tf_term_list=""
+gl_tf_list=0
 gl_sys_file=$value_not_set
 gl_cloud_execute_tests=1
 gl_install_pbench=0
@@ -934,12 +937,7 @@ reduce_options()
 	# Set network information.
 	#
 	if [[ $option_string == *"Network"* ]]; then
-		networks_string=`bin/parse_net_line \"${entry}\"`
-		gl_networks_present=`echo $networks_string | cut -d':' -f1 | sed "s/\"//g"`
-		gl_cloud_net_type=`echo $networks_string | cut -d':' -f2 | cut -d'"' -f1`
-		if [ $gl_networks_present -gt 1 ]; then
-			cleanup_and_exit "Error: we only support one test network connection at this time, there is ${gl_cloud_networks} designated." 1
-		fi
+		obtain_network_info $entry
 		found=1
 	fi
 
@@ -1171,18 +1169,30 @@ aws_specific_os_version()
 retrieve_spot_from_config()
 {
 	if [[ $gl_use_spot -eq 1 ]]; then
-		if [[ -e ${gl_test_def_dir}/spot_price.cfg ]]; then
-			spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
-			if [[ $? -eq 0 ]]; then
-				gl_spot_price=`echo ${spot_string} | cut -d':' -f2`
-				gl_spot_increment=`echo ${spot_string} | cut -d':' -f3`
-				gl_spot_cap=`echo ${spot_string} | cut -d':' -f4`
-			else
+		spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
+		if [[ $gl_system_type == "aws" ]]; then
+			#
+			# For AWS obtain the possible starting price.
+			#
+			gl_spot_price=`aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types ${1} | awk '{print $2}' | sort -n | tail -1`
+			if [[ $? -ne 0 ]]; then
+				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
+			fi
+			#
+			# We will default to 5 intervals
+			# 
+			gl_spot_cap=`curl -L ec2.shop?filter=$1 | grep $1 | awk '{print $12}'`
+			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*100)/5.00)/100" | bc`
+		else
+			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: no spot information present for $1" 1
 			fi
-		else
-			cleanup_and_exit "Error: no spot information present for $1" 1
+			gl_spot_price=`echo ${spot_string} | cut -d':' -f2`
+			gl_spot_increment=`echo ${spot_string} | cut -d':' -f3`
+			gl_spot_cap=`echo ${spot_string} | cut -d':' -f4`
 		fi
+	else
+		cleanup_and_exit "Error: no spot information present for $1" 1
 	fi
 }
 
@@ -1520,6 +1530,11 @@ create_ansible_options()
 		gl_disk_cloud_index=0
 		echo "  host_uses_nvme: ${gl_host_uses_nvme}" >> ansible_vars_main.yml
 		echo "  cloud_numb_networks: ${gl_networks_present}" >> ansible_vars_main.yml
+		if [[ ${gl_cloud_networks_sys} == *"number=1"* ]]; then
+			echo "  cloud_network_systems: none" >> ansible_vars_main.yml
+		else
+			echo "  cloud_network_systems: ${gl_cloud_networks_sys}" >> ansible_vars_main.yml
+		fi
 		echo "  cloud_numb_network_type: ${gl_cloud_net_type}" >> ansible_vars_main.yml
 		echo "  test_iterations: ${gl_test_iterations}" >> ansible_vars_main.yml
 		echo "  user_running: ${user_name}" >> ansible_vars_main.yml
@@ -1559,7 +1574,6 @@ create_ansible_options()
 		# Reset everything for the next round. 
 		#
 		gl_disks_asking_for=""
-		gl_cloud_networks=0
 		#
 		# Start the test in the background, record the pid and bump the index.
 		#
@@ -1597,9 +1611,9 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [[ "$gl_ssh_key_file" == "" ]]; then
-			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -c $gl_test_def_dir $rm_dirs &
+			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs &
 		else
-			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs &
+			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs &
 		fi
 		pids[${pindex}]=$!
 		let "pindex=$pindex+1"
@@ -1960,6 +1974,25 @@ verify_java_version()
 	
 }
 
+obtain_network_info()
+{
+	entry=$1
+
+	echo bin/parse_net_line \"${entry}\"
+	networks_string=`bin/parse_net_line \"${entry}\"`
+	entries=`echo $networks_string | wc -w`
+	if [ $entries -lt 2 ]; then
+		cleanup_and_exit "$entry\nYou designated networks, but did not provide any extra system information.  Please resolve, aborting." 1
+	fi
+	gl_cloud_net_type=`echo $networks_string | cut -d' ' -f1`
+	if [[ $entry == *"Number"* ]]; then
+		gl_networks_present=`echo $entry | cut -d'=' -f2`
+	else
+		gl_cloud_networks_sys=`echo $networks_string | cut -d' ' -f2- | sed "s/\"//g" | sed "s/ EndList//g"`
+		gl_networks_present=`echo $gl_cloud_networks_sys | wc -w`
+	fi
+}
+
 #
 # Verify that the host config is valid, and has sane values.
 #
@@ -2012,12 +2045,7 @@ verify_host_config()
 		fi
 
 		if [[ $entry == *"Network"* ]]; then
-			networks_string=`bin/parse_net_line \"${entry}\"`
-			gl_cloud_networks=`echo $networks_string | cut -d':' -f1 | sed "s/\"//g"`
-			gl_cloud_net_type=`echo $networks_string | cut -d':' -f2 | cut -d'"' -f1`
-			if [[ $gl_cloud_networks -lt "1" ]]; then
-				cleanup_and_exit "$entry\nYou designated networks, but gave an invalid value for the number of networks.  Please resolve, aborting." 1
-			fi
+			obtain_network_info $entry
 		fi
 	done
 }
@@ -2751,6 +2779,79 @@ integrate_templates()
 }
 
 #
+# List the active systems created by tf
+#
+tf_list()
+{
+	dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
+	for tf_show in $dirs; do
+		pushd $tf_show > /dev/null
+		terraform show > tf_list_info
+		grep subnet tf_list_info >& /dev/null
+		if [ $? -eq 0 ]; then
+			work_dir=`pwd | rev | cut -d'/' -f 2 | rev`
+			grep  azure tf_list_info >& /dev/null
+			if [ $? -eq 0 ]; then
+				vm_size=`grep size tf_list_info | grep -v disk | cut -d'"' -f2`
+				public_ip=`grep public_ip_address tf_list_info | head -1 | cut -d'"' -f2 | sort -u`
+				name_tag=`grep environment tf_list_info | cut -d'"' -f4 | sort -u`
+				printf "work_dir: %s\n" $work_dir
+				printf "\tfull_path: %s\n" $tf_show
+				printf "\tvm_size: %s\n" $vm_size
+				printf "\tpublic_ip: %s\n" $public_ip
+				printf "\tname_tag: %s\n" $name_tag
+			fi
+			grep  aws tf_list_info >& /dev/null
+			if [ $? -eq 0 ]; then
+				vm_size=`grep instance_type tf_list_info | cut -d'"' -f2`
+				inst_state=`grep instance_state tf_list_info | cut -d'"' -f2`
+				public_dns=`grep public_dns tf_list_info | cut -d'"' -f2 | sort -u`
+				name_tag=`grep Name tf_list_info | cut -d'"' -f4 | sort -u`
+				printf "work_dir: %s\n" $work_dir
+				printf "\tfull_path: %s\n" $tf_show
+				printf "\tvm_size: %s\n" $vm_size
+				printf "\tinstance_state: %s\n" $inst_state
+				printf "\tpublic_dns: %s\n" $public_dns
+				printf "\tname_tag: %s\n" $name_tag
+			fi
+		fi
+		rm tf_list_info
+		popd > /dev/null
+	done
+	exit
+}
+#
+# Walk all the tf directories and attempt to remove the instance.
+#
+tf_terminate()
+{
+
+	if [[ $gl_tf_term_list == "" ]]; then
+		dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
+	else
+		dirs=`echo $gl_tf_term_list | sed "s/,/ /g"`
+		echo $gl_tf_term_list
+		echo $dirs
+	fi
+	for tf_del in $dirs; do
+		pushd $tf_del > /dev/null
+		terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
+		if [ $? -eq 0 ]; then
+			terraform apply "destroy.tfplan"
+			#
+			# Now get arid of the tf directory.
+			#
+			if [ $gl_tf_terminate -eq 0 ]; then
+				cd ..
+				rm -rf tf
+			fi
+		fi
+		popd > /dev/null
+	done
+	exit
+}
+
+#
 # If the test_def_dir has https or git in it, we will pull from
 # the git repo.  If not simply check that the file exists.
 #
@@ -2821,9 +2922,10 @@ usage()
 		echo "             number: How many disks to create and attach"
 		echo "             size: How large is the disk in gigabytes"
 		echo "             type: Type of disk creating"
-		echo "          <Networks;number=n;type=x"
-		echo "             number_networks: number of internal networks to create. Each network will"
-		echo "             create another system to connect to."
+		echo "          <Networks;<system>;<system>;....;type=x"
+		echo "             <system>: in case of cloud systems, it is the VM to use.  In case of local systems, it will"
+		echo "             be the name of the system working with.  In the case of the cloud, if the second system"
+		echo "		   is not designated, we will use the original vm type."
                 echo "             type:"
 		echo "               default, uses the default cloud network type"
                 echo "               public, uses the public dns connections"
@@ -2836,12 +2938,12 @@ usage()
 		echo "           m5.xlarge,m5.4xlarge"
 		echo "         Example 2: Designate m5.24xlarge, 8 gp2 disks of 1200 Gig"
 		echo "           m5.24xlarge:Disks;number=8;size=1200;type=gp2"
-		echo "         Example 3: Designate m5.24xlarge with 4 networks"
-		echo "           m5.24xlarge:Networks;number=4"
-		echo "         Example 4: Designate m5.24xlarge with sys tunings udp_fix and none"
+		echo "         Example 3: Designate m5.24xlarge with sys tunings udp_fix and none"
 		echo "           m5.24xlarge:Sysctl_settings=none+udp_fix"
-		echo "         Example 5: Designate m5.xlarge to be created in us-east-1 and zone b"
+		echo "         Example 4: Designate m5.xlarge to be created in us-east-1 and zone b"
 		echo "           \"m5.xlarge[region=us-east-1&zone=b]\""
+		echo "         Example 5: Designate two different systems connected vial networks."
+		echo "           m5.xlarge:Networks;m5.2xlarge"
 	fi
 	echo "  --ignore_repo_errors: If present we will ignore repo errors. The default is to abort the run"
 	echo "    when a repo error occurs."
@@ -2853,6 +2955,7 @@ usage()
 	echo "  --no_clean_up: Do not cleanup at the end of the test"
 	echo "  --no_packages: Do not install any packages. The default is no."
 	echo "  --no_pbench_install: Do not install pbench.  The default is 0 (install pbench)"
+	echo "  --no_spot_recover: Do not recover from a spot system going away."
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
 	echo "  --persistent_log: enable persistent logging"
@@ -2901,6 +3004,9 @@ usage()
 	echo "    and brief description of the version.  This only applies to git repos"
 	echo "  --test_version_check: Checks to see if we are running the latest versions of the tests and"
 	echo "    exits out when done. Default is no"
+	echo "  --tf_list: list active systems created via tf"
+	echo "  --tf_terminate_list <list>: Delete the designated terraform systems."
+	echo "  --tf_terminate_all: Go into each terraform directory and attempt to remove the terraform instance"
 	echo "  --tuned_profiles <comma separated list of tuned profiles>, only for RHEL.  Designates the tuned"
 	echo "    profiles to use.  if the system type is a cloud environment, then each tuned profile is a"
 	echo "    distinct cloud instance."
@@ -2957,6 +3063,13 @@ set_general_value()
 			if [[ $gl_create_only -eq 0 ]]; then
 				echo "$1" >> $gl_cli_supplied_options
 				gl_create_only=1
+			fi
+			#
+			# We want to keep the tf around
+			#
+			if [[ $gl_no_clean_up -eq 0 ]]; then
+				echo "--no_clean_up" >> $gl_cli_supplied_options
+				gl_no_clean_up=1
 			fi
 			shift_by=1
 		;;
@@ -3038,6 +3151,11 @@ set_general_value()
 			echo "$1 $2" >> $gl_cli_supplied_options
 			gl_no_pbench_install=$2
 			shift_by=2
+		;;
+		--no_spot_recover)
+			echo "$1" >> $gl_cli_supplied_options
+			gl_spot_recover=0
+			shift_by=1
 		;;
 		--os_vendor)
 			if [[ $gl_os_vendor == $value_not_set ]]; then
@@ -3185,6 +3303,19 @@ set_general_value()
 			fi
 			shift_by=2
  		;;
+		--tf_list)
+			gl_tf_list=1
+			shift_by=1
+		;;
+		--tf_terminate_all)
+			gl_tf_terminate=1
+			shift_by=1
+		;;
+		--tf_terminate_list)
+			gl_tf_terminate=1
+			gl_tf_term_list=$2
+			shift_by=2
+		;;
 		--tuned_profiles)
 			if [[ $gl_rhel_tuned_setting == $value_not_set ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -3268,6 +3399,7 @@ grab_cli_data()
 		"test_def_file"
 		"test_override"
 		"test_versions"
+		"tf_terminate_list"
 		"tuned_reboot"
 		"update_target"
 	)
@@ -3279,10 +3411,13 @@ grab_cli_data()
 		"ignore_repo_errors"
 		"no_clean_up"
 		"no_packages"
+		"no_spot_recover"
 		"persistent_log"
 		"show_os_versions"
 		"show_tests"
 		"test_version_check"
+		"tf_list"
+		"tf_terminate_all"
 		"update_test_versions"
 		"usage"
 		"use_spot"
@@ -3333,6 +3468,20 @@ grab_vars_data()
 cli_data="$@"
 grab_cli_data "$@"
 grab_vars_data
+
+#
+# Does not return
+#
+if [ $gl_tf_terminate -eq 1 ]; then
+	tf_terminate
+fi
+
+#
+# Does not return
+#
+if [ $gl_tf_list -eq 1 ]; then
+	tf_list
+fi
 
 if [[ $gl_run_prefix == "" ]]; then
 	gl_run_prefix=`id -un`

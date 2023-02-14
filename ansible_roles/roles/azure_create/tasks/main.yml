@@ -19,10 +19,14 @@
 
 - name: copy general tf files, network
   block:
-  - name: copy main.tf to tf/main_net.tf
+  - name: copy main_net_p1.tf to tf/main_net.tf
     copy:
-      src: "tf/main_net.tf"
+      src: "tf/main_net_p1.tf"
       dest: "{{ working_dir }}/tf/main.tf"
+  - name: copy main_net_p2.tf to work area for later use
+    copy:
+      src: "tf/main_net_p2.tf"
+      dest: "{{ working_dir }}/tf/main_net_p2.tf"
   - name: copy output.tf to tf/output_net.tf
     copy:
       src: "tf/output_net.tf"
@@ -34,6 +38,10 @@
   copy:
     src: "tf/vars.tf"
     dest: "{{ working_dir }}/tf/vars.tf"
+
+- name: add in vars for networks
+  include_role:
+    name: add_networks
 
 - name: Activate proximity group
   copy:
