@@ -1,0 +1,16 @@
+---
+#
+# Setup the disks.  Due to the way aws works, we have to have one entry
+# for each system,
+#
+# Variables passed in:
+#       instance_type: "aws_instance_request" or "aws_spot_instance_request"
+#       index_in: system index
+#
+- name: Add disk information
+  shell: "sed \"s/REPLACE_INSTANCE_ID/{{ instance_id }}/g\" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks_template.tf | sed \"s/REPLACE_INDEX/{{ index_in}}/g\" | sed \"s/REPLACE_INST/{{ instance_type }}/g\" >> {{ working_dir }}/tf/disks.tf"
+  when: "'0:na:na:0' not in config_info.cloud_disks"
+
+- name: pbench setup
+  shell: "sed \"s/REPLACE_INSTANCE_ID/{{ instance_id }}/g\" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/pbench_disks_template.tf | sed \"s/REPLACE_INDEX/{{ index_in}}/g\" | sed \"s/REPLACE_INST/{{ instance_type }}/g\" >> {{ working_dir }}/tf/pbench.tf"
+  when: config_info.pbench_disk_required == "yes"
