@@ -4,13 +4,19 @@
     file: "{{ working_dir }}/ansible_run_vars.yml"
     name: dyn_data
 
+- name: DEBUG pbench
+  debug:
+    msg: "{{ debug_data }}"
+- name: DEBUG pbench
+  debug:
+    msg: "sys_index: {{ sys_index }}"
 #
 # Have the volid, now get the disk.
 #
 - name: Find aws pbench disk
   block:
   - name: get disk id
-    shell: "grep pbench {{ working_dir }}/tf/terraform_apply.out | grep id= | grep \"volume\\[{{ sys_index }}\" | cut -d'-' -f2 | cut -d']' -f 1"
+    shell: "grep pbench {{ working_dir }}/tf/terraform_apply.out | grep id= | grep volume_{{ sys_index }} | grep \"\\[{{ sys_index }}\" | cut -d'-' -f2 | cut -d']' -f 1"
     register: pbench_disk_id
   - name: Grab the volume id host 0
     block:
@@ -23,7 +29,9 @@
       vars:
         pbench_device: "/dev/{{ pb_disk.stdout }}"
         target_sys: "{{ dyn_data.test_hostname }}"
-    when: sys_index == "0"
+    when:
+      - sys_index == "0"
+      - "'pbench_volume_{{ sys_index }}' in debug_data"
 
   - name: Grab the volume id host 1
     block:
@@ -36,7 +44,9 @@
       vars:
         pbench_device: "/dev/{{ pb_disk.stdout }}"
         target_sys: "{{ dyn_data.net_hostname }}"
-    when: sys_index != "0"
+    when:
+      - sys_index != "0"
+      - "'pbench_volume_{{ sys_index }}' in debug_data"
   when: config_info.system_type == "aws"
 
 # On Azure we always use LUN 10 for the pbench disk, and subsequent data disks start at 11
