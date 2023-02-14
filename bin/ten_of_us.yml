@@ -977,7 +977,6 @@
       line: "Test returned"
       create: yes
     when: config_info.test_exec_location == "remote"
-
 #
 # execute the test that need to be executed from the local system (reboot)
 # 
