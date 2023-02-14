@@ -11,7 +11,9 @@
     name: retrieve_pbench_disk
   vars:
     disk_info: "{{ resource_info.instances }}"
-  when: resource_info.name == "pbench_volume"
+    pbench_disk_name: "{{ resource_info.name }}"
+    when: "'pbench_volume' in resource_info.name"
   loop: "{{ cloud_data.resources }}"
   loop_control:
     loop_var: resource_info
+
