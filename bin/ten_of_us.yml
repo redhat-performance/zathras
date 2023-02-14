@@ -67,6 +67,20 @@
       when: config_info.ssh_key == "none_designated"
 
 #
+# Preset the tf.rtc file
+#
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: preset terraform rtc to be false
+    lineinfile:
+      path: "{{ working_dir }}/tf.rtc"
+      line: "rtc: 1"
+      create: yes
+
+
+#
 # Create the cloud systems if required.
 #
   - name: only on startup
