@@ -8,7 +8,7 @@
 # Upload the required tests.
 #
 - name: upload the extra file info
-  shell: "scp -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ extra_file_upload }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }}:/mnt/uploads"
+  shell: "scp -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ extra_file_upload }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }}:{{ dyn_data.kit_upload_directory }}/uploads"
   register: upload_status
   ignore_errors: yes
 
