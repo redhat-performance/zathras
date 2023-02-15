@@ -86,6 +86,7 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #
 value_not_set="none"
 gl_kit_upload_directory="none"
+gl_base_cost=0
 gl_host_uses_nvme=0
 gl_cloud_net_type="default"
 #
@@ -1183,6 +1184,7 @@ retrieve_spot_from_config()
 			# 
 			worker=`curl -L ec2.shop?filter=$1 | grep $1 | sed "s/Up to //g"`
 			gl_spot_cap=`echo $worker | awk '{print $10}'`
+			gl_base_cost=$gl_spot_cap;
 			gl_spot_price=`echo $worker | awk '{print $12}'`
 			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*1.5)/5.00)" | bc`
 		else
@@ -1323,6 +1325,7 @@ create_ansible_options()
 		#
 		if [[ $gl_system_type != "local" ]] && [[ $gl_spot_cap -eq 0 ]]; then
 			echo No spot price designated, retrieving
+			gl_base_cost=`curl -L ec2.shop?filter=$host_or_cloud_inst | grep $host_or_cloud_inst | awk '{print $12}'`
 			retrieve_spot_from_config $host_or_cloud_inst
 		fi
 
@@ -1367,6 +1370,11 @@ create_ansible_options()
 		cp test_info $run_dir
 		cp utils_version $run_dir
 		pushd $run_dir > /dev/null
+		if [ $gl_use_spot -eq 0 ]; then
+			echo $gl_base_cost >> instance_cost
+		else
+			echo 0 >> instance_cost
+		fi
 		mkdir tf
 		mkdir tests_to_run 2> /dev/null
 		mkdir tests_to_use 2> /dev/null
@@ -1616,9 +1624,9 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [[ "$gl_ssh_key_file" == "" ]]; then
-			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs &
+			kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs &
 		else
-			kick_off.sh -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs &
+			kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs &
 		fi
 		pids[${pindex}]=$!
 		let "pindex=$pindex+1"
