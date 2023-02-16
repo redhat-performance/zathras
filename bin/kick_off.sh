@@ -18,11 +18,85 @@
 #			             in this pass is completed.
 #			
 #
+
+top_dir=`pwd`
+
+add_log_header()
+{
+	log_info=$1/$2
+	if [[ ! -f $log_info ]]; then
+		printf "%10s %30s %10s %24s %6s %12s %6s %8s\n" "User" "Run label" "Instance" "Date" "Price" "Test" "Time" "Cost" > $log_info
+	fi
+}
+
+#
+# Generate the report information  for the test executed on.
+# 
+report_usage()
+{
+	#
+	# Obtain information common to all runs.
+	#
+	instance_type=`grep system_type:  ansible_vars_main.yml | awk '{print $2}'`
+	run_label=`grep run_label:  ansible_vars_main.yml | awk '{print $2}'`
+	instance=`grep host_or_cloud_inst  ansible_vars_main.yml | awk '{print $2}'`
+	user=`id -un`
+	#
+	# Add log header for the various usage files.
+	# Note, that zathras_log_file either exist or doesn't, we do not create it here.
+	#
+	add_log_header `pwd` test_system_usage
+	if [[ $top_dir != "none" ]]; then
+		add_log_header $top_dir test_system_usage
+	fi
+
+	if [[ $instance_type != *"local"* ]]; then
+		#
+		# Handle cloud instances.
+		#
+		# Get the instance price.
+		#
+		inst_price=`cat instance_cost`
+		if [[ $inst_price == "0" ]]; then
+			inst_price=`grep cur_spot_price ansible_spot_price.yml | awk '{print $2}'`
+		fi
+		while IFS= read -r line
+		do
+			test=`echo "${line}" | cut -d' ' -f2`
+			time=`echo "${line}" | cut -d' ' -f5`
+			cost=`echo "scale=4;($time*$inst_price)/3600" | bc`
+			#
+			# Only one test at a time at the lowest level.
+			#
+			printf "%10s %30s %10s %24s %6s %12s %6s %8s\n" $user $run_label $instance $run_date $inst_price $test $time $cost >> test_system_usage
+			if [[ $top_dir != "none" ]]; then
+				flock -x $top_dir/test_system_usage -c "printf \"%10s %30s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date $inst_price $test $time $cost >> $top_dir/test_system_usage"
+			fi
+			if [[ -f /home/zathras_log/zathras_log_file ]]; then
+				flock -x /home/zathras_log/zathras_log_file -c "printf \"%10s %30s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date $inst_price $test $time $cost >> /home/zathras_log/zathras_log_file"
+			fi
+		done < "test_times"
+	else
+		while IFS= read -r line
+		do
+			test=`echo "${line}" | cut -d' ' -f2`
+			time=`echo "${line}" | cut -d' ' -f5`
+			printf "%10s %30s %10s %24s %6s %12s %6s %8s\n" $user $run_label $instance $run_date NA $test $time NA >> test_system_usage
+			if [[ $top_dir != "none" ]]; then
+				flock -x $top_dir/test_system_usage -c "printf \"%10s %30s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date NA $test $time NA >> $top_dir/test_system_usage"
+			fi
+			if [[ -f /home/zathras_log/zathras_log_file ]]; then
+				flock -x /home/zathras_log/zathras_log_file -c "printf \"%10s %30s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date NA $test $time NA >> /home/zathras_log/zathras_log_file"
+			fi
+		done < "test_times"
+	fi
+}
+
 spot_recover=1
 create_attempts=5
 remove_dirs=0
 ssh_key_file=""
-while getopts "a:c:d:f:s:r:S:" o; do
+while getopts "a:c:d:f:s:r:S:t:" o; do
         case "${o}" in
 		a)
 			create_attempts=${OPTARG}
@@ -45,6 +119,9 @@ while getopts "a:c:d:f:s:r:S:" o; do
 		s)
 			ssh_key_file=${OPTARG}
 		;;
+		t)
+			top_dir=${OPTARG}
+		;;
 	esac
 done
 shift $((OPTIND-1))
@@ -60,8 +137,6 @@ ln -s `pwd`/tools_bin/update_repo.file $direct/update_repo.file
 ln -s `pwd`/ansible_roles/roles $direct/roles
 ln -s `pwd`/bin/ten_of_us.yml $direct/ten_of_us.yml
 ln -s ${config_dir}/inventory $direct/inventory
-
-top_dir=`pwd`
 
 cd $direct
 
@@ -102,6 +177,7 @@ echo "roles_path = ~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:
 current_test=0
 for sys_config in ${individual};
 do
+	run_date=`date "+%Y.%m.%d-%H.%M.%S"`
 	let "current_test=$current_test+1"
 	if [ $current_test -eq $tests ]; then
 		term_system="\"yes\""
@@ -190,6 +266,13 @@ do
 		rm -rf tf
 	fi
 done
+
+#
+# Only if the test actually ran.
+#
+if [[ -f test_times ]]; then
+        report_usage
+fi
 
 for i in `ls results*tar`; do
 	check_file=`tar tvf $i | grep "_tuned\.status"` 

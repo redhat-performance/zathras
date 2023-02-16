@@ -1039,8 +1039,9 @@ Zathras will create the following in the directory you are running it from.
 . The Results directory contains the information used to run the test as well as the results tarball.  Note we do not save any of the terraform creation information as it takes up too much space.
 . failed_runs: created in the run directory if a test failed (test failed/passed is up to each test script).  Contained in the file will be 
 *     timestamp system message
-. results info: Created in the run directory, Contains the run information of all the tests.A
+. results info: Created in the run directory, Contains the run information of all the tests.
 * Example file
++
 ----
 ========================================
 system config: m5.xlarge
@@ -1051,7 +1052,40 @@ system config: m5.xlarge
     test_specific: ""
     results_ptr: info_test/rhel/aws/m5.xlarge_0/results_streams_tuned_none_sys_file_none.tar
 ----
+. In run direrctory: test_system_usage: Contains the test run information for this particular run
++
+++++
+<div class="content" style="font-size: 12px;">
+<pre><code>
+    User                      Run label   Instance                     Date  Price         Test   Time     Cost
+    dvalin             m6_comparison_rhel m5a.xlarge      2023.02.01-14.20.52 0.1720      streams     46    .0021
 
+</code></pre>
+</div>
+++++
+. In directory running burden from, test_system_usage: Contains all the test run information that have been done from this directory
++
+++++
+<div class="content" style="font-size: 12px;">
+<pre><code>
+    User                      Run label   Instance                     Date  Price         Test   Time     Cost
+    dvalin             m6_comparison_rhel m5a.xlarge      2023.02.01-14.20.52 0.1720      streams     46    .0021
+    dvalin               specjbb_run_rhel m5a.xlarge      2023.02.02-05.21.26 0.1720      specjbb    260    .0124
+
+</code></pre>
+</div>
+++++
+. In /home/zathras_log directory (if it exist), zathras_log_file: Contails the test run information performed on the systme.  Note, if the directory/file does not exist we will not write to it.  The file has to be writeable by the user.
+++++
+<div class="content" style="font-size: 12px;">
+<pre><code>
+    User                      Run label   Instance                     Date  Price         Test   Time     Cost
+    dvalin             m6_comparison_rhel m5a.xlarge      2023.02.01-14.20.52 0.1720      streams     46    .0021
+    dvalin               specjbb_run_rhel m5a.xlarge      2023.02.02-05.21.26 0.1720      specjbb    260    .0124
+  sousinha               linpack_run_rhel  m5.xlarge      2023.02.02-05.21.26 0.1820      linpack     60    .0033
+
+</code></pre>
+++++
 == Host definition
 Hosts are defined the same regardless whether they are passed on the command line or in a test
 scenario file. The only difference in the full host definition is between local and cloud systems. With
