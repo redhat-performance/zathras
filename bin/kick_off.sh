@@ -21,12 +21,24 @@
 
 top_dir=`pwd`
 
+#
+# Set up the headrs for the log files
+#
 add_log_header()
 {
 	log_info=$1/$2
 	if [[ ! -f $log_info ]]; then
 		printf "%10s %50s %10s %24s %6s %12s %6s %8s\n" "User" "Run label" "Instance" "Date" "Price" "Test" "Time" "Cost" > $log_info
 	fi
+}
+
+#
+# Lock the file and then record the info
+#
+update_log_file()
+{
+	echo $1 here we are >> /tmp/dave
+	flock -x $1 -c "printf \"%10s %50s %10s %24s %6s %12s %6s %8s\n\" $2 $3 $4 $5 $6 $7 $8 $9" >> $1
 }
 
 #
@@ -49,47 +61,29 @@ report_usage()
 	if [[ $top_dir != "none" ]]; then
 		add_log_header $top_dir test_system_usage
 	fi
-
-	if [[ $instance_type != *"local"* ]]; then
-		#
-		# Handle cloud instances.
-		#
-		# Get the instance price.
-		#
-		inst_price=`cat instance_cost`
-		if [[ $inst_price == "0" ]]; then
-			inst_price=`grep cur_spot_price ansible_spot_price.yml | awk '{print $2}'`
-		fi
-		while IFS= read -r line
-		do
-			test=`echo "${line}" | cut -d' ' -f2`
-			time=`echo "${line}" | cut -d' ' -f5`
-			cost=`echo "scale=4;($time*$inst_price)/3600" | bc`
-			#
-			# Only one test at a time at the lowest level.
-			#
-			printf "%10s %50s %10s %24s %6s %12s %6s %8s\n" $user $run_label $instance $run_date $inst_price $test $time $cost >> test_system_usage
-			if [[ $top_dir != "none" ]]; then
-				flock -x $top_dir/test_system_usage -c "printf \"%10s %50s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date $inst_price $test $time $cost >> $top_dir/test_system_usage"
-			fi
-			if [[ -f /home/zathras_log/zathras_log_file ]]; then
-				flock -x /home/zathras_log/zathras_log_file -c "printf \"%10s %50s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date $inst_price $test $time $cost >> /home/zathras_log/zathras_log_file"
-			fi
-		done < "test_times"
-	else
-		while IFS= read -r line
-		do
-			test=`echo "${line}" | cut -d' ' -f2`
-			time=`echo "${line}" | cut -d' ' -f5`
-			printf "%10s %50s %10s %24s %6s %12s %6s %8s\n" $user $run_label $instance $run_date NA $test $time NA >> test_system_usage
-			if [[ $top_dir != "none" ]]; then
-				flock -x $top_dir/test_system_usage -c "printf \"%10s %50s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date NA $test $time NA >> $top_dir/test_system_usage"
-			fi
-			if [[ -f /home/zathras_log/zathras_log_file ]]; then
-				flock -x /home/zathras_log/zathras_log_file -c "printf \"%10s %50s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date NA $test $time NA >> /home/zathras_log/zathras_log_file"
-			fi
-		done < "test_times"
+	#
+	# Get the instance price.
+	#
+	inst_price=`cat instance_cost`
+	if [[ $inst_price == "0" ]]; then
+		inst_price=`grep cur_spot_price ansible_spot_price.yml | awk '{print $2}'`
 	fi
+	while IFS= read -r line
+	do
+		test=`echo "${line}" | cut -d' ' -f2`
+		time=`echo "${line}" | cut -d' ' -f5`
+		cost=`echo "scale=4;($time*$inst_price)/3600" | bc`
+		#
+		# Only one test at a time at the lowest level.
+		#
+		update_log_file test_system_usage $user $run_label $instance $run_date $inst_price $test $time $cost
+		if [[ $top_dir != "none" ]]; then
+			update_log_file $top_dir/test_system_usage $user $run_label $instance $run_date $inst_price $test $time $cost
+		fi
+		if [[ -f /home/zathras_log/zathras_log_file ]]; then
+			update_log_file /home/zathras_log/zathras_log_file $user $run_label $instance $run_date $inst_price $test $time $cost
+		fi
+	done < "test_times"
 }
 
 spot_recover=1
