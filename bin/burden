@@ -676,7 +676,6 @@ obtain_zone()
 		index_in=`echo $RANDOM % $aws_number_zones | bc`
 		selected=${aws_zones[${index_in}]}
 		gl_cloud_region_zone=${selected: -1}
-		
 	elif  [[ $gl_system_type == "azure" ]]; then
 		#
 		# Only have 3 possible zones.
@@ -1325,7 +1324,9 @@ create_ansible_options()
 		#
 		if [[ $gl_system_type != "local" ]] && [[ $gl_spot_cap -eq 0 ]]; then
 			echo No spot price designated, retrieving
-			gl_base_cost=`curl -L ec2.shop?filter=$host_or_cloud_inst | grep $host_or_cloud_inst | awk '{print $12}'`
+			if [[ $gl_system_type == "aws" ]]; then
+				gl_base_cost=`curl -L ec2.shop?filter=$host_or_cloud_inst | grep $host_or_cloud_inst | awk '{print $12}'`
+			fi
 			retrieve_spot_from_config $host_or_cloud_inst
 		fi
 
@@ -1373,6 +1374,11 @@ create_ansible_options()
 		if [ $gl_use_spot -eq 0 ]; then
 			echo $gl_base_cost >> instance_cost
 		else
+			if [[ $gl_system_type == "aws" ]]; then
+				worker=`curl -L ec2.shop?filter=$host_or_cloud_inst | grep $host_or_cloud_inst | sed "s/Up to //g"`
+				spot_fail_cap=`echo $worker | awk '{print $10}'`
+				echo $spot_fail_cap > if_spot_fail
+			fi
 			echo 0 >> instance_cost
 		fi
 		mkdir tf
@@ -1441,7 +1447,7 @@ create_ansible_options()
 				let "spot_cur_price=$spot_cur_price+$increment_by"
 				spot_separ=','
 			done
-			spot_pricing="${spot_pricing}]"
+			spot_pricing="${spot_pricing},${gl_spot_cap}]"
 		else
 			spot_start=0
 		fi
