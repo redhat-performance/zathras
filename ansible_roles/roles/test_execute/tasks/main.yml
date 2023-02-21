@@ -51,12 +51,6 @@
     create: yes
   when: config_info.cloud_execute_tests == 1
 
-
-- name: Remove the file if need be
-  file:
-    path="{{ working_dir }}/test_times"
-    state=absent
-
 - name: retrieve test time
   fetch:
     src: "/tmp/test_times"
