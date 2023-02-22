@@ -21,12 +21,24 @@
 
 top_dir=`pwd`
 
+#
+# Set up the headrs for the log files
+#
 add_log_header()
 {
 	log_info=$1/$2
 	if [[ ! -f $log_info ]]; then
-		printf "%10s %30s %10s %24s %6s %12s %6s %8s\n" "User" "Run label" "Instance" "Date" "Price" "Test" "Time" "Cost" > $log_info
+		printf "%10s %50s %10s %24s %6s %12s %6s %8s\n" "User" "Run label" "Instance" "Date" "Price" "Test" "Time" "Cost" > $log_info
 	fi
+}
+
+#
+# Lock the file and then record the info
+#
+update_log_file()
+{
+	echo $1 here we are >> /tmp/dave
+	flock -x $1 -c "printf \"%10s %50s %10s %24s %6s %12s %6s %8s\n\" $2 $3 $4 $5 $6 $7 $8 $9" >> $1
 }
 
 #
@@ -49,47 +61,29 @@ report_usage()
 	if [[ $top_dir != "none" ]]; then
 		add_log_header $top_dir test_system_usage
 	fi
-
-	if [[ $instance_type != *"local"* ]]; then
-		#
-		# Handle cloud instances.
-		#
-		# Get the instance price.
-		#
-		inst_price=`cat instance_cost`
-		if [[ $inst_price == "0" ]]; then
-			inst_price=`grep cur_spot_price ansible_spot_price.yml | awk '{print $2}'`
-		fi
-		while IFS= read -r line
-		do
-			test=`echo "${line}" | cut -d' ' -f2`
-			time=`echo "${line}" | cut -d' ' -f5`
-			cost=`echo "scale=4;($time*$inst_price)/3600" | bc`
-			#
-			# Only one test at a time at the lowest level.
-			#
-			printf "%10s %30s %10s %24s %6s %12s %6s %8s\n" $user $run_label $instance $run_date $inst_price $test $time $cost >> test_system_usage
-			if [[ $top_dir != "none" ]]; then
-				flock -x $top_dir/test_system_usage -c "printf \"%10s %30s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date $inst_price $test $time $cost >> $top_dir/test_system_usage"
-			fi
-			if [[ -f /home/zathras_log/zathras_log_file ]]; then
-				flock -x /home/zathras_log/zathras_log_file -c "printf \"%10s %30s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date $inst_price $test $time $cost >> /home/zathras_log/zathras_log_file"
-			fi
-		done < "test_times"
-	else
-		while IFS= read -r line
-		do
-			test=`echo "${line}" | cut -d' ' -f2`
-			time=`echo "${line}" | cut -d' ' -f5`
-			printf "%10s %30s %10s %24s %6s %12s %6s %8s\n" $user $run_label $instance $run_date NA $test $time NA >> test_system_usage
-			if [[ $top_dir != "none" ]]; then
-				flock -x $top_dir/test_system_usage -c "printf \"%10s %30s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date NA $test $time NA >> $top_dir/test_system_usage"
-			fi
-			if [[ -f /home/zathras_log/zathras_log_file ]]; then
-				flock -x /home/zathras_log/zathras_log_file -c "printf \"%10s %30s %10s %24s %6s %12s %6s %8s\n\" $user $run_label $instance $run_date NA $test $time NA >> /home/zathras_log/zathras_log_file"
-			fi
-		done < "test_times"
+	#
+	# Get the instance price.
+	#
+	inst_price=`cat instance_cost`
+	if [[ $inst_price == "0" ]]; then
+		inst_price=`grep cur_spot_price ansible_spot_price.yml | awk '{print $2}'`
 	fi
+	while IFS= read -r line
+	do
+		test=`echo "${line}" | cut -d' ' -f2`
+		time=`echo "${line}" | cut -d' ' -f5`
+		cost=`echo "scale=4;($time*$inst_price)/3600" | bc`
+		#
+		# Only one test at a time at the lowest level.
+		#
+		update_log_file test_system_usage $user $run_label $instance $run_date $inst_price $test $time $cost
+		if [[ $top_dir != "none" ]]; then
+			update_log_file $top_dir/test_system_usage $user $run_label $instance $run_date $inst_price $test $time $cost
+		fi
+		if [[ -f /home/zathras_log/zathras_log_file ]]; then
+			update_log_file /home/zathras_log/zathras_log_file $user $run_label $instance $run_date $inst_price $test $time $cost
+		fi
+	done < "test_times"
 }
 
 spot_recover=1
@@ -207,15 +201,38 @@ do
 			if [[ -f test_started ]]; then
 				sp_check=`grep spot_range: ansible_vars_main.yml`
 				if [[ $sp_check == *","* ]]; then
+					echo Need to update the test list, do not execute the tests we already executed.
+					tests_list=`grep ^test: test_times | awk '{ print $2 }'`
+					test_rm=""
+					seper=""
+					for i in $tests_list; do
+						test_rm=$test_rm${seper}$i
+						seper=","
+					done
+					test_rm=${test_rm}${seper}
+					echo $test_rm > /tmp/dave
+					cp ansible_vars_main.yml ansible_vars_main.yml_back
+					sed "s/${test_rm}//g" < ansible_vars_main.yml > update
+					mv update ansible_vars_main.yml
+					cp ansible_vars.yml ansible_vars.yml_back
+					sed "s/${test_rm}//g" < ansible_vars.yml > update
+					mv update ansible_vars.yml
+					if [[ -f test_times ]]; then
+        					report_usage
+					fi
+					mv test_times test_times_spot
+					mv if_spot_fail instance_cost
 					rm -rf tf
+					rm tf.rtc
 					#
 					# Next attempt it without spot pricing.
 					#
-					grep -v "spot_range:" ansible_vars_main.yml > spot_repair
+					mv ansible_run_vars.yml ansible_run_vars.yml_spot_died
+					grep -v "spot_range:" ansible_vars_main.yml | grep -v spot_start_price > spot_repair
 					echo "  spot_start_price: 0" >> spot_repair
 					echo "  spot_range: 0" >> spot_repair
-					mv spot_repair ansible_vars_main.yml
-					grep -v "spot_range:" ansible_vars.yml > spot_repair
+					mv  spot_repair ansible_vars_main.yml
+					grep -v "spot_range:" ansible_vars.yml  | grep -v  spot_start_price > spot_repair
 					echo "  spot_start_price: 0" >> spot_repair
 					echo "  spot_range: 0" >> spot_repair
 					mv spot_repair ansible_main.yml

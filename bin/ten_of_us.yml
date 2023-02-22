@@ -995,15 +995,6 @@
         path: "{{ working_dir }}/test_returned"
         line: "Test completed"
         create: yes
-    - name: Remove the file if need be
-      file:
-        path="{{ working_dir }}/test_times"
-        state=absent
-    - name: retrieve test time
-      fetch:
-        src: "/tmp/test_times"
-        dest: "{{ working_dir }}/test_times"
-        flat: yes
     when: config_info.test_exec_location == "remote"
 
 - hosts: local

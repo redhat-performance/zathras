@@ -15,8 +15,25 @@
 #
 
 #
-# Non spot operation
+# Try and create the spot instance if required
 #
+- name: Create aws spot
+  include_tasks: aws_tf_spot.yml
+  when: config_info.spot_range != 0
+#
+# Non spot operation, also fall back if we could not create the 
+# spot instance.
+#
+- name: include_rtc
+  include_vars:
+    file: "{{ working_dir}}/tf.rtc"
+    name: tf
+
+- name: Spot failed, tried regular
+  debug:
+    msg: spot failed, tried regular.
+  when: tf.rtc != 0
+
 - name: Create aws non spot
   block:
   - name: aws_tf_create
@@ -24,11 +41,7 @@
       name: tf_create
     vars:
       tf_var_file: "env.tfvars"
-  when: config_info.spot_range == 0
-
-- name: Create aws spot
-  include_tasks: aws_tf_spot.yml
-  when: config_info.spot_range != 0
+  when: config_info.spot_range == 0 or tf.rtc != 0
 
 #
 # Wait for the dns name(s) to appear in the results file.
@@ -186,11 +199,6 @@
       path: "{{ working_dir }}/ansible_run_vars.yml"
       line: "aws_net_instance_id: none"
   when: config_info.cloud_numb_networks == 0
-
-- name: avalability zone
-  lineinfile:
-    path: "{{ working_dir }}/ansible_run_vars.yml"
-    line: "cloud_zone: {{ aws_tf_info.aws_zone_id0 }}"
 
 - name: aws_post_pbench
   include_role:
