@@ -37,7 +37,6 @@ add_log_header()
 #
 update_log_file()
 {
-	echo $1 here we are >> /tmp/dave
 	flock -x $1 -c "printf \"%10s %50s %10s %24s %6s %12s %6s %8s\n\" $2 $3 $4 $5 $6 $7 $8 $9" >> $1
 }
 
@@ -210,7 +209,6 @@ do
 						seper=","
 					done
 					test_rm=${test_rm}${seper}
-					echo $test_rm > /tmp/dave
 					cp ansible_vars_main.yml ansible_vars_main.yml_back
 					sed "s/${test_rm}//g" < ansible_vars_main.yml > update
 					mv update ansible_vars_main.yml
