@@ -43,7 +43,13 @@
       - "'pbench_volume_{{ sys_index }}' in pbench_disk_name"
   when: config_info.system_type == "aws"
 
+#
 # On Azure we always use LUN 10 for the pbench disk, and subsequent data disks start at 11
+# Note the when check for pbench_volume.  Ansible is ignoring the check in
+# pbench_disk_set/tasks/main.yml, which is a common code path.  AWS does not see this issue.
+# Ansible is saying the check there,  when: "'pbench_volume' in resource_info.name is true
+# evem when pbench_volume is not in the string.
+#
 - name: Find pbench disk on Azure
   block:
   - name: Get device based on LUN 10
@@ -55,5 +61,7 @@
     vars:
       pbench_device: "{{ pb_disk.stdout }}"
       target_sys: "{{ dyn_data.test_hostname }}"
-  when: config_info.system_type == "azure"
+  when:
+    - config_info.system_type == "azure"
+    - "'pbench_volume' in pbench_disk_name"
 
