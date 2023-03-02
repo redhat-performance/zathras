@@ -10,7 +10,7 @@
 #
 # This is dumb
 #
-- name: Set fact because ansible is <censored> stupid
+- name: Set fact because ansible is being brain dead.
   set_fact:
     ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
 #
