@@ -190,6 +190,7 @@ do
 	while [ $attempts -ne $create_attempts ]
 	do
 		mkdir tf
+		echo ===== attempt $attempts of $create_attempts ==============
 		echo ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3" ten_of_us.yml
 		ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml
 		#
