@@ -1639,9 +1639,9 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [[ "$gl_ssh_key_file" == "" ]]; then
-			kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs &
+			kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs | tee ${run_dir}/ansible_log &
 		else
-			kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs &
+			kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs | tee ${run_dir}/ansible_log &
 		fi
 		pids[${pindex}]=$!
 		let "pindex=$pindex+1"
