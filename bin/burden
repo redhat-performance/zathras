@@ -596,11 +596,18 @@ create_test_run_file()
 obtain_required_packages()
 {
 	packages=$(find_test_def_field "test_info" "test_name" "$1" "${gl_os_vendor}_pkgs" )
+	pbench_usage=$(find_test_def_field "test_info" "test_name" $1 "test_run_from" )
 	if [[ "$packages" != $value_not_set ]]; then
 		worker=`echo $packages | sed "s/,/ /g"`
 		for i in $worker; do
 			echo "  - ${i}" >> install_choices
 		done
+	fi
+	#
+	# Package install for pbench
+	#
+	if [[ $1 == *"pbench"* ]]; then
+		echo "  - perf" >> install_choices
 	fi
 }
 
