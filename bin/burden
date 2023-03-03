@@ -1185,17 +1185,16 @@ retrieve_spot_from_config()
 			#
 			# For AWS obtain the possible starting price.
 			#
-			gl_spot_price=`aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types ${1} | awk '{print $2}' | sort -n | tail -1`
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
 			fi
 			#
 			# We will default to 5 intervals
 			# 
-			worker=`curl -L ec2.shop?filter=$1 | grep $1 | sed "s/Up to //g"`
-			gl_spot_cap=`echo $worker | awk '{print $10}'`
+			worker=`curl -L ec2.shop?filter=$1 -H 'accept: json'`
+			gl_spot_cap=`echo $worker | cut -d':' -f 8 | cut -d',' -f 1`
 			gl_base_cost=$gl_spot_cap;
-			gl_spot_price=`echo $worker | awk '{print $12}'`
+			gl_spot_price=`echo $worker | cut -d':' -f 10 | cut -d: -f 10 | cut -d'"' -f 2`
 			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*1.5)/5.00)" | bc`
 		else
 			if [[ $? -ne 0 ]]; then
@@ -1336,7 +1335,8 @@ create_ansible_options()
 		if [[ $gl_system_type != "local" ]] && [[ $gl_spot_cap -eq 0 ]]; then
 			echo No spot price designated, retrieving
 			if [[ $gl_system_type == "aws" ]]; then
-				gl_base_cost=`curl -L ec2.shop?filter=$host_or_cloud_inst | grep $host_or_cloud_inst | sed "s/Up to //g" | awk '{print $10}'`
+				worker=`curl -L ec2.shop?filter=$host_or_cloud_inst -H 'accept: json'`
+				gl_base_cost=`echo $worker | cut -d':' -f 8 | cut -d',' -f 1`
 			fi
 			retrieve_spot_from_config $host_or_cloud_inst
 		fi
