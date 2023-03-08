@@ -17,12 +17,6 @@ security_group = "{{ dyn_data.aws_uname }}"
 
 key_name = "{{ dyn_data.aws_uname }}"
 
-user = "{{ config_info.user_running }}"
-owner = "{{ config_info.full_name }}"
-manager = "{{ config_info.manager }}"
-project = "{{ config_info.project }}"
-environment = "{{ config_info.env }}"
-
 spot_price = "{{ spot_data.cur_spot_price }}"
 
 pb_disk_type = "gp2"
