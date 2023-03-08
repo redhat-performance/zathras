@@ -74,9 +74,22 @@
     file: "{{ working_dir }}/ansible_run_vars.yml"
     name: dyn_data
 
+- name: Set up terraform vars
+  include_role:
+    name:  set_up_tf_vars
+  vars:
+    pbench_ns_tf: none
+    cloud_change_to: azure
+
 #
 # Set up the terraform variables, includes setting the disk parameters.
 #
+- name: copy general tf files
+  shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf//vars.tf"
+
+- name: Add tag info in.
+  shell: "cat {{ working_dir }}/add_main_vars.tf >> {{ working_dir }}/tf/main.tf"
+
 - name: Set up terraform variables
   include_role:
     name: set_up_tf_vars

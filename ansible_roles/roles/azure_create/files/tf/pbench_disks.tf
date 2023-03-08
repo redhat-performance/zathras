@@ -6,9 +6,6 @@ resource "azurerm_managed_disk" "pbench_volume" {
   storage_account_type = var.disk_type
   create_option        = "Empty"
   disk_size_gb         = "1500"
-  tags = {
-    Name = "pbench_${var.run_label}"
-  }
 }
 
 resource "azurerm_virtual_machine_data_disk_attachment" "pbenchdisk" {

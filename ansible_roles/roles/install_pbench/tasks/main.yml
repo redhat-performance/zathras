@@ -24,25 +24,6 @@
       delegate_to: "{{ target_sys }}"
       become: yes
 
-#
-# This block goes away once 0.71 release of pbench becomes official.
-# 
-- name: determine if rhel 9
-  shell: "uname -r | grep el9"
-  ignore_errors: yes
-  register: version_results
-
-- name: Install pbench rhel 9 repo
-  include_role:
-    name: handle_rhel_9
-    apply:
-      delegate_to: "{{ target_sys }}"
-      become: yes
-  when: version_results.rc == 0
-#
-# End of block
-#
-
 - name: Install pbench agent
   include_role:
     name: pbench_agent_install
