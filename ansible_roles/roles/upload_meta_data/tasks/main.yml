@@ -1,6 +1,6 @@
 ---
 #
-# Save the metadat for future usage.
+# Save the metadata for future usage.
 #
 - name: Copy metadata to test system for later use
   copy:
