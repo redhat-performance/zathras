@@ -799,6 +799,13 @@ set_requirements()
 		if [[ "$pbench_required" == "no" ]]; then
 			pbench_required=$(find_test_def_field "test_info" "test_name" "$test_name" "pbench_required" )
 			if [[ "$pbench_required" == *"yes"* ]]; then
+				#
+				# Verify pbench url is defined.
+				#
+				grep pbench_config_url ${gl_top_dir}/ansible_roles/roles/install_pbench/vars/main.yml > /dev/null
+				if [ $? -ne 0 ]; then
+					cleanup_and_exit "Asking for pbench, but does not look like pbench urls have been conmfigured." 1
+				fi
 				gl_install_pbench=1
 			fi
 		fi
