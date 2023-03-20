@@ -1167,6 +1167,17 @@ aws_specific_os_version()
 			echo "  cloud_os_version: ${ami_check}" >> ansible_vars_main.yml
 			ami_found=1
 			break
+		else
+			#
+			# Because AWS ubuntu shows up as AMD
+			#
+			if [[ ${architecture} == "x86_64" ]]; then
+				if [[ $ami_value == *"amd64"* ]]; then
+					echo "  cloud_os_version: ${ami_check}" >> ansible_vars_main.yml
+					ami_found=1
+					break
+				fi
+			fi
 		fi
 	done
 	if [[ $ami_found -eq 0 ]]; then
