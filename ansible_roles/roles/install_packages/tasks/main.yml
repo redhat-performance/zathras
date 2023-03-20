@@ -41,8 +41,7 @@
 - name: Install ubuntu packages
   block:
   - name: ubuntu package install
-    apt:
-      pkg: "{{ pkg_install }}"
+    shell: "apt -y install `echo {{ pkg_install }} | sed \"s/\\[//g\" | sed \"s/]//g\" | sed \"s/,//g\"`"
     ignore_errors: yes
     register: install_results
   - name: Error check
