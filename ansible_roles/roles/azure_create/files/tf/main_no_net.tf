@@ -10,18 +10,6 @@ provider "azurerm" {
   features {}
 }
 
-# Create resource group
-resource "azurerm_resource_group" "resource_group" {
-    name     = var.resource_group
-    location = var.location
-
-    tags = {
-        environment = "${var.run_label}"
-    }
-    timeouts {
-        delete = "15m"
-    }
-}
 
 # Create virtual network
 resource "azurerm_virtual_network" "virtual_network" {
@@ -29,10 +17,6 @@ resource "azurerm_virtual_network" "virtual_network" {
     address_space       = ["10.0.0.0/16"]
     location            = var.location
     resource_group_name = azurerm_resource_group.resource_group.name
-
-    tags = {
-        environment = var.run_label
-    }
 }
 
 # Create subnet
@@ -50,10 +34,6 @@ resource "azurerm_public_ip" "publicip" {
     location             = var.location
     resource_group_name  = azurerm_resource_group.resource_group.name
     allocation_method    = "Dynamic"
-
-    tags = {
-        environment = "${var.run_label}"
-    }
 }
 
 # Create Network Security Group and rule
@@ -73,10 +53,6 @@ resource "azurerm_network_security_group" "nsg" {
         source_address_prefix      = "*"
         destination_address_prefix = "*"
     }
-
-    tags = {
-        environment = "${var.run_label}"
-    }
 }
 
 # Create network interface
@@ -91,10 +67,6 @@ resource "azurerm_network_interface" "publicnic" {
         subnet_id                     = azurerm_subnet.subnet.id
         private_ip_address_allocation = "Dynamic"
         public_ip_address_id          = element(azurerm_public_ip.publicip.*.id,count.index)
-    }
-
-    tags = {
-        environment = "${var.run_label}"
     }
 }
 

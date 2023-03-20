@@ -1,0 +1,28 @@
+---
+#
+# Save the metadata for future usage.
+#
+- name: Copy metadata to test system for later use
+  copy:
+    src: "meta_data.yml"
+    dest: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/meta_data.yml"
+    mode: 777
+  when:
+    - config_info.system_type != "local"
+    - config_info.system_type != "aws"
+
+- name: Copy metadata to test system for later use, aws
+  block:
+  - name: single system meta data
+    copy:
+      src: "meta_data_0.yml"
+      dest: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/meta_data_0.yml"
+      mode: 777
+  - name: second system meta data
+    copy:
+      src: "meta_data_1.yml"
+      dest: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/meta_data_1.yml"
+      mode: 777
+    when: config_info.cloud_numb_networks != 0
+  when:
+    - config_info.system_type == "aws"

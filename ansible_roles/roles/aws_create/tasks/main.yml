@@ -13,6 +13,12 @@
     dest: "{{ working_dir }}/tf/"
   loop:
     - vars.tf
+ 
+#
+# Append tags to end of file
+#
+- name: copy general tf files
+  shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf//vars.tf"
 
 #
 # Copy base file
@@ -22,9 +28,13 @@
     src: "tf/main.tf"
     dest: "{{ working_dir }}/tf/main.tf"
 
+- name: Add tag info in.
+  shell: "cat {{ working_dir }}/add_main_vars.tf >> {{ working_dir }}/tf/main.tf"
+
 - name: add in vars for networks
   include_role:
     name:  add_networks
+
 
 #
 # For placement groups
@@ -274,3 +284,35 @@
       msg: "{{ working_dir }}/aws_set_term_flags {{ dyn_data.aws_instance_id }} \"{{ aws_vol_info.stdout_lines }}\""
   - name: Set volume termination flag
     shell: "{{ working_dir }}/aws_set_term_flags {{ dyn_data.aws_instance_id }} \"{{ aws_vol_info.stdout_lines }}\""
+
+- name: read in aws tf values
+  include_vars:
+    file: "{{ working_dir }}/tf_results"
+    name: aws_tf_info
+
+#
+# Retrieve the metadata for the instances created.  Note when we do more then
+# two systems a loop will have to be used.
+#
+- ec2_instance_info:
+    instance_ids:
+      - "{{ aws_tf_info.aws_instance_id0 }}"
+  register: ec2_metadata
+
+- local_action:
+    module: copy
+    content: "{{ ec2_metadata | to_nice_yaml( width=50, explicit_start=True, explicit_end=True) }}"
+    dest: "{{ working_dir }}/meta_data_0.yml"
+
+- name: meta data for second system
+  block:
+  - ec2_instance_info:
+      instance_ids:
+        - "{{ aws_tf_info.aws_instance_id1 }}"
+    register: ec2_metadata
+
+  - local_action:
+      module: copy
+      content: "{{ ec2_metadata | to_nice_yaml( width=50, explicit_start=True, explicit_end=True) }}"
+      dest: "{{ working_dir }}/meta_data_1.yml"
+  when: config_info.cloud_numb_networks != 0

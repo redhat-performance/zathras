@@ -6,10 +6,6 @@ resource "azurerm_managed_disk" "datadisk" {
   storage_account_type = var.disk_type
   create_option        = "Empty"
   disk_size_gb         = var.disk_size
-
-  tags = {
-    environment = "Zathras"
-  }
 }
 
 resource "azurerm_virtual_machine_data_disk_attachment" "datadisk" {
