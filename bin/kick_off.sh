@@ -89,7 +89,7 @@ spot_recover=1
 create_attempts=5
 remove_dirs=0
 ssh_key_file=""
-while getopts "a:c:d:f:s:r:S:t:" o; do
+while getopts "a:c:d:f:s:rS:t:" o; do
         case "${o}" in
 		a)
 			create_attempts=${OPTARG}
