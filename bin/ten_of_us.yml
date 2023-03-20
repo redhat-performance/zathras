@@ -120,6 +120,7 @@
     when: config_info.init_system == "yes"
 
 #
+# Move meta data to its own role
 # Pull metada for azure
 #
 #
@@ -128,43 +129,17 @@
   become_user: root
   become: true
   vars_files: ansible_vars.yml
-
   gather_facts: no
   tasks:
-  - name: Retrieve the azure meta data
-    block:
-    - name: Grab the metada
-      shell: curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq > /tmp/meta_data.yml
-      register: azure_meta_data
-    - name: retrieve the azure metadata
-      fetch:
-        src: "/tmp/meta_data.yml"
-        dest: "{{ working_dir }}/meta_data.yml"
-        flat: yes
-    when:
-      - config_info.system_type == "azure"
-      -
-  - name: Retrieve the gcp meta data
-    block:
-    - name: Install jq
-      shell: yum -y install jq
-    - name: Grab the metadata
-      shell: curl -H Authorization:Bearer $(gcloud auth print-identity-token) -H Metadata-Flavor:Google 'http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true' | jq > /tmp/meta_data.yml
-      register: gcp_meta_data
-    - name: retrieve the gcp metadata
-      fetch:
-        src: "/tmp/meta_data.yml"
-        dest: "{{ working_dir }}/meta_data.yml"
-        flat: yes
-    when:
-      - config_info.system_type == "gcp"
+  - name: pull meta data
+    include_role:
+      name: retrieve_meta_data
 
 #
 # update the system if required.
 #
 - hosts: local
   vars_files: ansible_vars.yml
-
   gather_facts: no
   tasks:
   - set_fact:
@@ -188,20 +163,17 @@
   - name: figure out home dir
     set_fact:
       cd_homedir: "{{ ansible_env.HOME }}"
+
 #
-# Upload the metadata
+# Upload the metadata for saving with pbench data
 #
 - hosts: install_group
   gather_facts: yes
   vars_files: ansible_vars.yml
   tasks:
-  - name: Copy metadata to test system for later use
-    copy:
-      src: "meta_data.yml"
-      dest: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/meta_data.yml"
-      mode: 777
-    when: config_info.system_type != "local"
- 
+  - name: upload meta data for various usage.
+    include_role:
+      name: upload_meta_data
 
 #
 # install tools

@@ -40,26 +40,6 @@ variable "user" {
   default = "none"
 }
 
-variable "owner" {
-  type = string
-  default = "none"
-}
-
-variable "manager" {
-  type = string
-  default = "none"
-}
-
-variable "project" {
-  type = string
-  default = "none"
-}
-
-variable "environment" {
-  type = string
-  default = "none"
-}
-
 variable "ssh_key_path" {
   type    = string
   default = "none"

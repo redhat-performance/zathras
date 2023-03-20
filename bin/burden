@@ -1242,6 +1242,81 @@ disk_check()
 }
 
 #
+# We use the tags.conf file to generate the various desired tags.  If the
+# file is not present, we will use a set of defaults.
+#
+generate_tags()
+{
+	if [[ -f ${gl_test_def_dir}/tags.conf ]]; then
+		#
+		# First generate the set of information
+		#
+		cat ${gl_test_def_dir}/tags.conf  | sed "s/Your name/${1}/g" | sed "s/PROJECT/${gl_run_prefix}_${gl_os_vendor}/g" >> tags_defaults
+	else
+		#
+		# Default tags.
+		#
+		echo "  Jirald: ${1}" >> tags_defaults
+  		echo "  User: ${1}" >> tags_defaults
+  		echo "  Owner: ${1}" >> tags_defaults
+  		echo "  Manager: Unknown" >> tags_defaults
+  		echo "  Project: Testing" >> tags_defaults
+  		echo "  Environment: Test" >> tags_defaults
+  		echo "  Jirald: ${1}" >> tags_defaults
+	fi
+	#
+	# Ok now add the variable information into the various files
+	# This sets them up to be set  when the system is created or
+	# shortly after it is created via terraform.  The various
+	# cloud subsections will update the required files.
+	#
+	cat tags_defaults >> ansible_vars_main.yml
+	if [[ $gl_system_type == "aws" ]]; then
+		echo "provider \"${gl_system_type}\" {" >> add_main_vars.tf
+  		echo "  profile = \"default\"" >> add_main_vars.tf
+  		echo "  region  = var.region" >> add_main_vars.tf
+  		echo "  default_tags {" >> add_main_vars.tf
+		echo "    tags = {" >> add_main_vars.tf
+		indent="      "
+	fi
+	if [[ $gl_system_type == "azure" ]]; then
+		echo "resource \"azurerm_resource_group\" \"resource_group\" {" >> add_main_vars.tf
+    		echo "    name     = var.resource_group"  >> add_main_vars.tf
+		echo "    location = var.location" >> add_main_vars.tf
+		echo "    tags = {" >> add_main_vars.tf
+		indent="        "
+	fi
+
+	#
+	# Generic addition of information.
+	#
+	while IFS= read -r line
+	do
+		value=`echo $line  | cut -d':' -f 1 | sed "s/ //g"`
+		echo "variable \"${value}\" {" >> add_vars_tf
+  		echo "  type = string" >> add_vars_tf
+  		echo "  default = \"none\"" >> add_vars_tf
+		echo "}" >> add_vars_tf
+		echo "${value} = \"{{ config_info.${value} }}\"" >> add_main_tf_vars
+		echo "${indent}${value} = \"\${var.${value}}\"" >> add_main_vars.tf
+	done < "tags_defaults"
+	#
+	# Done, now end it.
+	#
+	if [[ $gl_system_type == "aws" ]]; then
+		echo "    }" >> add_main_vars.tf
+		echo "  }" >> add_main_vars.tf
+	fi
+	if [[ $gl_system_type == "azure" ]]; then
+		echo "    }" >> add_main_vars.tf
+		echo "    timeouts {" >> add_main_vars.tf
+		echo "        delete = \"15m\"" >> add_main_vars.tf
+		echo "    }" >> add_main_vars.tf
+	fi
+	echo "}" >> add_main_vars.tf
+}
+
+#
 #  Using all the options entered, create the working directory for the configuration and it's
 #  associated files.
 #
@@ -1577,15 +1652,8 @@ create_ansible_options()
 		echo "  cloud_numb_network_type: ${gl_cloud_net_type}" >> ansible_vars_main.yml
 		echo "  test_iterations: ${gl_test_iterations}" >> ansible_vars_main.yml
 		echo "  user_running: ${user_name}" >> ansible_vars_main.yml
-		if [[ -f ${gl_test_def_dir}/tags.conf ]]; then
-			cat ${gl_test_def_dir}/tags.conf >> ansible_vars_main.yml
-		else
-			echo "  full_name: ${user_name}" >> ansible_vars_main.yml
-			echo "  manager: not set" >> ansible_vars_main.yml
-			echo "  project: not set" >> ansible_vars_main.yml
-			echo "  env: not set" >> ansible_vars_main.yml
-		fi
 		set_user_name $user_name
+		generate_tags $user_name
 		#
 		# Installation options
 		#
@@ -1616,9 +1684,11 @@ create_ansible_options()
 		#
 		# Start the test in the background, record the pid and bump the index.
 		#
+		echo gl_no_clean_up $gl_no_clean_up > /tmp/dave
 		if [[ $gl_no_clean_up -eq 0 ]]; then
+			echo here >> /tmp/dave
 			rm_dirs="-r"
-		else
+		else 
 			rm_dirs=""
 		fi
 		#
