@@ -8,12 +8,9 @@
     src: "../templates/tfvars.j2"
     dest: "{{ working_dir }}/tfvars.j2"
 
-- name: Add tag vars info in.
-  shell: "cat {{ working_dir }}/add_main_tf_vars >> {{ working_dir }}/tfvars.j2"
-
 - name: Substitute terraform vars
   template:
-    src: "{{ working_dir }}/tfvars.j2"
+    src: templates/tfvars.j2
     dest: "{{working_dir}}/tf/env.tfvars"
 
 - name: Replace disk settings
@@ -30,6 +27,13 @@
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 3"
     register: disk_size
 
+  - name: obtain iops
+    shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 5| sed \"s/'//g\" | cut -d']' -f 1"
+    register: disk_iops
+
+  - name: obtain tp
+    shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 6| sed \"s/'//g\" | cut -d']' -f 1"
+    register: disk_tp
 
   - name: Update tfvars
     blockinfile:
