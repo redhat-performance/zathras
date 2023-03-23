@@ -3,8 +3,6 @@ resource "aws_ebs_volume" "disk_volume_REPLACE_INDEX" {
   availability_zone = REPLACE_INST.ec2[REPLACE_INDEX].availability_zone
   size              = var.disk_size
   type              = var.disk_type
-  iops              = var.disk_iops
-  throughput        = var.disk_tp
   tags = {
     Name = var.run_label
   }

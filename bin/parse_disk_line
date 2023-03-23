@@ -16,6 +16,8 @@
 dfield=""
 disk_size=100
 disk_type=gp2
+disk_iops="none"
+disk_tp="none"
 number_disks=0
 set_disk_field()
 {
@@ -28,6 +30,12 @@ set_disk_field()
 	fi
 	if [[ $dfield == *"size"* ]]; then
 		disk_size=$value
+	fi
+	if [[ $dfield == *"iops"* ]]; then
+		disk_iops=$value
+	fi
+	if [[ $dfield == *"througput"* ]]; then
+		disk_tp=$value
 	fi
 }
 
@@ -66,4 +74,4 @@ if [[ $ct_config == *"Disks"* ]]; then
 else
 	instance_type=$ct_config
 fi
-echo $instance_type:$disk_size:$disk_type:$number_disks
+echo $instance_type:$disk_size:$disk_type:$number_disks:$disk_iops:${disk_tp}
