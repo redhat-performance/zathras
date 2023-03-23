@@ -89,7 +89,6 @@
 - name: AWS bail if no public dns
   fail: msg="Did not get a dns name for the server system."
   when: aws_tf_info.public_dns_host0 == ""
-
 #
 # All though this could be a common item between the clouds we do it here
 # as we want to delete the wrong instance types as quickly as possible.
@@ -104,6 +103,7 @@
   - name: Remove wrong cpu type systems
     shell: "{{ working_dir }}/remove_wrong_cpus {{ working_dir }}"
   when: config_info.cpu_type_request != "none"
+
 #
 # When we go to allowing multiple systems, this will need to be a loop
 #

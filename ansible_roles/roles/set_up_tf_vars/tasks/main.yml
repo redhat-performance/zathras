@@ -30,6 +30,13 @@
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 3"
     register: disk_size
 
+  - name: obtain iops
+    shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 5| sed \"s/'//g\" | cut -d']' -f 1"
+    register: disk_iops
+
+  - name: obtain tp
+    shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 6| sed \"s/'//g\" | cut -d']' -f 1"
+    register: disk_tp
 
   - name: Update tfvars
     blockinfile:

@@ -64,11 +64,11 @@
 - name: copy non spot files
   block:
   - name: create the single system output file
-    shell: sed "s/REPLACE_ID/id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile.tf | sed "s/REPLACE/aws_instance/g" >> {{ working_dir }}/tf/output.tf
+    shell: sed "s/REPLACE_ID/id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile.tf | sed "s/REPLACE_INST/aws_instance/g" >> {{ working_dir }}/tf/output.tf
   - name: Append for network
-    shell: sed "s/REPLACE_ID/id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE/aws_instance/g" >> {{ working_dir }}/tf/output.tf
+    shell: sed "s/REPLACE_ID/id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE_INST/aws_instance/g" >> {{ working_dir }}/tf/output.tf
     when: config_info.cloud_numb_networks != 0
-  - name: Handle disks, no network
+  - name: Handle disks
     include_tasks: aws_disks.yml
     vars:
       instance_type: "aws_instance"
@@ -86,9 +86,9 @@
 - name: copy spot files
   block:
   - name: spot create the single system output file
-    shell: sed "s/REPLACE_ID/spot_instance_id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile.tf | sed "s/REPLACE/aws_spot_instance_request/g" >> {{ working_dir }}/tf/output.tf
+    shell: sed "s/REPLACE_ID/spot_instance_id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile.tf | sed "s/REPLACE_INST/aws_spot_instance_request/g" >> {{ working_dir }}/tf/output.tf
   - name: Append for network
-    shell: sed "s/REPLACE_ID/spot_instance_id"/g < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE/aws_spot_instance_request/g" >> {{ working_dir }}/tf/output.tf
+    shell: sed "s/REPLACE_ID/spot_instance_id"/g < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE_INST/aws_spot_instance_request/g" >> {{ working_dir }}/tf/output.tf
     when: config_info.cloud_numb_networks != 0
   - name: Handle disks, no network
     include_tasks: aws_disks.yml

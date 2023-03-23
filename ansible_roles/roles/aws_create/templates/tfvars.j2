@@ -25,5 +25,7 @@ pb_vol_size = 500
 
 avail_zone = "{{ config_info.cloud_region }}"
 # Check "cloud_numb_networks", default value is "1" for both vars
+{% if config_info.cloud_numb_networks >= 1 %}
 vm_count = 1
 network_count =  "{{ config_info.cloud_numb_networks }}"
+{% endif %}
