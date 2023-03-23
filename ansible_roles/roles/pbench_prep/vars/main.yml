@@ -17,16 +17,16 @@ coprdistro: "{{ 'epel-8-$basearch'
                 'unknown'
             }}"
 
-pbench_config_url: "{{ 'https://git.app.eng.bos.redhat.com/git/perf-dept.git/plain/bench/pbench/agent/production/config'
+pbench_config_url: "{{ 'REPLACE WITH APPRORPIATE URL'
                              if config_info.system_type == 'local'
                              else
-                'https://git.app.eng.bos.redhat.com/git/perf-dept.git/plain/bench/pbench/agent/ec2/config'
+                'REPLACE WITH APPRORPIATE URL'
             }}"
 
-pbench_key_url: "{{ 'https://git.app.eng.bos.redhat.com/git/perf-dept.git/plain/bench/pbench/agent/production/ssh'
+pbench_key_url: "{{ 'REPLACE WITH APPRORPIATE URL'
                              if config_info.system_type == 'local'
                              else
-                'https://git.app.eng.bos.redhat.com/git/perf-dept.git/plain/bench/pbench/agent/ec2/ssh'
+                'REPLACE WITH APPRORPIATE URL'
             }}"
 
 baseurl: "https://copr-be.cloud.fedoraproject.org/results/ndokos/pbench/{{ coprdistro }}/"
