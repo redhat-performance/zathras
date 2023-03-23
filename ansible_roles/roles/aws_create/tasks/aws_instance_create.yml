@@ -91,6 +91,29 @@
   when: aws_tf_info.public_dns_host0 == ""
 
 #
+# Set tags for host0
+# 
+- name: Record host data
+  block:
+  - name: host 0 tag
+    ec2_tag:
+      resource: "{{  aws_tf_info.aws_instance_id0 }}"
+      region: "{{ config_info.cloud_delete_region }}"
+      state: present
+      tags:
+        Name: "{{ config_info.user_running }}_{{ config_info.run_label }}"
+        Env: "perf_test"
+  - name: host 1 tag
+    ec2_tag:
+      resource: "{{  aws_tf_info.aws_instance_id1 }}"
+      region: "{{ config_info.cloud_delete_region }}"
+      state: present
+      tags:
+        Name: "{{ config_info.user_running }}_{{ config_info.run_label }}"
+        Env: "perf_test"
+    when: config_info.cloud_numb_networks != 0
+  when: config_info.spot_range != 0
+#
 # All though this could be a common item between the clouds we do it here
 # as we want to delete the wrong instance types as quickly as possible.
 #
@@ -104,6 +127,7 @@
   - name: Remove wrong cpu type systems
     shell: "{{ working_dir }}/remove_wrong_cpus {{ working_dir }}"
   when: config_info.cpu_type_request != "none"
+
 #
 # When we go to allowing multiple systems, this will need to be a loop
 #

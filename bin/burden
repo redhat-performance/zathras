@@ -177,6 +177,8 @@ gl_max_systems=3
 gl_max_systems_set=0
 gl_test_version_check=0
 gl_update_test_versions=0
+gl_disk_iops=0
+gl_disk_tp=0
 gl_no_clean_up=0
 gl_cloud_number_disks=0
 gl_config_vars_file="config/zathras_scenario_vars_def"
@@ -927,10 +929,15 @@ reduce_options()
 	#
 	if [[ $option_string == *"Disk"* ]]; then
 		string=$ct_config":"$option_string
+		echo $string >> /tmp/dave
 		data=`parse_disk_line "${string}"`
 		gl_cloud_number_disks=`echo ${data} | cut -d: -f4 | bc`
 		gl_cloud_disk_type=`echo ${data} | cut -d: -f3`
 		cloud_disk_size=`echo ${data} | cut -d: -f2 | bc`
+		cloud_disk_iops=`echo ${data} | cut -d: -f5`
+		cloud_disk_tp=`echo ${data} | cut -d: -f6`
+		echo $cloud_disk_iops >> /tmp/dave
+		echo $cloud_disk_tp >> /tmp/dave
 		if [[ $cloud_disk_size -eq 0 ]]; then
 			cleanup_and_exit "Error: invalid disk size designated ${data}" 1
 		fi
@@ -939,7 +946,8 @@ reduce_options()
 		else
 			gl_disks_asking_for=${gl_disks_asking_for}","
 		fi
-		gl_disks_asking_for=${gl_disks_asking_for}${gl_cloud_number_disks}:${gl_cloud_disk_type}:${cloud_disk_size}:${gl_disk_cloud_index}
+		gl_disks_asking_for=${gl_disks_asking_for}${gl_cloud_number_disks}:${gl_cloud_disk_type}:${cloud_disk_size}:${gl_disk_cloud_index}:${cloud_disk_iops}:${cloud_disk_tp}
+		echo gl_disks_asking_for $gl_disks_asking_for >> /tmp/dave
 		let "gl_disk_cloud_index=${gl_disk_cloud_index}+1"
 		#
 		# indication if we are using nvme storage.  AWS is always nvme.
@@ -948,6 +956,12 @@ reduce_options()
 			gl_host_uses_nvme=1
 		else
 			gl_host_uses_nvme=0
+		fi
+		if [[ $cloud_disk_iops != "none" ]]; then
+			gl_disk_iops=1
+		fi
+		if [[ $cloud_disk_tp != "none" ]]; then
+			gl_disk_tp=1
 		fi
 		found=1
 	fi
@@ -1649,6 +1663,8 @@ create_ansible_options()
 			echo "  cloud_disks: ${gl_disks_asking_for}" >> ansible_vars_main.yml
 		fi
 		gl_disk_cloud_index=0
+		echo "  disk_iops: ${gl_disk_iops}" >> ansible_vars_main.yml
+		echo "  disk_tp: ${gl_disk_tp}" >> ansible_vars_main.yml
 		echo "  host_uses_nvme: ${gl_host_uses_nvme}" >> ansible_vars_main.yml
 		echo "  cloud_numb_networks: ${gl_networks_present}" >> ansible_vars_main.yml
 		if [[ ${gl_cloud_networks_sys} == *"number=1"* ]]; then
@@ -1691,9 +1707,7 @@ create_ansible_options()
 		#
 		# Start the test in the background, record the pid and bump the index.
 		#
-		echo gl_no_clean_up $gl_no_clean_up > /tmp/dave
 		if [[ $gl_no_clean_up -eq 0 ]]; then
-			echo here >> /tmp/dave
 			rm_dirs="-r"
 		else 
 			rm_dirs=""

@@ -125,6 +125,14 @@ variable "disk_size" {
   default = 0
 }
 
+variable "disk_iops" {
+  default = 0
+}
+
+variable "disk_tp" {
+  default = 0
+}
+
 variable "avail_zone" {
   default = "none"
 }
