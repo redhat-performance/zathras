@@ -295,7 +295,7 @@ show_aws_images()
 	elif [[ $gl_os_vendor == "rhel" ]]; then
 		filter="Name=name,Values=RHEL*"
 	elif [[ $gl_os_vendor == "amazon"  ]]; then
-		filter="Name=name,Values=amz*"
+		filter="Name=name,Values=amz*,al2023*"
 	else
 		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, amazon" 1 ${gl_system_type}
 	fi
