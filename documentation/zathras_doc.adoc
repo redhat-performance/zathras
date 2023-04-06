@@ -137,6 +137,7 @@ General options
     perform the initial setup work
   --create_attempts: number of times we attempt to create an instance to get the
     desginated cpu type
+  --gate_pid: <pid>  If non zero value, the pid of the process we are to wait for completion of.
   --git_timeout: Number of seconds to timeout on git requests.  Default is 60
   --system_type &lt;vendor&gt; aws, azure, gcp or local
   --host_config &lt;config options&gt; Specification of the system and configuration
@@ -194,11 +195,13 @@ General options
            m5.xlarge,m5.4xlarge
          Example 2: Designate m5.24xlarge, 8 gp2 disks of 1200 Gig
            m5.24xlarge:Disks;number=8;size=1200;type=gp2
-         Example 3: Designate m5.24xlarge with 4 networks
+         Example 3: Designate m5.24xlarge, 8 gp3 disks of 1200 Gig, iops of 3000, throughput 3000Gb
+           m5.24xlarge:Disks;number=8;size=1200;type=gp3;iops=3000;throughput=3000
+         Example 4: Designate m5.24xlarge with 4 networks
            m5.24xlarge:Networks;number=4
-         Example 4: Designate m5.24xlarge with sys tunings udp_fix and none
+         Example 5: Designate m5.24xlarge with sys tunings udp_fix and none
            m5.24xlarge:Sysctl_settings=none+udp_fix
-         Example 5: Designate m5.xlarge to be created in us-east-1 and zone b
+         Example 6: Designate m5.xlarge to be created in us-east-1 and zone b
            "m5.xlarge[region=us-east-1&amp;zone=b]"
   --ignore_repo_errors: If present we will ignore repo errors, default is to abort the run
     when a repo error occurs.
@@ -227,6 +230,7 @@ General options
   --ssh_key_file: Designates the ssh key file we are to use.
   --show_os_versions: given the cloud type, and OS vendor, show the available os versions
   --show_tests:  list the available test as defined in config/test_defs.yml
+  --sync_up: <0/1>.  Syncs up the start of the testing on multiple systems.  0=no, 1=yes
   --test_def_file &lt;file&gt;: test definition file to use.
   --test_def_dir &lt;dir&gt;: test definition directory.  Default is &lt;execution dir&gt;/config.  If
      https: or git: is at the start of the location, then we will pull from a git repo.

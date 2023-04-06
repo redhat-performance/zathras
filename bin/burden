@@ -84,6 +84,8 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   cloud_region: region to create the instance in.
 #   gl_cloud_region_zone: zone to create the instance in.
 #
+gl_gate_pid=0
+gl_sync_up=0
 value_not_set="none"
 gl_kit_upload_directory="none"
 gl_base_cost=0
@@ -1521,6 +1523,9 @@ create_ansible_options()
 		echo "  "host_config_info: $export_host_config_info >> ansible_vars_main.yml
 		echo "  "host_or_cloud_inst: $host_or_cloud_inst >> ansible_vars_main.yml
 		echo "  "cpu_type_request: $gl_cpu_type_request >> ansible_vars_main.yml
+		echo "  "sync_up_sys: $gl_sync_up >> ansible_vars_main.yml
+		echo "  "gate_pid: $gl_gate_pid >> ansible_vars_main.yml
+
 		if [[ $gl_cloud_placement != "none" ]]; then
 			#
 			# Azure, only proximity setting at this time, so it can be whatever the user wants.
@@ -1736,6 +1741,7 @@ create_ansible_options()
 			done
 			popd > /dev/null
 		fi
+		#
 		if [[ "$gl_ssh_key_file" == "" ]]; then
 			kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs | tee ${run_dir}/ansible_log &
 		else
@@ -1743,7 +1749,10 @@ create_ansible_options()
 		fi
 		pids[${pindex}]=$!
 		let "pindex=$pindex+1"
-		if [[ $pindex -eq $gl_max_systems ]]; then
+		#
+		# If we are syncing the systems, there is no max systems.
+		#
+		if [[ $pindex -eq $gl_max_systems ]] && [ $gate_pid -eq 0 ]; then
 			for pid in ${pids[*]}; do
 				wait $pid
 			done
@@ -2389,6 +2398,7 @@ run_scenario()
 	# Now the individual systems.  Contents of system, will override anything in
 	# Global section
 	#
+
 	while IFS= read -r line
 	do
 		setting=`echo $line | sed "s/\"//g" | xargs echo -n`
@@ -2442,6 +2452,12 @@ run_scenario()
 				if [[ $arg_value == *"--host_config"* ]]; then 
 					argument=`echo $arg_value | cut -d' ' -f 2`
 					test_cli=$test_cli" --host_config \"${argument}\""
+				fi
+				if [[ $arg_value == *"--sync_up"* ]]; then 
+					argument=`echo $arg_value | cut -d' ' -f 2`
+					if [[ $argument != "0" ]]; then
+						gl_sync_up=1
+					fi
 				fi
 				if [[ $arg_value == *"update_target"* ]]; then
 					if [[ $update_target_uploaded -eq 0 ]]; then
@@ -2501,14 +2517,29 @@ run_scenario()
 				#
 				# Wait for all outstanding tests to finish before we do more.
 				#
+				if [ $gl_sync_up -eq 1 ]; then
+					#
+					# Give it a chance.
+					#
+					sleep 4
+					echo $pindex > ${gl_top_dir}/present
+				fi
 				for pid in ${pids[*]}; do
 					wait $pid
 				done
+				gl_gate_pid=0
 				pindex=0
 				pid=""
 			else
 				tmpfile=$(mktemp /tmp/zath_temp.XXXXXX)
-				echo "#!/bin/bash" > $tmpfile
+				if [ $gl_sync_up -eq 1 ]; then
+					if [ $gl_gate_pid -eq 0 ]; then
+						$gl_top_dir/bin/wait_for &
+						gl_gate_pid=$!
+						test_cli="${test_cli} --gate_pid $gl_gate_pid"
+					fi
+					echo "./burden $test_cli --run_file run_burden_${pindex} --gate_pid $gl_gate_pid" > $tmpfile
+				fi
 				echo ./burden $test_cli --run_file run_burden_${pindex}  > $tmpfile
 				#
 				# Remove duplicate entries.
@@ -2544,6 +2575,11 @@ run_scenario()
 	# Wait for everyone to finish up.
 	#
 	for pid in ${pids[*]}; do
+		#
+		# Give it a chance.
+		#
+		sleep 4
+		echo $pindex > ${gl_top_dir}/present
 		wait $pid
 	done
 	if [[ $gl_update_target != $value_not_set ]]; then
@@ -3004,6 +3040,7 @@ usage()
 	echo "    perform the initial setup work"
 	echo "	--create_attempts: number of times we attempt to create an instance to get the"
 	echo "    designated cpu type"
+	echo "  --gate_pid: <pid>  If non zero value, the pid of the process we are to wait for completion of."
 	echo "  --git_timeout: Number of seconds to timeout on git requests.  Default is 60"
 	echo "  --system_type <vendor>: aws, azure, gcp, or local"
 	echo "  --host_config <config options>: Specification of the system and configuration"
@@ -3064,6 +3101,8 @@ usage()
 		echo "           m5.xlarge,m5.4xlarge"
 		echo "         Example 2: Designate m5.24xlarge, 8 gp2 disks of 1200 Gig"
 		echo "           m5.24xlarge:Disks;number=8;size=1200;type=gp2"
+		echo "         Example 3: Designate m5.24xlarge, 8 gp3 disks of 1200 Gig, iops of 3000, throughput of 3000Gb"
+		echo "           m5.24xlarge:Disks;number=8;size=1200;type=gp2;iops=3000;throughput=3000"
 		echo "         Example 3: Designate m5.24xlarge with sys tunings udp_fix and none"
 		echo "           m5.24xlarge:Sysctl_settings=none+udp_fix"
 		echo "         Example 4: Designate m5.xlarge to be created in us-east-1 and zone b"
@@ -3098,6 +3137,7 @@ usage()
 	echo "  --ssh_key_file: Designates the ssh key file we are to use."
 	echo "  --show_os_versions: given the cloud type, and OS vendor, show the available os versions"
 	echo "  --show_tests:  list the available test as defined in config/test_defs.yml"
+	echo "  --sync_up: <0/1>.  Syncs up the start of the testing on multiple systems.  0=no, 1=yes"
 	echo "  --test_def_file <file>: test definition file to use."
 	echo "  --test_def_dir <dir>: test definition directory.  Default is <execution dir>/config.  If"
 	echo "     https: or git: is at the start of the location, then we will pull from a git repo."
@@ -3214,6 +3254,11 @@ set_general_value()
 				gl_cloud_force_upload=1
 			fi
 			shift_by=1
+		;;
+		--gate_pid)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_gate_pid=$2
+			shift_by=2
 		;;
 		--git_timeout)
 			if [[ $gl_git_timeout_set -eq 0 ]]; then
@@ -3362,6 +3407,11 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--sync_up)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_sync_up=$2
+			shift_by=2
+		;;
 		--system_type)
 			if [[ $gl_system_type == "" ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -3503,6 +3553,7 @@ grab_cli_data()
 		"cloud_os_id"
 		"create_attempts"
 		"dir_index"
+		"gate_pid"
 		"git_timeout"
 		"host_config"
 		"individ_vars"
@@ -3516,6 +3567,7 @@ grab_cli_data()
 		"run_file"
 		"scenario"
 		"ssh_key_file"
+		"sync_up"
 		"tuned_profiles"
 		"scenario_vars"
 		"selinux_state"

@@ -1,0 +1,21 @@
+#!/bin/bash
+number_procs=0
+rm present
+touch present
+index=0
+while [ $index = 0 ]; 
+do
+	sleep 1
+	index=`wc -l present | cut -d' ' -f 1`
+done
+#
+# Get number of lines to expect
+#
+index=`cat present | bc`
+rm present
+touch present
+while [[ $number_procs != $index ]]
+do
+	sleep 1
+	number_procs=`wc -l present | cut -d' ' -f 1`
+one
