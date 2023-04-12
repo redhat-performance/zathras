@@ -1549,7 +1549,7 @@ create_ansible_options()
 			if [[ $gl_spot_increment != "0" ]]; then
 				increment_by=`echo ${gl_spot_increment}*100 | bc | cut -d'.' -f1`
 			else
-				increment_by=$gl_spot_cap
+				increment_by=$cap
 			fi
 
 			spot_cur_price=`echo "${spot_start}+${increment_by}" | bc | cut -d'.' -f1`
@@ -1559,7 +1559,7 @@ create_ansible_options()
 				let "spot_cur_price=$spot_cur_price+$increment_by"
 				spot_separ=','
 			done
-			spot_pricing="${spot_pricing},${gl_spot_cap}]"
+			spot_pricing="${spot_pricing}${spot_separ}${gl_spot_cap}]"
 		else
 			spot_start=0
 		fi
