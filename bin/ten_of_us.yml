@@ -925,6 +925,14 @@
       - config_info.cloud_terminate_instance == 0
       - config_info.cloud_execute_tests == 0
 
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: sync up tests if need be
+    include_role:
+      name: sync_tests
+  
 #
 #
 #

@@ -1,0 +1,14 @@
+---
+
+- name: Wait for sync process to end
+  block:
+  - name: indicate we are ready
+    shell: "flock -x {{ config_info.local_run_dir }}/present echo ready >> {{ config_info.local_run_dir }}/present"
+  - name: wait for the gun
+    wait_for:
+      path: /proc/{{ config_info.gate_pid }}/status
+      state: absent
+      timeout: 3600
+  when:
+    - config_info.gate_pid != 0
+
