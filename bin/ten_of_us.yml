@@ -882,6 +882,12 @@
       loop: "{{ config_info.test_to_run }}"
       loop_control:
         loop_var: test_item
+    - name: Terminate on retrieve_test error
+      include_role:
+        name: terminate_on_error
+      vars:
+        status_file: "copy_git_file_status"
+        exit_msg: "Failed to load test repo"
       when: config_info.cloud_execute_tests == 1
 
 #

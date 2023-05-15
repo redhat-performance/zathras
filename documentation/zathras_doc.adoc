@@ -216,6 +216,7 @@ General options
   --package_name &lt;name&gt;: Use this set of packages to override the default in the test config
     file instead of the default. Default format  package name &lt;os&gt;_pkg, new name &lt;os&gt;_pkg_&lt;ver&gt;.
   --persistent_log: enable persistent logging
+  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits
   --results_prefix &lt;prefix&gt;: Run directory prefix
   --scenario &lt;scenario definition file&gt;: Reads in a scenario and then runs it
     (if used, host configs are designated in the file).  If the scenario name starts with https: or git:
