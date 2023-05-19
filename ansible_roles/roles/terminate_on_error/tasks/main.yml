@@ -3,22 +3,14 @@
 #
 #
 #- name: Obtain install status
-#  shell: "grep -q failed {{ working_dir }}/{{ status_file }} > /dev/null"
-#  register: status
-#  ignore_errors: yes
 - name: Read status file
   shell: cat {{ working_dir }}/{{ status_file }} 2> /dev/null
   register: status
   ignore_errors: yes
   no_log: true
-  failed_when: "'IGNORE_IT' in status.stderr"
-
-- name: Read status file
-  shell: cat {{ working_dir }}/{{ status_file }} 2> /dev/null
-  register: status1
-  ignore_errors: yes
-  no_log: true
-  failed_when: "'fail' in status.stdout"
+  failed_when: >
+    ("'IGNORE_IT' in status.stderr") or
+    ("'fail' in status.stdout")
 
 - name: terminate
   block:
@@ -31,5 +23,5 @@
   - name: Aborting test
     fail:
       msg: "{{ exit_msg }}"
-  when: status.rc == 1 or status1.rc == 1
+  when: status.rc == 1
  

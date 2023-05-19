@@ -24,8 +24,6 @@
 #          the test.
 #
 
-
-
 # Burdens version number.
 version="3.2"
 export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/agent/roles:$ANSIBLE_ROLES_PATH
@@ -1270,6 +1268,9 @@ retrieve_spot_from_config()
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
 			fi
+			if [[ $worker == *":[]"* ]]; then
+				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
+			fi
 			#
 			# We will default to 5 intervals
 			# 
@@ -1790,6 +1791,8 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [ $gl_preflight -eq 0 ]; then
+			# DJV
+			#cleanup_and_exit "No execute" 1
 			if [[ "$gl_ssh_key_file" == "" ]]; then
 				kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs | tee ${run_dir}/ansible_log &
 			else
@@ -2566,7 +2569,7 @@ run_scenario()
 				pindex=0
 				pid=""
 			else
-				tmpfile=$(mktemp /tmp/zath_temp4.XXXXXX)
+				tmpfile=$(mktemp /tmp/zath_temp_test_cli.XXXXXX)
 				echo "#!/bin/bash" > $tmpfile
 				echo ./burden $test_cli --run_file run_burden_${pindex}  > $tmpfile
 				#
@@ -2624,7 +2627,7 @@ pull_git_repo()
 {
 	git_repo=${1}
 	git_version=$2
-	info_file=$(mktemp /tmp/zath_temp5.XXXXXX)
+	info_file=$(mktemp /tmp/zath_temp_git_info.XXXXXX)
 
 	#
 	# If the git_repo is not present we will get prompted for login information.
@@ -2677,7 +2680,7 @@ verify_test_configuration()
 {
 	config_file=$1
 	base_config=$2
-	verify_tmp_file=$(mktemp /tmp/zath_temp6.XXXXXX)
+	verify_tmp_file=$(mktemp /tmp/zath_temp_verify_test.XXXXXX)
 	bail_out=0
 	#
 	# First, make sure the test name is unique.  This protects
@@ -2854,7 +2857,7 @@ process_test_template_data()
 	temp_def=$2
 	expansion_required=$3
 	cfg_dir=$4
-	new_file=$(mktemp /tmp/zath_temp1.XXXXXX)
+	new_file=$(mktemp /tmp/zath_temp_template.XXXXXX)
 
 	if [[ $expansion_required -eq 1 ]]; then
 		temp=`grep "test_template:" $tmpfile | cut -d: -f 2 | sed "s/ //g"`
@@ -2934,8 +2937,8 @@ integrate_templates()
 {
 	first_line=0
 	working=0
-	tmpfile=$(mktemp /tmp/zath_temp2.XXXXXX)
-	temp_def=$(mktemp /tmp/zath_temp3.XXXXXX)
+	tmpfile=$(mktemp /tmp/zath_temp_test_template.XXXXXX)
+	temp_def=$(mktemp /tmp/zath_temp_full_template.XXXXXX)
 	expansion_required=0
 
 	if [[ ! -f "${gl_test_def_dir}/test_defs.yml" ]]; then

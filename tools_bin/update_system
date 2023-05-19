@@ -180,7 +180,7 @@ iso_retrieve_image()
 		rm dvd1.iso 2> /dev/null
 		wget $1 2> /dev/null
 		if [ $? -ne 0 ]; then
-			erorr_out "Unable to wget $1"
+			erorr_out "Not able to perform wget $1"
 		fi
 		mv $iso_name dvd1.iso
 		crb=$crb_parent_dir/CRB/
