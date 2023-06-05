@@ -28,16 +28,11 @@
 # install pbench tools
 #
   - name: install pbench tools
-    command: sudo -i /opt/pbench-agent/util-scripts/pbench-register-tool-set
-    ignore_errors: yes
-    register: pbench_register
-  - name: record pbench register status
     include_role:
-      name: record_status
-    vars:
-      results: "{{ pbench_register }}"
-      status_file: "/tmp/pbench_test_inst_status"
-
+      name: pbench_install_tools
+      apply:
+        delegate_to: "{{ traget_sys }}"
+        become: yes
 
   when:
     - config_info.pbench_install == 1
