@@ -1,18 +1,9 @@
 ---
 # tasks file for pbench_install_tools
 - name: Register PBench Tools
+  vars:
+    tool: "{{ item }}"
+  ansible.builtin.include_tasks: register.yml
   loop: "{{ tools }}"
-  block:
-    - name: Fetch options for {{ item['tool'] }}
-      ansible.builtin.set_fact:
-        tool_opt: "{{ options[item['tool']] }}"
-      when: item['tool'] in options
 
-    - name: Add interval option
-      ansible.builtin.set_fact:
-        tool_opt: --interval={{interval}} {{ tool_opt }}
-    
-    - name: Display tool options
-      ansible.builtin.debug:
-        var: tool_opt
-      
+

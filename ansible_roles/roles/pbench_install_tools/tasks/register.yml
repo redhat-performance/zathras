@@ -1,0 +1,13 @@
+---
+- name: Get options for {{ tool }}
+  ansible.builtin.set_fact:
+    pbench_tool_opt: {{ options[tool] }}
+  when: tool in options
+
+- name: Add interval option
+  ansible.builtin.set_fact:
+    pbench_tool_opt: --interval={{ interval }} {{ tool_opt }}
+
+- name: Display tool options
+  ansible.builtin.debug:
+    var: pbench_tool_opt
