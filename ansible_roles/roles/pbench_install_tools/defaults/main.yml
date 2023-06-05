@@ -1,0 +1,12 @@
+---
+# defaults file for pbench_install_tools
+interval: 10
+tools:
+  - tool: iostat
+  - tool: mpstat
+  - tool: perf
+  - tool: pidstat
+  - tool: proc-interrupts
+  - tool: proc-vmstat
+  - tool: sar
+  - tool: turbostat
