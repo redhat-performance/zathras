@@ -1,3 +1,0 @@
----
-options:
-  perf: --record-opts="'-a --freq 100'"

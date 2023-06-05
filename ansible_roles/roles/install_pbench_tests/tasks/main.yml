@@ -31,7 +31,6 @@
     include_role:
       name: pbench_install_tools
       apply:
-        delegate_to: "{{ target_sys }}"
         become: yes
 
   when:

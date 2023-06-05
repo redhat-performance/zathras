@@ -2,7 +2,7 @@
 # tasks file for pbench_install_tools
 - name: Register PBench Tools
   vars:
-    tool: "{{ item }}"
+    tool: "{{ item['tool'] }}"
   ansible.builtin.include_tasks: register.yml
   loop: "{{ tools }}"
 

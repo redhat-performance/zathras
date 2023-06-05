@@ -10,3 +10,6 @@ tools:
   - tool: proc-vmstat
   - tool: sar
   - tool: turbostat
+
+options:
+  perf: --record-opts="'-a --freq 100'"
