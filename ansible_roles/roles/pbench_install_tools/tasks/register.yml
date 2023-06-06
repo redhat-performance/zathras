@@ -1,13 +1,11 @@
+- name: Display options for {{ tool }}
+  ansible.builtin.debug:
+    msg: "{{ tool }}: {{ options[tool] | default('') }} --interval={{ interval }}"
+
 - name: Create file for {{ tool }} options at /tmp/{{ tool }}.options
   ansible.builtin.copy:
-    content: ""
+    content: "{{ options[tool] | default('') }} --interval={{ interval }}"
     dest: /tmp/{{ tool }}.options
-
-- name: Output options for {{ tool }} to /tmp/{{ tool }}.options
-  ansible.builtin.lineinfile:
-    line: "{{ options[tool] | default('') }} --interval={{ interval }}"
-    path: /tmp/{{ tool }}.options
-    state: present
 
 - name: Fetch options for {{ tool }} from /tmp/{{ tool }}.options
   ansible.builtin.slurp:
@@ -22,7 +20,3 @@
 - name: Register {{ tool }} in {{ group }} tool group
   ansible.builtin.command:
     cmd: pbench-register-tool --name={{ tool }} --group {{ group }} -- {{ options['content'] | b64decode }}
-
-- name: DEBUG Prompt to continue
-  pause:
-    prompt: Do you want to continue?
