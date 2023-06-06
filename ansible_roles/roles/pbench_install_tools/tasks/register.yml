@@ -16,4 +16,8 @@
 
 - name: Register {{ tool }} in {{ group }} tool group
   ansible.builtin.command:
-    cmd: pbench-register-tool --name={{ tool }} --group {{ group }} -- {{ options }}
+    cmd: pbench-register-tool --name={{ tool }} --group {{ group }} -- {{ options['content'] | b64decode }}
+
+- name: DEBUG Prompt to continue
+  pause:
+    prompt: Do you want to continue?
