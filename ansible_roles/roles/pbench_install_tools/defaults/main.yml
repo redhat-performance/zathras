@@ -13,3 +13,5 @@ tools:
 
 options:
   perf: --record-opts="'-a --freq 100'"
+
+group: zathras
