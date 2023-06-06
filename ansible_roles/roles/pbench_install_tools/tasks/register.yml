@@ -1,7 +1,7 @@
 - name: Create file for {{ tool }} options at /tmp/{{ tool }}.options
-  ansible.builtin.file:
-    path: /tmp/{{ tool }}.options
-    state: file
+  ansible.builtin.copy:
+    content: ""
+    dest: /tmp/{{ tool }}.options
 
 - name: Output options for {{ tool }} to /tmp/{{ tool }}.options
   ansible.builtin.lineinfile:
