@@ -1,10 +1,10 @@
 - name: Display options for {{ tool }}
   ansible.builtin.debug:
-    msg: "{{ tool }}: {{ options[tool] | default('') }} --interval={{ interval }}"
+    msg: "{{ tool }}: {{ tool_options[tool] | default('') }} --interval={{ interval }}"
 
 - name: Create file for {{ tool }} options at /tmp/{{ tool }}.options
   ansible.builtin.copy:
-    content: "{{ options[tool] | default('') }} --interval={{ interval }}"
+    content: "{{ tool_options[tool] | default('') }} --interval={{ interval }}"
     dest: /tmp/{{ tool }}.options
 
 - name: Fetch options for {{ tool }} from /tmp/{{ tool }}.options

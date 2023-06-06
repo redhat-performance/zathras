@@ -11,7 +11,7 @@ tools:
   - tool: sar
   - tool: turbostat
 
-options:
+tool_options:
   perf: --record-opts="'-a --freq 100'"
 
 group: zathras
