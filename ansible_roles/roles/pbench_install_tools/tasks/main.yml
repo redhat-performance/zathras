@@ -1,9 +1,20 @@
 ---
 # tasks file for pbench_install_tools
+- name: List existing tools in the tool group {{ group }}
+  ansible.builtin.find:
+    paths:
+      - /var/lib/pbench-agent/tools-v1-{{ group }}/{{ ansible_facts['hostname'] }}
+    depth: 1
+  register: installed_tools
+
+- name: Remove tools from the tool group {{ group }}
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ installed_tools['files'] }}"
+
 - name: Register PBench Tools
   vars:
     tool: "{{ item['tool'] }}"
   ansible.builtin.include_tasks: register.yml
   loop: "{{ tools }}"
-
-

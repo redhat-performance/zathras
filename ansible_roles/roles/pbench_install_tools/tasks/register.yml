@@ -1,7 +1,3 @@
-- name: Display options for {{ tool }}
-  ansible.builtin.debug:
-    msg: "{{ tool }}: {{ tool_options[tool] | default('') }} --interval={{ interval }}"
-
 - name: Create file for {{ tool }} options at /tmp/{{ tool }}.options
   ansible.builtin.copy:
     content: "{{ tool_options[tool] | default('') }} --interval={{ interval }}"
@@ -11,11 +7,6 @@
   ansible.builtin.slurp:
     src: /tmp/{{ tool }}.options
   register: options
-
-
-- name: Display {{ tool }} options
-  ansible.builtin.debug:
-    var: options['content'] | b64decode
 
 - name: Register {{ tool }} in {{ group }} tool group
   ansible.builtin.command:
