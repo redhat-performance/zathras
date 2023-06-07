@@ -11,7 +11,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
-  loop: "{{ installed_tools['files'] }}"
+  loop: "{{ installed_tools['files']['path'] }}"
 
 - name: Register PBench Tools
   vars:
