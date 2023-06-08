@@ -1,17 +1,24 @@
-- name: Create file for {{ tool_definition['tool'] }} options at /tmp/{{ tool_definition['tool'] }}.options
-  ansible.builtin.template:
-    src: sys_tool.opt.j2
-    dest: /tmp/{{ tool_definition['tool'] }}.options
+- name: Handle system tools
+  block:
+  - name: Create file for {{ tool_definition['tool'] }} options at /tmp/{{ tool_definition['tool'] }}.options
+    ansible.builtin.template:
+      src: sys_tool.opt.j2
+      dest: /tmp/{{ tool_definition['tool'] }}.options
 
-- name: Fetch options for {{ tool_definition['tool'] }} from /tmp/{{ tool_definition['tool'] }}.options
-  ansible.builtin.slurp:
-    src: /tmp/{{ tool_definition['tool'] }}.options
-  register: options
+  - name: Fetch options for {{ tool_definition['tool'] }} from /tmp/{{ tool_definition['tool'] }}.options
+    ansible.builtin.slurp:
+      src: /tmp/{{ tool_definition['tool'] }}.options
+    register: options
 
-- name: Display options for {{ tool_definition['tool'] }}
-  ansible.builtin.debug:
-    msg: "Options: {{ options['content'] | b64decode | replace('\n', ' ') }}"
+  - name: Display options for {{ tool_definition['tool'] }}
+    ansible.builtin.debug:
+      msg: "Options: {{ options['content'] | b64decode | replace('\n', ' ') }}"
 
-- name: Register {{ tool_definition['tool'] }} in {{ group }} tool group
-  ansible.builtin.command:
-    cmd: pbench-register-tool --name={{ tool_definition['tool'] }} --group {{ group }} -- {{ options['content'] | b64decode | replace('\n', ' ') }}
+  - name: Register {{ tool_definition['tool'] }} in {{ group }} tool group
+    ansible.builtin.command:
+      cmd: pbench-register-tool --name={{ tool_definition['tool'] }} --group {{ group }} -- {{ options['content'] | b64decode | replace('\n', ' ') }}
+  when: tool_definition['tool'] != 'user-tool'
+
+- name: Handle user tool
+  ansible.builtin.include_tasks: user_tool.yml
+  when: tool_definition['tool'] == 'user-tool'

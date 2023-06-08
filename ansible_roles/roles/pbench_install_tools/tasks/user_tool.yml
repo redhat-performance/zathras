@@ -1,0 +1,19 @@
+- name: Fail if a name is not provided
+  ansible.builtin.fail:
+    msg: A name is needed for a user-tool
+  when: tool_definition['name'] is undefined
+
+- name: Fail if path and git_url are not provided
+  ansible.builtin.fail:
+    msg: Need either git_url or path to be defined to copy {{ tool_definition['name'] }} onto remote host
+  when: tool_definition['git_url'] is undefined and tool_definition['path'] is undefined
+
+- name: Fail if both path and git_url are provided
+  ansible.builtin.fail:
+    msg: git_url and path are mutually exclusive options, please provide only one to {{ tool_definition['name'] }}
+  when: tool_definition['git_url'] is defined and tool_definition['path'] is defined
+
+- name: Fail if start script is not defined
+  ansible.builtin.fail:
+    msg: A start script is required to register {{ tool_definition['name'] }} (it should be relative to git repo root or the root of the specified directory)
+  when: tool_definition['scripts'] is undefined or tool_definition['scripts']['start'] is undefined
