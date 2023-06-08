@@ -1362,6 +1362,8 @@ generate_tags()
 	#
 	# Generic addition of information.
 	#
+	aws_tags=""
+	tag_separ=""
 	while IFS= read -r line
 	do
 		value=`echo $line  | cut -d':' -f 1 | sed "s/ //g"`
@@ -1371,7 +1373,19 @@ generate_tags()
 		echo "}" >> add_vars_tf
 		echo "${value} = \"{{ config_info.${value} }}\"" >> add_main_tf_vars
 		echo "${indent}${value} = \"\${var.${value}}\"" >> add_main_vars.tf
+		#
+		# Terraform spot does not set the tags, build a tag list (AWS only)
+		#
+		if [ $gl_use_spot -eq 1 ] && [[ $gl_system_type == "aws" ]]; then
+			tag_value=`echo $line  | cut -d':' -f 2 | sed "s/ //g"`
+			aws_tags="${aws_tags}${tag_separ}Key=${value},Value=${tag_value}"
+			tag_separ=" "
+		fi
 	done < "tags_defaults"
+	if [[ $aws_tags != "" ]]; then
+		aws_tags="${aws_tags}${tag_separ}Key=Name,Value=${1}_${gl_run_prefix}_${gl_os_vendor}"
+		echo $aws_tags >> aws_set_tags
+	fi
 	#
 	# Done, now end it.
 	#

@@ -611,16 +611,15 @@
 
   gather_facts: no
   tasks:
-  - name: reboot after network configs
+  - name: reboot after network configs (aws only)
     block:
-    - name: Reboot system to have new os take effect, wait for it to come back
+    - name: Reboot system so the private/nics can be seen.
       reboot:
         reboot_timeout: 1800
     - name: Wait for 60 seconds.
       command: sleep 60
     when:
       - config_info.system_type == "aws"
-      - config_info.system_type != "local"
       - config_info.cloud_numb_networks > 0
       - config_info.cloud_numb_network_type != "public"
       - config_info.init_system == "yes"
