@@ -17,3 +17,39 @@
   ansible.builtin.fail:
     msg: A start script is required to register {{ tool_definition['name'] }} (it should be relative to git repo root or the root of the specified directory)
   when: tool_definition['scripts'] is undefined or tool_definition['scripts']['start'] is undefined
+
+- name: Ensure Zathras tool directory exists
+  ansible.builtin.file:
+    path: "{{ user_tool_path }}"
+    state: directory
+
+- name: Clone git repository
+  ansible.builtin.git:
+    clone: true
+    repo: "{{ tool_definition['git_url'] }}"
+    dest: "{{ user_tool_path }}/{{ tool_definition['name'] }}"
+  when: tool_definition['git_url'] is defined
+
+- name: Copy local directory
+  ansible.builtin.copy:
+    src: "{{ tool_definition['path'] }}" #TODO figure out trailing slash problem (want a trailing slash)
+    dest: "{{ user_tool_path }}/{{ tool_definition['name'] }}"
+  when: tool_definition['path'] is defined
+
+- name: Ensure scripts are executable
+  ansible.builtin.file:
+    mode: 700
+    path: "{{ user_tool_path }}/{{ tool_definition['name'] }}/{{ user_tool_script['value'] }}"
+  loop: "{{ tool_definition['scripts'] | dict2items }}"
+  loop_control:
+    loop_var: user_tool_script
+
+- name: Build options for {{ tool_definition['name'] }}
+  ansible.builtin.template:
+    src: user_tool.opt.j2
+    dest: /tmp/{{ tool_definition['name'] }}.options
+
+- name: Fetch options for {{ tool_definition['name'] }}
+  ansible.builtin.slurp:
+    src: /tmp/{{ tool_definition['name'] }}.options
+  register: options

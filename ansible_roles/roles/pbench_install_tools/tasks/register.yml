@@ -9,16 +9,16 @@
     ansible.builtin.slurp:
       src: /tmp/{{ tool_definition['tool'] }}.options
     register: options
-
-  - name: Display options for {{ tool_definition['tool'] }}
-    ansible.builtin.debug:
-      msg: "Options: {{ options['content'] | b64decode | replace('\n', ' ') }}"
-
-  - name: Register {{ tool_definition['tool'] }} in {{ group }} tool group
-    ansible.builtin.command:
-      cmd: pbench-register-tool --name={{ tool_definition['tool'] }} --group {{ group }} -- {{ options['content'] | b64decode | replace('\n', ' ') }}
   when: tool_definition['tool'] != 'user-tool'
 
 - name: Handle user tool
   ansible.builtin.include_tasks: user_tool.yml
   when: tool_definition['tool'] == 'user-tool'
+
+- name: Display options for {{ tool_definition['name'] | default(tool_definition['tool']) }}
+  ansible.builtin.debug:
+    msg: "Options: {{ options['content'] | b64decode | replace('\n', ' ') }}"
+
+- name: Register {{ tool_definition['tool'] }} in {{ group }} tool group
+  ansible.builtin.command:
+    cmd: pbench-register-tool --name={{ tool_definition['tool'] }} --group {{ group }} -- {{ options['content'] | b64decode | replace('\n', ' ') }}

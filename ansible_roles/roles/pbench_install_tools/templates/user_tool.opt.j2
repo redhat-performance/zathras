@@ -1,0 +1,11 @@
+--tool-name={{ tool_definition['name'] }}
+--interval={{ interval }}
+--start_script={{ user_tool_path }}/{{ tool_definition['name'] }}/{{ tool_definition['scripts']['start'] }}
+
+{% if tool_definition['scripts']['stop'] is defined %}
+--stop-script={{ user_tool_path }}/{{ tool_definition['name'] }}/{{ tool_definition['scripts']['stop'] }}
+{% endif %}
+
+{% if tool_definition['scripts']['postprocess'] is defined %}
+--postprocess-script={{ user_tool_path }}/{{ tool_definition['name'] }}/{{ tool_definition['scripts']['postprocess'] }}
+{% endif %}
