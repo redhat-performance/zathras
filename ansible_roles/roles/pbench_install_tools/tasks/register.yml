@@ -1,13 +1,17 @@
-- name: Create file for {{ tool }} options at /tmp/{{ tool }}.options
-  ansible.builtin.copy:
-    content: "{{ tool_options[tool] | default('') }} --interval={{ interval }}"
-    dest: /tmp/{{ tool }}.options
+- name: Create file for {{ tool_definition['tool'] }} options at /tmp/{{ tool_definition['tool'] }}.options
+  ansible.builtin.template:
+    src: sys_tool.opt.j2
+    dest: /tmp/{{ tool_definition['tool'] }}.options
 
-- name: Fetch options for {{ tool }} from /tmp/{{ tool }}.options
+- name: Fetch options for {{ tool_definition['tool'] }} from /tmp/{{ tool_definition['tool'] }}.options
   ansible.builtin.slurp:
-    src: /tmp/{{ tool }}.options
+    src: /tmp/{{ tool_definition['tool'] }}.options
   register: options
 
-- name: Register {{ tool }} in {{ group }} tool group
+- name: Display options for {{ tool_definition['tool'] }}
+  ansible.builtin.debug:
+    msg: "Options: {{ options['content'] | b64decode | replace('\n', ' ') }}"
+
+- name: Register {{ tool_definition['tool'] }} in {{ group }} tool group
   ansible.builtin.command:
-    cmd: pbench-register-tool --name={{ tool }} --group {{ group }} -- {{ options['content'] | b64decode }}
+    cmd: pbench-register-tool --name={{ tool_definition['tool'] }} --group {{ group }} -- {{ options['content'] | b64decode | replace('\n', ' ') }}

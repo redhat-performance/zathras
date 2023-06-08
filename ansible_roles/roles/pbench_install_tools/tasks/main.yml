@@ -15,6 +15,6 @@
 
 - name: Register PBench Tools
   vars:
-    tool: "{{ item['tool'] }}"
+    tool_definition: "{{ item }}"
   ansible.builtin.include_tasks: register.yml
   loop: "{{ tools }}"
