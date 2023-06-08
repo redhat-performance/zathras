@@ -194,7 +194,7 @@ do
 		echo ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3" ten_of_us.yml
 		ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml
 		#
-		if [ $spot_recover -eq 1 ] &&[[ ! -f "test_returned" ]]; then
+		if [ $spot_recover -eq 1 ] && [[ ! -f "test_returned" ]] && [[ ! -f "cpu_type_failure" ]]; then
 			#
 			# Check to see if we used spot, and we are to recover if the system goes away.
 			#
