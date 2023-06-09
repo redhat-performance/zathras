@@ -1805,13 +1805,11 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [ $gl_preflight -eq 0 ]; then
-			# DJV
-			#cleanup_and_exit "No execute" 1
-			if [[ "$gl_ssh_key_file" == "" ]]; then
-				kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs | tee ${run_dir}/ansible_log &
-			else
-				kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs | tee ${run_dir}/ansible_log &
+			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs "
+			if [[ "$gl_ssh_key_file" != "" ]]; then
+				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
+			kick_off.sh $base_string | tee ${run_dir}/ansible_log &
 			pids[${pindex}]=$!
 			let "pindex=$pindex+1"
 			if [[ $pindex -eq $gl_max_systems ]]; then
