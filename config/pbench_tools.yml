@@ -1,0 +1,11 @@
+---
+interval: 10 # seconds
+tools:
+  - tool: iostat
+  - tool: mpstat
+  - tool: perf
+  - tool: pidstat
+  - tool: proc-interrupts
+  - tool: proc-vmstat
+  - tool: sar
+  - tool: turbostat

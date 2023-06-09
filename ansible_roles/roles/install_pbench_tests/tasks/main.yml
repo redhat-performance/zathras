@@ -27,6 +27,11 @@
 #
 # install pbench tools
 #
+  - name: fetch pbench tool vars
+    ansible.builtin.include_vars:
+      name: pbench_tools_to_install
+      file: pbench_tools.yml
+      
   - name: install pbench tools
     include_role:
       name: pbench_install_tools

@@ -1479,6 +1479,7 @@ create_ansible_options()
 		dir_list=$dir_list$run_dir" "
 		cp ${gl_test_def_dir}/test_defs.yml $run_dir
 		cp ${gl_test_def_dir}/full_test_defs.yml $run_dir
+		cp ${gl_test_def_dir}/pbench_tools.yml $run_dir
 		if [[ $gl_run_file != "" ]]; then
 			cp $gl_run_file $run_dir
 		fi
