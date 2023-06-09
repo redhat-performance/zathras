@@ -9,16 +9,16 @@
 
 - name: Remove tools from the tool group {{ group }}
   ansible.builtin.file:
-    path: "{{ pbench_tool['path'] }}"
+    path: "{{ previous_pbench_tool['path'] }}"
     state: absent
   loop: "{{ installed_tools['files'] }}"
   loop_control:
-    loop_var: pbench_tool
+    loop_var: previous_pbench_tool
 
 - name: Register PBench Tools
   vars:
-    tool_definition: "{{ pbench_tool }}"
+    tool_definition: "{{ pbench_tool_install_tool }}"
   ansible.builtin.include_tasks: register.yml
   loop: "{{ tools }}"
   loop_control:
-    loop_var: pbench_tool
+    loop_var: pbench_tool_install_tool
