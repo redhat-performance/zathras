@@ -33,7 +33,8 @@
       file: pbench_tools.yml
       
   - name: install pbench tools
-    vars: "{{ pbench_tools_to_install }}"
+    vars: 
+      tools: "{{ pbench_tools_to_install['tools'] }}"
     include_role:
       name: pbench_install_tools
       apply:

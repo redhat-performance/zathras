@@ -14,6 +14,6 @@ tools:
 tool_options:
   perf: --record-opts="'-a --freq 100'"
 
-group: zathras
+group: default
 
 user_tool_path: /root/zathras_tools
