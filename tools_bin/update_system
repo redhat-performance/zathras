@@ -180,8 +180,7 @@ iso_retrieve_image()
 		rm dvd1.iso 2> /dev/null
 		wget $1 2> /dev/null
 		if [ $? -ne 0 ]; then
-			echo Unable to wget $1
-			exit 1
+			error_out "Not able to perform wget $1"
 		fi
 		mv $iso_name dvd1.iso
 		crb=$crb_parent_dir/CRB/
@@ -190,8 +189,7 @@ iso_retrieve_image()
 		cd CRB
 		wget -r -nH --cut-dirs=6 -np -R "index.html*" $crb 2> /dev/null
 		if [ $? -ne 0 ]; then
-			echo unable to wget $crb
-			exit 1
+			error_out "unable to wget $crb"
 		fi
 		cd ..
 		tar cf CRB.tar CRB
@@ -206,14 +204,41 @@ iso_cleanup_call()
 iso_update_the_system()
 {
 	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/update_system $user@$target_system:/tmp/update_system
+	if [ $? -ne 0 ]; then
+		error_out "iso_update_the_system: failed to upload $local_dir/tools_bin/update_system"
+	fi
 	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/grab_disks $user@$target_system:/tmp/grab_disks
+	if [ $? -ne 0 ]; then
+		error_out "iso_update_the_system: failed to upload $local_dir/tools_bin/grab_disks"
+	fi
 	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/update_system
+	if [ $? -ne 0 ]; then
+		error_out "iso_update_the_system:: failed to chmod 755 /tmp/update_system"
+	fi
 	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/grab_disks
+	if [ $? -ne 0 ]; then
+		error_out "iso_update_the_system: faled to chmod 755 /tmp/grab_disks"
+	fi
 	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --prepare_update --update_type $update_type
+	if [ $? -ne 0 ]; then
+		error_out "iso_update_the_system: failed to sudo /tmp/update_system --prepare_update --update_type $update_type"
+	fi
 	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/dvd1.iso $user@$target_system:/iso_update/dvd1.iso
+	if [ $? -ne 0 ]; then
+		error_out "iso_update_the_system: failed to upload $local_dir/dvd1.iso"
+	fi
 	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/CRB.tar $user@$target_system:/iso_update/CRB.tar
+	if [ $? -ne 0 ]; then
+		error_out "iso_update_the_system: failed to upload $local_dir/CRB.tar"
+	fi
 	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/update_repo.file $user@$target_system:/tmp/update_repo.file
+	if [ $? -ne 0 ]; then
+		error_out "iso_update_the_system: failed to upload $local_dir/tools_bin/update_repo.file"
+	fi
 	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --do_the_update --update_type iso
+	if [ $? -ne 0 ]; then
+		error_out "iso_update_the_system: failed to sudo /tmp/update_system --do_the_update --update_type iso"
+	fi
 }
 
 update_via_ftp()
@@ -346,8 +371,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z $update_type ]]; then
-	echo Do not know what update type we are doing.
-	exit 1
+	error_exit "Do not know what update type we are doing."
 fi
 
 if [ $do_the_update -eq 1 ]; then
