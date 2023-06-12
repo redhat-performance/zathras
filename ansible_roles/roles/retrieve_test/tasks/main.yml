@@ -21,23 +21,22 @@
   ignore_errors: yes
   register: get_test
   no_log: true
-  failed_when: "'IGNORE_IT' in get_test.stderr"
+  failed_when: "'ERROR' in get_test.stderr"
 
-- name: Record status of yum config sucess
+- name: Record status of copy git file config success
   include_role:
     name: record_status
   vars:
     results: "{{ get_test }}"
     status_file: "{{ working_dir }}/copy_git_file_status"
- 
-- name: local test run
-  shell: "unzip tests_to_use/*zip"
-  when: config_info.test_exec_location == "local"
 
 - name: Terminate on repo failure
   include_role:
     name: terminate_on_error
   vars:
     status_file: "copy_git_file_status"
-    exit_msg: "Failed to load {{ test_data.location }}/{{ test_data.repo_file }}"
-
+    exit_msg: "Failed to load the test repo, {{ working_dir }}/copy_git_file_status {{ test_data.location }}/{{ test_data.repo_file }}, check the version."
+ 
+- name: local test run
+  shell: "unzip tests_to_use/*zip"
+  when: config_info.test_exec_location == "local"

@@ -3,15 +3,14 @@
 #
 #
 #- name: Obtain install status
-#  shell: "grep -q failed {{ working_dir }}/{{ status_file }} > /dev/null"
-#  register: status
-#  ignore_errors: yes
 - name: Read status file
   shell: cat {{ working_dir }}/{{ status_file }} 2> /dev/null
   register: status
   ignore_errors: yes
   no_log: true
-  failed_when: "'IGNORE_IT' in status.stderr"
+  failed_when: >
+    ("'IGNORE_IT' in status.stderr") or
+    ("'fail' in status.stdout")
 
 - name: terminate
   block:
@@ -25,4 +24,4 @@
     fail:
       msg: "{{ exit_msg }}"
   when: status.rc == 1
-
+ 

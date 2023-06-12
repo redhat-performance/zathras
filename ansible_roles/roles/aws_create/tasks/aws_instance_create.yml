@@ -20,15 +20,16 @@
 - name: Create aws spot
   include_tasks: aws_tf_spot.yml
   when: config_info.spot_range != 0
-#
-# Non spot operation, also fall back if we could not create the 
-# spot instance.
-#
+
 - name: include_rtc
   include_vars:
     file: "{{ working_dir}}/tf.rtc"
     name: tf
 
+#
+# Non spot operation, also fall back if we could not create the 
+# spot instance.
+#
 - name: Spot failed, tried regular
   debug:
     msg: spot failed, tried regular.
@@ -69,6 +70,18 @@
 
 - name: Record aws data
   include_tasks: aws_record_info.yml
+
+- name: set tags if spot being used, primary system
+  block:
+  - name: Get tags
+    command: cat "{{ working_dir }}/aws_set_tags"
+    register: aws_tags
+  - name: set the tags
+    command: aws ec2 create-tags --resources {{ aws_data.outputs.aws_instance_id0.value }} --tags {{ aws_tags.stdout }}
+  - name: set the tags
+    command: aws ec2 create-tags --resources {{ aws_data.outputs.aws_instance_id1.value }} --tags {{ aws_tags.stdout }}
+    when: config_info.cloud_numb_networks != 0
+  when: config_info.spot_range != 0
 
 - name: report aws data values
   debug:
