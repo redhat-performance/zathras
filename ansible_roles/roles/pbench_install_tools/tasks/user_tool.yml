@@ -28,6 +28,7 @@
     clone: true
     repo: "{{ tool_definition['git_url'] }}"
     dest: "{{ user_tool_path }}/{{ tool_definition['name'] }}"
+    force: true
   when: tool_definition['git_url'] is defined
 
 - name: Copy local directory
@@ -38,7 +39,7 @@
 
 - name: Ensure scripts are executable
   ansible.builtin.file:
-    mode: 700
+    mode: '755'
     path: "{{ user_tool_path }}/{{ tool_definition['name'] }}/{{ user_tool_script['value'] }}"
   loop: "{{ tool_definition['scripts'] | dict2items }}"
   loop_control:
