@@ -24,10 +24,8 @@
 #          the test.
 #
 
-
-
 # Burdens version number.
-version="3.1"
+version="3.2"
 export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/agent/roles:$ANSIBLE_ROLES_PATH
 #
 # This bash script generates the test parameters to be used by ansible. End results
@@ -112,6 +110,7 @@ gl_create_attempts=5
 gl_spot_recover=1
 gl_cloud_placement=${value_not_set}
 gl_cloud_networks_sys="duplicate"
+gl_preflight=0
 #
 # Global values
 #   gl_sys_file: sysctl files to use.
@@ -175,7 +174,12 @@ gl_test_override_options=""
 gl_warning_string=""
 gl_max_systems=3
 gl_max_systems_set=0
-gl_test_version_check=0
+#
+# We want the version check on.  We do this, as no options to burden
+# should provide a usage.  The --test_version_check option is present
+# so we can only check the versions via an option
+#
+gl_test_version_check=1
 gl_update_test_versions=0
 gl_disk_iops=0
 gl_disk_tp=0
@@ -234,7 +238,7 @@ cleanup_and_exit()
 			error_string="${timestamp} $1"
 		fi
 		echo -e ${error_string}
-		if [ $2 -eq 1 ]; then
+		if [[ $2 -eq 1 ]]; then
 			flock -x $gl_top_dir/failed_runs echo -e "${error_string}" >> $gl_top_dir/failed_runs
 		fi
 	fi
@@ -243,6 +247,14 @@ cleanup_and_exit()
 		mv $gl_scenario_to_restore $gl_scenario_to_run
 	fi
 	exit $2
+}
+
+make_dir_report_errors()
+{
+	mkdir -p $1 2> /dev/null
+	if [ $? -ne 0 ]; then
+		cleanup_and_exit "Error Unable to make the directory $1"
+	fi
 }
 
 #
@@ -383,6 +395,9 @@ retrieve_versions()
 			pushd $temp_dir > /dev/null
 			repo=`echo $location | cut -d'/' -f 1-5`
 			git clone $repo 2> /dev/null
+			if [ $? -ne 0 ]; then
+				cleanup_and_exit "Unable to clone repo $repo" 1
+			fi
 			cd *
 			echo ============================
 			echo $1
@@ -406,7 +421,7 @@ show_test_version()
 {
 	gl_test_list=`echo $1 | sed "s/,/ /g"`
 	integrate_templates ${gl_test_def_dir}/test_defs.yml
-	mkdir tests_to_run 2> /dev/null
+	make_dir_report_errors tests_to_run
 	for test_name in $gl_test_list; do
 		create_test_run_file $test_name
 		cd tests_to_run
@@ -427,6 +442,16 @@ show_test_version()
 grab_a_field()
 {
 	str_val=`echo $1 | sed "s/\"//g" | sed "s/,$//g"`
+	#
+	# Check to make sure not going beyond last field.
+	# 
+	res="${str_val//[^${2}]}"
+	len=`echo $res | wc -c`
+	if [ $len -lt $3 ]; then
+		echo grab_a_field: Field requested is larger then the available fields, $1
+		echo Want field ${3}, only have $len fields.
+		cleanup_and_exit "" 1
+	fi
 	ret_field_val=`echo ${str_val} | cut -d$2 -f $3`
 	echo "${ret_field_val}"
 }
@@ -616,7 +641,7 @@ obtain_required_packages()
 }
 
 #
-# Determine what packages are needed for the test on this particular flavor linux.
+# Determine the files to upload and make sure they exist.
 #
 make_list_of_uploads()
 {
@@ -625,6 +650,9 @@ make_list_of_uploads()
 	uploads=$(find_test_def_field "test_info" "test_name" "$test_pulling" "upload_extra" )
 	upload_files=`echo $uploads | sed "s/,/ /g"`
 	for file_to_upload in $upload_files; do
+		if [[ ! -f ${file_to_upload} ]] && [[ ${file_to_upload} != "none" ]];  then
+			cleanup_and_exit "${file_to_upload}: Can not find" 1
+		fi
 		echo "  - ${file_to_upload}" >> upload_files.yml
 	done
 }
@@ -634,11 +662,17 @@ make_list_of_uploads()
 #
 set_image_type()
 {
+	found=0
 	if [[ $1 == *"iso"* ]]; then
 		gl_image_type="iso"
+		found=1
 	fi
 	if [[ $1 == *"ftp"* ]]; then
 		gl_image_type="ftp"
+		found=1
+	fi
+	if [ $found -eq 0 ]; then
+		cleanup_and_exit "${1}: Unknown image type." 1
 	fi
 }
 
@@ -650,7 +684,7 @@ general_setup()
 	hostdir=`pwd`/ssh_known_hosts
 	running_dir=`pwd`
 	rm -rf $hostdir 2> /dev/null
-	mkdir -p $hostdir
+	make_dir_report_errors $hostdir
 	#
 	# Replace test_defs.yml with full_test_defs.yml.
 	#
@@ -674,6 +708,9 @@ obtain_zone()
 		# Retrieve the regions, and figure out how many regions we have.
 		#
 		aws ec2 describe-availability-zones --region $gl_cloud_region --query "AvailabilityZones[*].{Name:ZoneName}" --output=text > aws_zones
+		if [ $? -ne 0 ]; then
+			cleanup_and_exit "Unable to retrieve the AWS zones for the region: $gl_cloud_region" 1
+		fi
 		aws_number_zones=0
 		declare -a aws_zones
 		for i in `cat aws_zones`
@@ -687,8 +724,6 @@ obtain_zone()
 		index_in=`echo $RANDOM % $aws_number_zones | bc`
 		selected=${aws_zones[${index_in}]}
 		gl_cloud_region_zone=${selected: -1}
-		# DELETE THIS
-		gl_cloud_region_zone="b"
 	elif  [[ $gl_system_type == "azure" ]]; then
 		#
 		# Only have 3 possible zones.
@@ -713,12 +748,21 @@ set_region_zone_defaults()
 {
 	if [[ $gl_system_type == "aws" ]]; then
 		gl_cloud_region=`aws configure get region`
+		if [ $? -eq 1 ]; then
+			cleanup_and_exit "Unable to retrieve the AWS region" 1
+		fi
 		obtain_zone
 	elif [[ $gl_system_type == "azure" ]]; then
 		gl_cloud_region=`az configure --list-defaults -o tsv | grep location | awk '{print $3}'`
+		if [ $? -eq 1 ]; then
+			cleanup_and_exit "Unable to retrieve the azure region" 1
+		fi
 		obtain_zone
 	elif [[ $gl_system_type == "gcp" ]]; then
 		gl_cloud_region=`gcloud config list compute/region --quiet  | grep region | awk '{ print $3 }'`
+		if [ $? -eq 1 ]; then
+			cleanup_and_exit "Unable to retrieve the gcp region" 1
+		fi
 		gl_cloud_region_zone=`gcloud config list compute/zone --quiet | grep zone | awk '{ print $3 }'`
 	fi
 }
@@ -814,13 +858,15 @@ set_requirements()
 		#
 		# Storage check.
 		#
-		if [[ "$storage_required" == "no" ]]; then
+		if [[ "$storage_required" == "no" ]] || [ $gl_cloud_number_disks -gt 0 ] ; then
 			storage_required=$(find_test_def_field "test_info" "test_name" "$test_name" "storage_required" )
-			if [[ "$storage_required" == "yes" ]]; then
+			if [[ "$storage_required" == "yes" ]] || [ $gl_cloud_number_disks -gt 0 ]; then
 				if [[ "$gl_system_type" != "local" ]]; then
 					if [[ $gl_disks_present == "0" ]]; then
 						if [[ "$gl_internal_disks" -eq 0 ]]; then
 							cleanup_and_exit "Test ${test_name} requires storage, please resolve configuration issue." 1
+						else
+							echo Notice: Using internal storage
 						fi
 					fi
 				else
@@ -935,6 +981,9 @@ reduce_options()
 		cloud_disk_size=`echo ${data} | cut -d: -f2 | bc`
 		cloud_disk_iops=`echo ${data} | cut -d: -f5`
 		cloud_disk_tp=`echo ${data} | cut -d: -f6`
+		if [[ $gl_cloud_disk_type == "" ]]; then
+			cleanup_and_exit "Error: Need to designate the disk type ${data}" 1
+		fi
 		if [[ $cloud_disk_size -eq 0 ]]; then
 			cleanup_and_exit "Error: invalid disk size designated ${data}" 1
 		fi
@@ -946,7 +995,7 @@ reduce_options()
 		gl_disks_asking_for=${gl_disks_asking_for}${gl_cloud_number_disks}:${gl_cloud_disk_type}:${cloud_disk_size}:${gl_disk_cloud_index}:${cloud_disk_iops}:${cloud_disk_tp}
 		let "gl_disk_cloud_index=${gl_disk_cloud_index}+1"
 		#
-		# indication if we are using nvme storage.  AWS is always nvme.
+		# indicate if we are using nvme storage.  AWS is always nvme.
 		#
 		if [[ $gl_system_type == "aws" || ($gl_system_type == "azure" && "$gl_host_config" =~ "^Standard_L[[:digit:]]*_v2*") ]]; then
 			gl_host_uses_nvme=1
@@ -1170,6 +1219,9 @@ aws_specific_os_version()
 	vmtype=`echo $1 | cut -d':' -f 1`
 	ami_found=0
 
+	#
+	# vmtype has been verified, do not have to worry about failure of the command here.
+	#
 	architecture=`aws ec2 describe-instance-types --instance-type ${vmtype} | grep SUPPORTEDARCHITECTURES | awk '{print $2}'`
 	work_with=`echo $gl_cloud_os_version | sed "s/,/ /g"`
 
@@ -1198,7 +1250,7 @@ aws_specific_os_version()
 		fi
 	done
 	if [[ $ami_found -eq 0 ]]; then
-			cleanup_and_exit "Error: no ami in the list ${gl_cloud_os_version} that matches the architecutre $architecture" 1
+		cleanup_and_exit "Error: no ami in the list ${gl_cloud_os_version} that matches the architecture $architecture" 1
 	fi
 }
 
@@ -1208,23 +1260,26 @@ aws_specific_os_version()
 retrieve_spot_from_config()
 {
 	if [[ $gl_use_spot -eq 1 ]]; then
-		spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
 		if [[ $gl_system_type == "aws" ]]; then
 			#
 			# For AWS obtain the possible starting price.
 			#
+			worker=`curl -L ec2.shop?filter=$1 -H 'accept: json'`
 			if [[ $? -ne 0 ]]; then
+				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
+			fi
+			if [[ $worker == *":[]"* ]]; then
 				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
 			fi
 			#
 			# We will default to 5 intervals
 			# 
-			worker=`curl -L ec2.shop?filter=$1 -H 'accept: json'`
 			gl_spot_cap=`echo $worker | cut -d':' -f 8 | cut -d',' -f 1`
 			gl_base_cost=$gl_spot_cap;
 			gl_spot_price=`echo $worker | cut -d':' -f 10 | cut -d: -f 10 | cut -d'"' -f 2`
 			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*1.5)/5.00)" | bc`
 		else
+			spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: no spot information present for $1" 1
 			fi
@@ -1247,11 +1302,11 @@ disk_check()
 			fi
 			if [[ $gl_install_pbench -eq 1 ]]; then
 				if [[ $gl_cloud_number_disks -gt 9 ]]; then
-					cleanup_and_exit "Error: AWS Maximum \# disks when pbench is present is 9, you designated $gl_cloud_number_disks" 1
+					cleanup_and_exit "Error: AWS Maximum # disks when pbench is present is 9, you designated $gl_cloud_number_disks" 1
 				fi
 			else
 				if [[ $gl_cloud_number_disks -gt 10 ]]; then
-					cleanup_and_exit "Error: AWS Maximum \# disks is 10, you designated $gl_cloud_number_disks" 1
+					cleanup_and_exit "Error: AWS Maximum # disks is 10, you designated $gl_cloud_number_disks" 1
 				fi
 			fi
 		fi
@@ -1307,6 +1362,8 @@ generate_tags()
 	#
 	# Generic addition of information.
 	#
+	aws_tags=""
+	tag_separ=""
 	while IFS= read -r line
 	do
 		value=`echo $line  | cut -d':' -f 1 | sed "s/ //g"`
@@ -1316,7 +1373,19 @@ generate_tags()
 		echo "}" >> add_vars_tf
 		echo "${value} = \"{{ config_info.${value} }}\"" >> add_main_tf_vars
 		echo "${indent}${value} = \"\${var.${value}}\"" >> add_main_vars.tf
+		#
+		# Terraform spot does not set the tags, build a tag list (AWS only)
+		#
+		if [ $gl_use_spot -eq 1 ] && [[ $gl_system_type == "aws" ]]; then
+			tag_value=`echo $line  | cut -d':' -f 2 | sed "s/ //g"`
+			aws_tags="${aws_tags}${tag_separ}Key=${value},Value=${tag_value}"
+			tag_separ=" "
+		fi
 	done < "tags_defaults"
+	if [[ $aws_tags != "" ]]; then
+		aws_tags="${aws_tags}${tag_separ}Key=Name,Value=${1}_${gl_run_prefix}_${gl_os_vendor}"
+		echo $aws_tags >> aws_set_tags
+	fi
 	#
 	# Done, now end it.
 	#
@@ -1444,7 +1513,6 @@ create_ansible_options()
 			retrieve_spot_from_config $host_or_cloud_inst
 		fi
 
-
 		#
 		# Build the run directory
 		#
@@ -1475,7 +1543,7 @@ create_ansible_options()
 			rc=$?
 		done
 
-		mkdir -p $run_dir 2> /dev/null
+		make_dir_report_errors $run_dir
 		dir_list=$dir_list$run_dir" "
 		cp ${gl_test_def_dir}/test_defs.yml $run_dir
 		cp ${gl_test_def_dir}/full_test_defs.yml $run_dir
@@ -1494,9 +1562,9 @@ create_ansible_options()
 			fi
 			echo 0 >> instance_cost
 		fi
-		mkdir tf
-		mkdir tests_to_run 2> /dev/null
-		mkdir tests_to_use 2> /dev/null
+		make_dir_report_errors tf
+		make_dir_report_errors tests_to_run
+		make_dir_report_errors tests_to_use
 		#
 		# Create file that can be ignored. Needed so we can look for files.
 		#
@@ -1539,7 +1607,7 @@ create_ansible_options()
 		echo "  "do_not_install_packages: ${gl_no_packages} >> ansible_vars_main.yml
 		echo "  "error_repo_errors: ${gl_error_repo_errors} >> ansible_vars_main.yml
 		spot_pricing=0
-			if [[ $gl_spot_price != "0" ]]; then
+		if [[ $gl_spot_price != "0" ]]; then
 			#
 			# Bash does not do floating point, must use bc
 			#
@@ -1737,21 +1805,26 @@ create_ansible_options()
 			done
 			popd > /dev/null
 		fi
-		if [[ "$gl_ssh_key_file" == "" ]]; then
-			kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs | tee ${run_dir}/ansible_log &
-		else
-			kick_off.sh -t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -s $gl_ssh_key_file -c $gl_test_def_dir $rm_dirs | tee ${run_dir}/ansible_log &
-		fi
-		pids[${pindex}]=$!
-		let "pindex=$pindex+1"
-		if [[ $pindex -eq $gl_max_systems ]]; then
-			for pid in ${pids[*]}; do
-				wait $pid
-			done
-			pindex=0
+		if [ $gl_preflight -eq 0 ]; then
+			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs "
+			if [[ "$gl_ssh_key_file" != "" ]]; then
+				base_string="${base_string} -s $gl_ssh_key_file"
+			fi
+			kick_off.sh $base_string | tee ${run_dir}/ansible_log &
+			pids[${pindex}]=$!
+			let "pindex=$pindex+1"
+			if [[ $pindex -eq $gl_max_systems ]]; then
+				for pid in ${pids[*]}; do
+					wait $pid
+				done
+				pindex=0
+			fi
 		fi
 	done
-
+	if [ $gl_preflight -ne 0 ]; then
+		echo Preflight complete
+		exit 0
+	fi
 
 	#
 	# Wait for everyone to finish up.
@@ -1764,13 +1837,12 @@ create_ansible_options()
 	# Archive data if requested to do so.
 	#
 	if [[ $gl_archive_location != $value_not_set ]]; then
-		mkdir -p $gl_archive_location
-		echo "mkdir -p $gl_archive_location"
+		make_dir_report_errors $gl_archive_location
 	fi
 	timestamp=`date`
 	for direct in $dir_list; do
 		if [[ $gl_archive_location != $value_not_set ]]; then
-			mkdir -p $gl_archive_location/$direct
+			make_dir_report_errors $gl_archive_location/$direct
 			pushd $direct > /dev/null
 			cp -R * $gl_archive_location/$direct
 		else
@@ -1806,7 +1878,7 @@ create_ansible_options()
 					flock -x $gl_top_dir/failed_runs echo "${timestamp} ${test_sys}, Error: $i did not produce a results file" >> $gl_top_dir/failed_runs
 					echo "    Error: did not produce a results file" >> results_info
 				else
-					mkdir junk
+					make_dir_report_errors junk
 					cd junk
 					results_report=`tar xvf ../${results_file} | grep test_results_report`
 					if [[ $results_report != "" ]]; then
@@ -1852,6 +1924,9 @@ update_the_image()
 			cleanup_and_exit "wget is not installed, please install, can not retrieve the iso images." 1
 		fi
 		tools_bin/update_system --update_target $target_image --requestor $BASHPID --update_type $image_type
+		if [ $? -ne 0 ]; then
+			cleanup_and_exit "Update of image has failed."
+		fi
 	fi
 
 	echo "Done with obtaining image"
@@ -2109,7 +2184,7 @@ obtain_network_info()
 	networks_string=`bin/parse_net_line \"${entry}\"`
 	entries=`echo $networks_string | wc -w`
 	if [ $entries -lt 2 ]; then
-		cleanup_and_exit "$entry\nYou designated networks, but did not provide any extra system information.  Please resolve, aborting." 1
+		cleanup_and_exit "$entry\nYou designated networks, but did not provide the number of networks, or the system to connect to.  Please resolve, aborting." 1
 	fi
 	gl_cloud_net_type=`echo $networks_string | cut -d' ' -f1`
 	if [[ $entry == *"Number"* ]]; then
@@ -2144,8 +2219,6 @@ verify_host_config()
 		fi
 		if [[ $gl_system_type == "azure" ]]; then
 			# change eastus to be a value
-
-			echo "az vm list-sizes --location \"${gl_cloud_region}\" | grep -o $vm_instance"
 			az vm list-sizes --location "${gl_cloud_region}" | grep -o $vm_instance
 			if [[ $? -ne 0 ]]; then 
 			    cleanup_and_exit "Error: azure, unknown instance $vm_instance" 1
@@ -2157,7 +2230,6 @@ verify_host_config()
 				if [[ $entry == *"type=internal"* ]]; then
 					gl_internal_disks=1
 				else
-					echo $entry
 					cleanup_and_exit "$entry\nYou designated Disks, but gave a zero count of disks.  Please resolve, aborting." 1
 				fi
 			fi
@@ -2288,6 +2360,16 @@ convert_scenario_file()
 	echo "${sed_string}" > parse_reduce
 	chmod 755 parse_reduce
 	./parse_reduce | sed "s/+++/\//g" | yq .  > parse_file
+	if [ $? -ne 0 ]; then
+		cleanup_and_exit "Creation of the parse_file via yq failed" 1
+	fi
+	#
+	# Verify the file just created is valid.
+	#
+	python -c 'import yaml, sys; print(yaml.safe_load(sys.stdin))' < parse_file
+	if [ $? -eq 1 ]; then
+		cleanup_and_exit "The file, parse_file does not meet yaml requirements." 1
+	fi
 }
 
 #
@@ -2322,9 +2404,7 @@ run_scenario()
 	# Convert the scenario file.  After this the scenario will point to the parsed
 	# file
 	convert_scenario_file $scenario
-#	cat $scenario | yq . > parse_file
 	scenario=parse_file
-
 
 	#
 	# Verify all tests that are present are valid tests.
@@ -2489,12 +2569,6 @@ run_scenario()
 				test_cli="${test_cli} --use_spot"
 			fi
 			#
-			# Verify os_vendor has been provided.
-			#
-#			if [[ $gl_os_vendor == $value_not_set ]]; then
-#				cleanup_and_exit "\nError: you have not designated an os_vendor" 1
-#			fi
-			#
 			# Host config causing issues with calling burden directly.  So as a workaround
 			# we will dump the command to a file, and run it from there.
 			#
@@ -2508,7 +2582,7 @@ run_scenario()
 				pindex=0
 				pid=""
 			else
-				tmpfile=$(mktemp /tmp/zath_temp.XXXXXX)
+				tmpfile=$(mktemp /tmp/zath_temp_test_cli.XXXXXX)
 				echo "#!/bin/bash" > $tmpfile
 				echo ./burden $test_cli --run_file run_burden_${pindex}  > $tmpfile
 				#
@@ -2566,7 +2640,7 @@ pull_git_repo()
 {
 	git_repo=${1}
 	git_version=$2
-	info_file=$(mktemp /tmp/zath_temp.XXXXXX)
+	info_file=$(mktemp /tmp/zath_temp_git_info.XXXXXX)
 
 	#
 	# If the git_repo is not present we will get prompted for login information.
@@ -2619,7 +2693,8 @@ verify_test_configuration()
 {
 	config_file=$1
 	base_config=$2
-	verify_tmp_file=$(mktemp /tmp/zath_temp.XXXXXX)
+	verify_tmp_file=$(mktemp /tmp/zath_temp_verify_test.XXXXXX)
+	bail_out=0
 	#
 	# First, make sure the test name is unique.  This protects
 	# against 
@@ -2665,7 +2740,19 @@ verify_test_configuration()
 				pushd $temp_dir > /dev/null
 				repo=`echo $location | cut -d'/' -f 1-5`
 				git clone $repo 2> /dev/null
+				if [ $? -ne 0 ]; then
+					cleanup_and_exit "1 Unable to clone repo $repo" 1
+				fi
 				cd *
+				#
+				# Make sure the tag we want is present
+				#
+				version_fail=""
+				git tag | grep ${using_version} > /dev/null
+				if [ $? -ne 0 ]; then
+					version_fail="$repo, version $using_version is not defined."
+					bail_out=1
+				fi
 				latest=`git tag --sort=committerdate | tail -1`
 				if [[ $using_version != $latest ]]; then
 					version_ok="no"
@@ -2673,8 +2760,11 @@ verify_test_configuration()
 					version_ok="yes"
 				fi
 				popd > /dev/null
-				if [[ $gl_test_version_check -eq 1 ]]; then
+				if [[ $gl_update_test_versions -eq 0 ]]; then
 					printf '%32s%10s%10s%6s\n' $test_repo $using_version $latest $version_ok
+					if [[ $version_fail != "" ]]; then
+						echo Failure: $version_fail
+					fi
 				else
 					if [[ $version_ok == "no" ]]; then
 						#
@@ -2720,7 +2810,9 @@ verify_test_configuration()
 			fi
 		done
 		popd > /dev/null
-		cleanup_and_exit "" 0
+		if [ $gl_update_test_versions -eq 1 ]; then
+			cleanup_and_exit "Update of test versions completed" 0
+		fi
 	fi
 
 	#
@@ -2735,7 +2827,7 @@ verify_test_configuration()
 		if [[ $fline == \""<replace with kit location>\"" ]]; then
 			continue
 		fi
-		file_check=`echo $fline | sed "s/\"//g"`
+		file_check=`echo $fline | sed "s/\"//g" | sed "s/,/ /g"`
 		for file in $file_check; do
 			if [[ ! -f "$file" ]]; then
 				cleanup_and_exit "Error: Upload extra file $file not found." 1
@@ -2756,6 +2848,10 @@ verify_test_configuration()
 		fi
 		cleanup_and_exit "Error: Unknown test_run_from value: $fline" 1
 	done < "${verify_tmp_file}"
+	rm ${verify_tmp_file}
+	if [ $bail_out -eq 1 ]; then
+		cleanup_and_exit "Error: At least one get tag is not known." 1
+	fi
 }
 #
 # We read in the template file for the test, and for each line that is not
@@ -2774,7 +2870,7 @@ process_test_template_data()
 	temp_def=$2
 	expansion_required=$3
 	cfg_dir=$4
-	new_file=$(mktemp /tmp/zath_temp.XXXXXX)
+	new_file=$(mktemp /tmp/zath_temp_template.XXXXXX)
 
 	if [[ $expansion_required -eq 1 ]]; then
 		temp=`grep "test_template:" $tmpfile | cut -d: -f 2 | sed "s/ //g"`
@@ -2854,8 +2950,8 @@ integrate_templates()
 {
 	first_line=0
 	working=0
-	tmpfile=$(mktemp /tmp/zath_temp.XXXXXX)
-	temp_def=$(mktemp /tmp/zath_temp.XXXXXX)
+	tmpfile=$(mktemp /tmp/zath_temp_test_template.XXXXXX)
+	temp_def=$(mktemp /tmp/zath_temp_full_template.XXXXXX)
 	expansion_required=0
 
 	if [[ ! -f "${gl_test_def_dir}/test_defs.yml" ]]; then
@@ -2899,7 +2995,7 @@ integrate_templates()
 		#
 		# Now verify the test config generated.
 		#
-		verify_test_configuration $gl_test_def_dir/full_test_defs.yml $1
+		verify_test_configuration $gl_test_def_dir/full_test_defs.yml $1 1
 	fi
 	rm $temp_def 2> /dev/null
 	rm $tmpfile 2> /dev/null
@@ -2972,6 +3068,8 @@ tf_terminate()
 				cd ..
 				rm -rf tf
 			fi
+		else
+			echo Warning: Unable to create the plan for $tf_del
 		fi
 		popd > /dev/null
 	done
@@ -2986,6 +3084,9 @@ handle_test_defs()
 {
 	if [[ $gl_test_def_dir == "https:"* ]] || [[ $gl_test_def_dir == "git:"* ]]; then
 		timeout $gl_git_timeout git clone ${gl_test_def_dir} test_configs 2> /dev/null
+		if [ $? -ne 0 ]; then
+			cleanup_and_exit "Unable to clone the test configs, $gl_test_def_dir" 1
+		fi
 		gl_test_def_dir="${gl_top_dir}/test_configs"
 
 	fi
@@ -3088,6 +3189,7 @@ usage()
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
 	echo "  --persistent_log: enable persistent logging"
+	echo "  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits"
 	echo "  --results_prefix <prefix>: Run directory prefix"
 	echo "  --scenario <scenario definition file>: Reads in a scenario and then runs it"
 	echo "    (if used, host configs are designated in the file).  If the scenario name starts with https: or git:"
@@ -3160,6 +3262,7 @@ usage()
 	echo "      to use spot_pricing"
 	cleanup_and_exit "" 1
 }
+
 set_general_value()
 {
 	shift_by=0
@@ -3308,6 +3411,11 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--preflight_check)
+			gl_preflight=1
+			echo "$1" >> $gl_cli_supplied_options
+			shift_by=1
+		;;
 		--results_prefix)
 			if [[ $gl_run_prefix == "" ]]; then
 				gl_run_prefix=$2
@@ -3414,14 +3522,13 @@ set_general_value()
 			shift_by=2
 		;;
 		--test_version_check)
-			gl_test_version_check=1
 			shift_by=1
 		;;
 		--test_versions)
 			#
 			# Does not return
 			#
-			show_test_version $2
+			show_test_version $2 
 		;;
 		--tests)
 			if [[ $gl_test_list == "" ]]; then
@@ -3542,6 +3649,7 @@ grab_cli_data()
 		"no_packages"
 		"no_spot_recover"
 		"persistent_log"
+		"preflight_check"
 		"show_os_versions"
 		"show_tests"
 		"test_version_check"
@@ -3570,6 +3678,13 @@ grab_cli_data()
 
 	gl_cli_supplied_options=`mktemp /tmp/zathras.XXXXX`
 
+	#
+	# If no options provided, then usage message.
+	# 
+	if [ $# -eq 1 ]; then
+		usage "0"
+	fi
+
 	while [[ $# -gt 0 ]]; do
 		set_general_value $1 $2
 		shift $?
@@ -3594,96 +3709,8 @@ grab_vars_data()
 	fi
 }
 
-cli_data="$@"
-grab_cli_data "$@"
-grab_vars_data
-
-#
-# Does not return
-#
-if [ $gl_tf_terminate -eq 1 ]; then
-	tf_terminate
-fi
-
-#
-# Does not return
-#
-if [ $gl_tf_list -eq 1 ]; then
-	tf_list
-fi
-
-if [[ $gl_run_prefix == "" ]]; then
-	gl_run_prefix=`id -un`
-fi
-
-if [[ $gl_host_config != "" ]]; then
-	verify_data verify_host_config $gl_host_config
-fi
-
-#
-# check to make sure the packages that are required are installed.
-#
-if [[ $gl_first_invocation -eq 1 ]]; then
-	rm utils_version 2> /dev/null
-	package_check
-fi
-
-#
-# Retrieve the test_def config if need be or verify it is present.
-#
-
-if [[ $gl_test_def_file == "" ]]; then
-	handle_test_defs
-else
-	chars=`echo ${gl_test_def_file} | awk -v RS='/' 'END{print NR-1}'`
-	gl_test_def_dir=`echo ${gl_test_def_file} | cut -d'/' -f 1-${chars}`
-
-fi
-
-#
-# Are we looking up the cloud images?
-#
-if [[ $gl_show_os_versions -eq 1 ]]; then
-	if [[ -z $gl_os_vendor ]]; then
-		cleanup_and_exit "You need to designate an OS vendor via --os_vendor argument. Valid OS vendors are $gl_valid_os_vendors" 1
-	fi
-	if [[ -z $gl_system_type ]]; then
-		cleanup_and_exit "You need to designate the cloud vendor via --system_type argument. Valid systems types are $gl_valid_system_types " 1
-	fi
-	#
-	# Obtain the possible cloud images.
-	#
-	cloud_image_lookup
-	cleanup_and_exit "" 0
-fi
-
-#
-# Retrieve the scenario file if need be.
-#
-if [[ "${gl_scenario_to_run}" == *"https:"* ]] || [[ "${gl_scenario_to_run}" == *"git:"* ]]; then
-	#
-	# Request to get scenario from a git repo.
-	#
-	chars=`echo ${gl_scenario_to_run} | awk -v RS='/' 'END{print NR-1}'`
-	git_area=`echo ${gl_scenario_to_run} | cut -d'/' -f 1-${chars}`
-	#
-	# Pulling from git
-	#
-	rm -rf scenarios 2> /dev/null
-	timeout $gl_git_timeout git clone ${git_area} scenarios 2> /dev/null
-	if [[ $? -ne  0 ]]; then
-		cleanup_and_exit "\nError: retrieval of git repo $git_area has failed." 1
-	fi
-	let "chars=${chars}+1"
-	scen_file=`echo ${gl_scenario_to_run} | cut -d'/' -f ${chars}`
-	gl_scenario_to_run=`pwd`/scenarios/${scen_file}
-fi
-
-#
-# Set up the various config files, if everything is started from this 
-# process.
-#
-if [[ $gl_first_invocation -eq 1 ]]; then
+first_invocation()
+{
 	if [[ ! -f $gl_config_vars_file ]] && [[ $gl_config_vars_file_set -eq 1 ]]; then
 		cleanup_and_exit "\nError: Designated the vars file $gl_config_vars_file which can not be found" 1
 	fi
@@ -3780,11 +3807,104 @@ if [[ $gl_first_invocation -eq 1 ]]; then
 	integrate_templates ${gl_test_def_dir}/test_defs.yml
 	cat $gl_test_def_dir/full_test_defs.yml | yq . > test_info
 	cat $gl_test_def_dir/java_pkg_def.yml | yq . > java_info
+}
+
+cli_data="$@"
+grab_cli_data "$@"
+grab_vars_data
+
+#
+# Does not return
+#
+if [ $gl_tf_terminate -eq 1 ]; then
+	tf_terminate
+fi
+
+#
+# Does not return
+#
+if [ $gl_tf_list -eq 1 ]; then
+	tf_list
+fi
+
+if [[ $gl_run_prefix == "" ]]; then
+	gl_run_prefix=`id -un`
+fi
+
+if [[ $gl_host_config != "" ]]; then
+	verify_data verify_host_config $gl_host_config
+fi
+
+#
+# check to make sure the packages that are required are installed.
+#
+if [[ $gl_first_invocation -eq 1 ]]; then
+	rm utils_version 2> /dev/null
+	package_check
+fi
+
+#
+# Retrieve the test_def config if need be or verify it is present.
+#
+
+if [[ $gl_test_def_file == "" ]]; then
+	handle_test_defs
+else
+	chars=`echo ${gl_test_def_file} | awk -v RS='/' 'END{print NR-1}'`
+	gl_test_def_dir=`echo ${gl_test_def_file} | cut -d'/' -f 1-${chars}`
+
+fi
+
+#
+# Are we looking up the cloud images?
+#
+if [[ $gl_show_os_versions -eq 1 ]]; then
+	if [[ -z $gl_os_vendor ]]; then
+		cleanup_and_exit "You need to designate an OS vendor via --os_vendor argument. Valid OS vendors are $gl_valid_os_vendors" 1
+	fi
+	if [[ -z $gl_system_type ]]; then
+		cleanup_and_exit "You need to designate the cloud vendor via --system_type argument. Valid systems types are $gl_valid_system_types " 1
+	fi
+	#
+	# Obtain the possible cloud images.
+	#
+	cloud_image_lookup
+	cleanup_and_exit "" 0
+fi
+
+#
+# Retrieve the scenario file if need be.
+#
+if [[ "${gl_scenario_to_run}" == *"https:"* ]] || [[ "${gl_scenario_to_run}" == *"git:"* ]]; then
+	#
+	# Request to get scenario from a git repo.
+	#
+	chars=`echo ${gl_scenario_to_run} | awk -v RS='/' 'END{print NR-1}'`
+	git_area=`echo ${gl_scenario_to_run} | cut -d'/' -f 1-${chars}`
+	#
+	# Pulling from git
+	#
+	rm -rf scenarios 2> /dev/null
+	timeout $gl_git_timeout git clone ${git_area} scenarios 2> /dev/null
+	if [[ $? -ne  0 ]]; then
+		cleanup_and_exit "\nError: retrieval of git repo $git_area has failed." 1
+	fi
+	let "chars=${chars}+1"
+	scen_file=`echo ${gl_scenario_to_run} | cut -d'/' -f ${chars}`
+	gl_scenario_to_run=`pwd`/scenarios/${scen_file}
+fi
+
+#
+# Set up the various config files, if everything is started from this 
+# process.
+#
+if [[ $gl_first_invocation -eq 1 ]]; then
+	first_invocation
 else
 #
 # A bit of sanity check.
 #
-	if [[ $gl_first_invocation -ne 1 ]] && [[ -z "$gl_host_config" ]] || [[ -z "$gl_system_type" ]]; then
+	if [[ -z "$gl_host_config" ]] || [[ -z "$gl_system_type" ]]; then
 		echo "missing one of these"
 		echo "host_config: $gl_host_config"
 		echo "gl_system_type: $gl_system_type"
