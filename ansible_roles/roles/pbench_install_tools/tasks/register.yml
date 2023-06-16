@@ -20,4 +20,5 @@
     msg: "Options: {{ options['content'] | b64decode | replace('\n', ' ') }}"
 
 - name: Register {{ tool_definition['tool'] }} in {{ group }} tool group
-  ansible.builtin.shell: pbench-register-tool --name={{ tool_definition['tool'] }} --group {{ group }} -- {{ options['content'] | b64decode | replace('\n', ' ') }}
+  ansible.builtin.command: 
+    cmd: pbench-register-tool --name={{ tool_definition['tool'] }} --group {{ group }} -- {{ options['content'] | b64decode | replace('\n', ' ') }}
