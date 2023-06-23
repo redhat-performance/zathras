@@ -793,16 +793,12 @@
     include_vars:
       file: "{{ working_dir }}/ansible_run_vars.yml"
       name: dyn_data
-  - name: Make the workloads directory
-    file:
-      path: "{{ dyn_data.kit_upload_directory }}/uploads"
-      state: directory
-      mode: 0777
-  - name: link the extras in
-    shell:
-      cmd: "ln -s {{ dyn_data.kit_upload_directory }}/uploads /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
-      warn: false
-    ignore_errors: yes
+  - name: handle_existing_uploads
+    include_role:
+      name: existing_uploads_dir
+    vars:
+      type: "uploads"
+      real_dir: "{{ dyn_data.kit_upload_directory }}"
 
  #
  # Now upload the file.  Due to Ansible copying the file first to ~/.ans* we need to do an ssh.
@@ -830,16 +826,12 @@
     include_vars:
       file: "{{ working_dir }}/ansible_run_vars.yml"
       name: dyn_data
-  - name: Make the workloads directory
-    file:
-      path: "{{ dyn_data.kit_upload_directory }}/uploads"
-      state: directory
-      mode: 0777
-  - name: link the extras in
-    shell:
-      cmd: "ln -s {{ dyn_data.kit_upload_directory }}/uploads /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
-      warn: false
-    ignore_errors: yes
+  - name: handle existing workloads dir
+    include_role:
+      name: existing_uploads_dir
+    vars:
+      type: "workloads"
+      real_dir: "{{ dyn_data.kit_upload_directory }}"
 
 - hosts: test_group
   vars_files: ansible_vars.yml
@@ -945,17 +937,6 @@
     include_vars:
       file: "{{ working_dir }}/ansible_run_vars.yml"
       name: dyn_data
-  - name: set up to use the filesystem with the most free space.
-    file:
-      path: "{{ dyn_data.kit_upload_directory }}/workloads"
-      state: directory
-      mode: 0777
-  - name: link things in
-    file:
-      src: "{{ dyn_data.kit_upload_directory }}/workloads"
-      dest: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
-      state: link
-
   - name: execute remotely
     block:
     - name: delete the timing file if it exists
@@ -999,6 +980,42 @@
       test_location: "local"
     when: config_info.test_exec_location == "local"
 
+- hosts: test_group
+  vars_files:
+    - ansible_vars.yml
+    - upload_files.yml
+  user: root
+  become: true
+  gather_facts: no
+  tasks:
+  - name: restore uploads on bare metal systems if need be.
+    block:
+    - name: See if uploads_back_zathras_exists
+      stat:
+        path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads_back_zathras"
+      register: stat_result
+    - name: restore dir if required
+      block:
+      - name: First remove the uploads we created.
+        command: "rm /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
+      - name: Restore the original uploads
+        command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads_back_zathras /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
+      when: stat_result.stat.exists
+  - name: restore workloads on bare metal systems if need be.
+    block:
+    - name: See if workloads_back_zathras_exists
+      stat:
+        path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads_back_zathras"
+      register: stat_result
+    - name: restore dir if required
+      block:
+      - name: First remove the workloads we created.
+        command: "rm /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
+      - name: Restore the original workloads
+        command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads_back_zathras /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
+      when: stat_result.stat.exists
+    when: dir_stat_result.stat.isdir is defined and dir_stat_result.stat.isdir
+
 #
 # Terminate the systems
 #
@@ -1036,3 +1053,4 @@
       - config_info.system_type != "local"
       - config_info.cloud_terminate_instance == 1
       - config_info.term_system == "yes"
+
