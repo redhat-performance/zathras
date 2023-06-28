@@ -3,7 +3,7 @@
 - name: List existing tools in the tool group {{ group }}
   ansible.builtin.find:
     paths:
-      - /var/lib/pbench-agent/tools-v1-{{ group }}/{{ ansible_facts['fqdn'] }}
+      - /var/lib/pbench-agent/tools-v1-{{ group }}/{{ ansible_facts['fqdn'] | replace('.localdomain', '') }} # On systems without a hostname, pbench simply uses localhost instead of localhost.localdomain
     depth: 1
   register: installed_tools
 
