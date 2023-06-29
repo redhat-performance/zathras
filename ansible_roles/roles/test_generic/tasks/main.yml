@@ -144,3 +144,20 @@
   when:
     - test_data.post_script != "none"
     - config_info.cloud_execute_tests == 1
+
+- name: Report failure
+  block:
+  - name: We failed
+    debug:
+      msg: "{{ dest_dir }}/{{ test_data.exec_dir }}/{{ test_data.test_script_to_run }} reported failure."
+  - name: Add the line
+    lineinfile:
+      path: "{{ dest_dir }}/{{ test_data.exec_dir }}/test_failure"
+      line: "{{ dest_dir }}/{{ test_data.exec_dir }}/{{ test_data.test_script_to_run }} reported failure."
+      create: yes
+  - name: retrieve the failure file
+    fetch:
+      src: "{{ dest_dir }}/{{ test_data.exec_dir }}/test_failure"
+      dest: "{{ working_dir }}/test_failure"
+      flat: yes
+  when: test_out.rc != 0

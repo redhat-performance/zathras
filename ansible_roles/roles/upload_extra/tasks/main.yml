@@ -27,5 +27,3 @@
 - name: Upload extra files
   include_role:
     name: upload_extra_files
-  when: config_info.cloud_execute_tests == 1
-

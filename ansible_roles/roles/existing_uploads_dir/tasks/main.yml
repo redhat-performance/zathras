@@ -1,0 +1,33 @@
+---
+- name: Check to see if the directory exist.
+  stat:
+    path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}"
+  register: dir_stat_result
+- name: handle existing directory
+  block:
+  - name: Check to see if the zathras use file  exist.
+    stat:
+      path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}/zathras_{{ type }}"
+    register: stat_result
+  - name: move dir if required
+    command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }} /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}_back_zathras"
+    when: not stat_result.stat.exists
+  when: dir_stat_result.stat.isdir is defined and dir_stat_result.stat.isdir
+
+- name: Make the uploads directory
+  file:
+    path: "{{ dyn_data.kit_upload_directory }}/{{ type }}"
+    state: directory
+    mode: 0777
+- name: touch the zathras_upload_file
+  file:
+    path: "{{ dyn_data.kit_upload_directory }}/{{ type }}/zathras_{{ type }}"
+    state: touch
+    mode: 0777
+
+- name: link the extras in
+  ansible.builtin.file:
+    src: "{{ dyn_data.kit_upload_directory }}/{{ type }}"
+    dest: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}"
+    state: link
+  ignore_errors: yes
