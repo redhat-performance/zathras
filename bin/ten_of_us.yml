@@ -997,7 +997,9 @@
     - name: restore dir if required
       block:
       - name: First remove the uploads we created.
-        command: "rm /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
+        ansible.builtin.file:
+          path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
+          state: absent
       - name: Restore the original uploads
         command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads_back_zathras /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
       when: stat_result.stat.exists
@@ -1010,7 +1012,9 @@
     - name: restore dir if required
       block:
       - name: First remove the workloads we created.
-        command: "rm /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
+        ansible.builtin.file:
+          path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
+          state: absent
       - name: Restore the original workloads
         command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads_back_zathras /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
       when: stat_result.stat.exists
