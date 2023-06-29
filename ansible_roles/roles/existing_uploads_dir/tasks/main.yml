@@ -26,7 +26,8 @@
     mode: 0777
 
 - name: link the extras in
-  shell:
-    cmd: "ln -s {{ dyn_data.kit_upload_directory }}/{{ type }} /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}"
-    warn: false
+  ansible.builtin.file:
+    src: "{{ dyn_data.kit_upload_directory }}/{{ type }}"
+    dest: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}"
+    state: link
   ignore_errors: yes
