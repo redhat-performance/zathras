@@ -422,6 +422,7 @@
         - config_info.network_required == "yes"
     when:
       - config_info.pbench_install != 0
+      - config_info.system_type != "local"
 
 #
 # Install the packages.
