@@ -81,7 +81,7 @@
   - name: record the shell using
     shell: "echo \"#/bin/bash\" > /tmp/{{ test_data.test_name }}.cmd"
     
-  - name: provide the comamnd runnig
+  - name: provide the command runnig
     shell: "echo \"{{ dest_dir }}//{{ test_data.exec_dir }}/{{ test_data.test_script_to_run }} --run_user {{ config_info.test_user }} --home_parent {{ config_info.user_parent_home_dir }} --iterations {{ config_info.test_iterations }} --tuned_setting {{ sys_confg }} --host_config \"{{ config_info.host_config_info }}\" --sysname \"{{ config_info.host_or_cloud_inst }}\" --sys_type {{ config_info.system_type }} {{ test_data.test_specific }}\" | sed \"s/}//g\" >> /tmp/{{ test_data.test_name }}.cmd"
 
   - name: Make runnable
