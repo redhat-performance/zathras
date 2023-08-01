@@ -18,9 +18,14 @@
   shell: gcloud config get-value project
   register: project_id
 
+- name: create private copy
+  copy:
+    src: "../templates/tfvars.j2"
+    dest: "{{ working_dir }}/tfvars.j2"
+
 - name: Substitute terraform vars
   template:
-    src: templates/tfvars.j2
+    src: "{{ working_dir }}/tfvars.j2"
     dest: "{{working_dir}}/tf/env.tfvars"
 
 # - name: Init terraform tasks

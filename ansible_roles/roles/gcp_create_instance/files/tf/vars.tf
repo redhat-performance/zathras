@@ -68,7 +68,7 @@ variable "disk_size" {
   default = ""
 }
 
-variable "instance_type" {
+variable "vm_type" {
   description = "Defines if the instance is preemptible or regular"
   type        = string
   default     = "regular"
