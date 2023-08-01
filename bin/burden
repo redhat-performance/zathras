@@ -1589,6 +1589,11 @@ create_ansible_options()
 		echo "  "host_config_info: $export_host_config_info >> ansible_vars_main.yml
 		echo "  "host_or_cloud_inst: $host_or_cloud_inst >> ansible_vars_main.yml
 		echo "  "cpu_type_request: $gl_cpu_type_request >> ansible_vars_main.yml
+		if [ $gl_use_spot -eq 0 ]; then
+		  echo "   "vm_type: "regular" >> ansible_vars_main.yml
+		else
+		  echo "   "vm_type: "preemptible" >> ansible_vars_main.yml
+		fi
 		if [[ $gl_cloud_placement != "none" ]]; then
 			#
 			# Azure, only proximity setting at this time, so it can be whatever the user wants.
