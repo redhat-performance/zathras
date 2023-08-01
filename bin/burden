@@ -1278,6 +1278,9 @@ retrieve_spot_from_config()
 			gl_base_cost=$gl_spot_cap;
 			gl_spot_price=`echo $worker | cut -d':' -f 10 | cut -d: -f 10 | cut -d'"' -f 2`
 			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*1.5)/5.00)" | bc`
+
+		elif [[ $gl_system_type == "gcp" ]]; then
+		  echo "spot prices not to be provided in case of gcp."
 		else
 			spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
 			if [[ $? -ne 0 ]]; then
@@ -1590,9 +1593,9 @@ create_ansible_options()
 		echo "  "host_or_cloud_inst: $host_or_cloud_inst >> ansible_vars_main.yml
 		echo "  "cpu_type_request: $gl_cpu_type_request >> ansible_vars_main.yml
 		if [ $gl_use_spot -eq 0 ]; then
-		  echo "   "vm_type: "regular" >> ansible_vars_main.yml
+		  echo "  "vm_type: "regular" >> ansible_vars_main.yml
 		else
-		  echo "   "vm_type: "preemptible" >> ansible_vars_main.yml
+		  echo "  "vm_type: "preemptible" >> ansible_vars_main.yml
 		fi
 		if [[ $gl_cloud_placement != "none" ]]; then
 			#
@@ -1725,6 +1728,8 @@ create_ansible_options()
 			#
 			if [[ $gl_system_type == "aws" ]]; then
 				echo "  cloud_disks: [\"0:na:na:0\"]" >> ansible_vars_main.yml
+			elif [[ $gl_system_type == "gcp" ]]; then
+			  echo "  cloud_disks: []" >> ansible_vars_main.yml
 			else
 				echo "  cloud_disks: none" >> ansible_vars_main.yml
 			fi

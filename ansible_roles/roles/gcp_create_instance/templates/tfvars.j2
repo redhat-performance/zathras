@@ -17,10 +17,11 @@ test_user = "{{ config_info.test_user }}"
 
 vm_image = "{{ config_info.cloud_os_version }}"
 
+vm_type = "{{ config_info.vm_type }}"
+
 # Check "cloud_numb_networks", default value is "1" for both vars
 {% if config_info.cloud_numb_networks >= 1 %}
 vm_count = 2
 network_count =  "{{ config_info.cloud_numb_networks }}"
 {% endif %}
 
-vm_type = "{{ config_info.vm_type }}"

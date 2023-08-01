@@ -20,8 +20,4 @@
     dest: "{{working_dir}}/tf/env.tfvars"
     block: "{{ lookup('template', 'tfvars_disks.j2') }}"
 
-- name: GCP, create instance
-  include_role:
-    name: tf_create
-  vars:
-    tf_var_file: "env.tfvars"
+
