@@ -67,3 +67,9 @@ variable "disk_size" {
   type    = string
   default = ""
 }
+
+variable "instance_type" {
+  description = "Defines if the instance is preemptible or regular"
+  type        = string
+  default     = "regular"
+}
