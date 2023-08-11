@@ -3,7 +3,7 @@
 # Upload the required tests.
 #
 
-- name: Create the diriectory for saving results
+- name: Create the directory for saving results
   file:
     path: /tmp/zathras_archive/results_{{ timeval }}
     recurse: yes
