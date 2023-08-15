@@ -147,7 +147,7 @@ if [[ $ssh_key_file != "" ]]; then
 	cp $ssh_key_file config/user.pem_test
 	if [ ! -s $ssh_key_file ]; then
 		echo "${ssh_key_file} is zero length, please fix.  Test is exiting"
-		exit
+		exit 1
 	fi
 	chmod 500 config/user.pem_test
 fi
@@ -191,7 +191,6 @@ do
 	do
 		mkdir tf
 		echo ===== attempt $attempts of $create_attempts ==============
-		echo ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3" ten_of_us.yml
 		ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml
 		#
 		if [ $spot_recover -eq 1 ] && [[ ! -f "test_returned" ]] && [[ ! -f "cpu_type_failure" ]]; then
@@ -199,58 +198,26 @@ do
 			# Check to see if we used spot, and we are to recover if the system goes away.
 			#
 			if [[ -f test_started ]]; then
-				sp_check=`grep spot_range: ansible_vars_main.yml`
-				if [[ $sp_check == *","* ]]; then
-					echo Need to update the test list, do not execute the tests we already executed.
-					tests_list=`grep ^test: test_times | awk '{ print $2 }'`
-					test_rm=""
-					seper=""
-					for i in $tests_list; do
-						test_rm=$test_rm${seper}$i
-						seper=","
-					done
-					test_rm=${test_rm}${seper}
-					cp ansible_vars_main.yml ansible_vars_main.yml_back
-					sed "s/${test_rm}//g" < ansible_vars_main.yml > update
-					mv update ansible_vars_main.yml
-					cp ansible_vars.yml ansible_vars.yml_back
-					sed "s/${test_rm}//g" < ansible_vars.yml > update
-					mv update ansible_vars.yml
-					if [[ -f test_times ]]; then
-        					report_usage
-					fi
-					mv test_times test_times_spot
-					mv if_spot_fail instance_cost
-					rm -rf tf
-					rm tf.rtc
-					#
-					# Next attempt it without spot pricing.
-					#
-					mv ansible_run_vars.yml ansible_run_vars.yml_spot_died
-					grep -v "spot_range:" ansible_vars_main.yml | grep -v spot_start_price > spot_repair
-					echo "  spot_start_price: 0" >> spot_repair
-					echo "  spot_range: 0" >> spot_repair
-					mv  spot_repair ansible_vars_main.yml
-					grep -v "spot_range:" ansible_vars.yml  | grep -v  spot_start_price > spot_repair
-					echo "  spot_start_price: 0" >> spot_repair
-					echo "  spot_range: 0" >> spot_repair
-					mv spot_repair ansible_main.yml
-					mkdir tf
-					echo ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3" ten_of_us.yml
-					ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml
-				else
-					#
-					# Not spot, test started, system died.
-					#
-					echo Error: test started, system died.
-					exit
+				sp_check=`grep spot_range: ansible_vars_main.yml | cut -d: -f 2 | sed "s/ //g"`
+				if [[ $sp_check != "0" ]]; then
+					touch spot_failure
+					spot_recover=0
+					exit 1
 				fi
 			else
 				#
-				# Rarely will happen.
+				# Not spot, test started, system died.
 				#
-				echo Error: did not start the test. >>  test_start_failure
-				exit
+				echo Error: test started, system died.
+				exit 1
+			fi
+		else
+			#
+			# Rarely will happen.
+			#
+			if [[ ! -f test_returned ]]; then
+				echo Error: test started, system died.
+				exit 1
 			fi
 		fi
 		if [[ ! -f "cpu_type_failure" ]]; then
@@ -273,7 +240,7 @@ do
 		fi
 		let "attempts=${attempts}+1"
 		rm -rf ansible_install_group ansible_test_group boot_info cloud_timings copy_git_file_status cr_status cpu_type_failure
-		rm -rf dev_env_status install_status meta_data.yml tar_status terraform_data.yml test_defs.yml test_info test_times tf_results
+		rm -rf dev_env_status install_status meta_data.yml tar_status terraform_data.yml test_times tf_results
 		mv tf tf_delete_${attempts}
 	done
 	$top_dir/bin/remove_wrong_cpus $top_dir/$direct
@@ -296,3 +263,4 @@ for i in `ls results*tar`; do
 	echo $i >> tuned_run_info
 	cat $check_file >> tuned_run_info
 done
+exit 0

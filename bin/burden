@@ -25,6 +25,9 @@
 #
 
 # Burdens version number.
+
+cli=${0}
+arguments=("$@")
 version="3.2"
 export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/agent/roles:$ANSIBLE_ROLES_PATH
 #
@@ -1264,19 +1267,15 @@ retrieve_spot_from_config()
 			#
 			# For AWS obtain the possible starting price.
 			#
-			worker=`curl -L ec2.shop?filter=$1 -H 'accept: json'`
+			worker=`aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types $host_or_cloud_inst | tail -1 | awk '{ print $2}'`
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
 			fi
-			if [[ $worker == *":[]"* ]]; then
-				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
-			fi
+			gl_spot_price=$worker
+			gl_spot_cap=$gl_base_cost
 			#
 			# We will default to 5 intervals
 			# 
-			gl_spot_cap=`echo $worker | cut -d':' -f 8 | cut -d',' -f 1`
-			gl_base_cost=$gl_spot_cap;
-			gl_spot_price=`echo $worker | cut -d':' -f 10 | cut -d: -f 10 | cut -d'"' -f 2`
 			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*1.5)/5.00)" | bc`
 		else
 			spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
@@ -1506,6 +1505,10 @@ create_ansible_options()
 		#
 		if [[ $gl_system_type != "local" ]] && [[ $gl_spot_cap -eq 0 ]]; then
 			echo No spot price designated, retrieving
+			worker=`curl -L ec2.shop?filter=$1 -H 'accept: json'`
+			if [[ $? -ne 0 ]]; then
+				cleanup_and_exit "Unable to retrieve base cost $1" 1
+			fi
 			if [[ $gl_system_type == "aws" ]]; then
 				worker=`curl -L ec2.shop?filter=$host_or_cloud_inst -H 'accept: json'`
 				gl_base_cost=`echo $worker | cut -d':' -f 8 | cut -d',' -f 1`
@@ -1809,6 +1812,7 @@ create_ansible_options()
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
+			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
 			kick_off.sh $base_string | tee ${run_dir}/ansible_log &
 			pids[${pindex}]=$!
 			let "pindex=$pindex+1"
@@ -4009,4 +4013,46 @@ remove_hostnames_added
 if [[ $gl_warning_string != "" ]]; then
 	echo -e $gl_warning_string
 fi
+
+#
+# Ok, go back through things and see if we have to perform any runs because of spot failures.
+#
+pushd ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} > /dev/null
+for i in `ls -d *`; do
+	if [ -f $i/spot_failure ]; then
+		rm $i/spot_failure
+		echo $i has spot failure running again with out spot
+		next_one=0
+		for data in `cat $i/exec_command`; do
+			if [ $next_one -eq 1 ]; then
+				file_to_use=$data
+				break
+			fi
+			if [[ $data == "--run_file" ]]; then
+				next_one=1
+			fi
+		done
+		test_separ=""
+		tests=""
+		pushd $i > /dev/null
+		for i in `cat test_times | cut -d' ' -f2`; do
+			tests=${tests}${test_separ}${i}
+			test_separ=","
+		done
+		popd > /dev/null
+		echo tests >/tmp/tests
+		tests=${tests}","
+		tests_left=`sed "s/${tests}//g" $gl_top_dir/$file_to_use`
+		if [[ -f /home/zathras_log/spot_fails ]]; then
+			date=`date`
+			echo "$data: $date tests completed: ${tests}, tests left ${tests_left}" >> /home/zathras_log/spot_fails
+		fi
+		sed "s/--use_spot/--no_spot_recover/g" $gl_top_dir/$file_to_use | sed "s/${tests}//g" > $gl_top_dir/rerun
+		pushd $gl_top_dir > /dev/null
+		chmod 755 rerun
+		./rerun
+		popd > /dev/null
+	fi
+done
+popd > /dev/null
 cleanup_and_exit "" 0
