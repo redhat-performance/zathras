@@ -1267,7 +1267,7 @@ retrieve_spot_from_config()
 			#
 			# For AWS obtain the possible starting price.
 			#
-			worker=`aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types $host_or_cloud_inst | tail -1 | awk '{ print $2}'`
+			worker=`aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types $host_or_cloud_inst | tail -1 | awk '{ print $2 }'`
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
 			fi
@@ -4021,7 +4021,7 @@ pushd ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} > /dev/null
 for i in `ls -d *`; do
 	if [ -f $i/spot_failure ]; then
 		rm $i/spot_failure
-		echo $i has spot failure running again with out spot
+		echo $i has spot failure running again without spot
 		next_one=0
 		for data in `cat $i/exec_command`; do
 			if [ $next_one -eq 1 ]; then
