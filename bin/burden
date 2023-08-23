@@ -1042,7 +1042,7 @@ reduce_options()
 		found=1
 	fi
 
-	if [[ $gl_use_spot -eq 1 ]] && [[ $option_string == *"Spot"* ]]; then
+	if [[ $gl_use_spot -eq 1 ]] && [[ $option_string == *"Spot"* ]] && [[ $gl_system_type != "azure" ]]; then
 		string=$ct_config":"$option_string
 		data=`parse_spot_line "${string}"`
 		gl_spot_price=`echo $data| cut -d':' -f 2`
@@ -1279,13 +1279,16 @@ retrieve_spot_from_config()
 			gl_spot_price=`echo $worker | cut -d':' -f 10 | cut -d: -f 10 | cut -d'"' -f 2`
 			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*1.5)/5.00)" | bc`
 		else
-			spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
-			if [[ $? -ne 0 ]]; then
-				cleanup_and_exit "Error: no spot information present for $1" 1
+			if [[ $gl_system_type != "azure" ]]; then
+				spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
+				if [[ $? -ne 0 ]]; then
+					cleanup_and_exit "Error: no spot information present for $1" 1
+				fi
+				gl_spot_price=`echo ${spot_string} | cut -d':' -f2`
+				gl_spot_increment=`echo ${spot_string} | cut -d':' -f3`
+				gl_spot_cap=`echo ${spot_string} | cut -d':' -f4`
 			fi
-			gl_spot_price=`echo ${spot_string} | cut -d':' -f2`
-			gl_spot_increment=`echo ${spot_string} | cut -d':' -f3`
-			gl_spot_cap=`echo ${spot_string} | cut -d':' -f4`
+
 		fi
 	fi
 }
@@ -1630,6 +1633,9 @@ create_ansible_options()
 			spot_pricing="${spot_pricing}${spot_separ}${gl_spot_cap}]"
 		else
 			spot_start=0
+		fi
+		if [[ $gl_system_type == "azure" ]] && [[ gl_use_spot -eq 1 ]]; then
+			gl_spot_price=1
 		fi
 		echo "  spot_start_price: ${gl_spot_price}" >> ansible_vars_main.yml
 		echo "  spot_range: ${spot_pricing}" >> ansible_vars_main.yml
