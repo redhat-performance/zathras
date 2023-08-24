@@ -1,3 +1,8 @@
+
+locals {
+  is_preemptible = var.instance_type == "preemptible" ? true : false
+}
+
 terraform {
   required_providers {
     google = {
@@ -14,7 +19,7 @@ provider "google" {
   region  = var.region
 }
 
-# Defines a VM 
+# Defines a VM
 resource "google_compute_instance" "test" {
   count                     = var.vm_count
   name                      = "${var.run_label}-${var.project_id}-${var.machine_type}-${count.index}"
@@ -26,6 +31,11 @@ resource "google_compute_instance" "test" {
     initialize_params {
       image = var.vm_image
     }
+  }
+
+  scheduling {
+    preemptible       = local.is_preemptible
+    automatic_restart = !local.is_preemptible
   }
 
   network_interface {
