@@ -57,7 +57,9 @@
         copy:
           src: "{{ pbench_ns_tf }}"
           dest: "{{ working_dir }}/tf/pbench.tf"
-        when: config_info.system_type != "aws"
+        when:
+          - config_info.system_type != "aws" 
+          - pbench_ns_tf != "none"
     - name: AWS.
       block:
       - name: copy to workig_dir so we can cat it onto the end of main.tf
