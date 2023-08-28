@@ -12,6 +12,8 @@ resource "azurerm_linux_virtual_machine" "virtualmachine" {
         username   = var.test_user
         public_key = file("~/.ssh/id_rsa.pub")
     }
+    PRIORITYSPOT
+    EVICTIONPOLICY
 
     os_disk {
         name                 = "${var.run_label}-OS_Disk-${format("%02d",each.value.index)}"
