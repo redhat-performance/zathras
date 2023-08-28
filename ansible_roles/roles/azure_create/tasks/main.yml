@@ -12,10 +12,10 @@
       src: "tf/main_no_net.tf"
       dest: "{{ working_dir }}/tf/main.tf"
   - name: cat non spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
     when: config_info.spot_start_price == 0
   - name: cat non spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf" 
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf" 
     when: config_info.spot_start_price == 1
   - name: copy output.tf
     copy:
@@ -28,7 +28,7 @@
   - name: copy main_net_p1.tf to tf/main_net.tf
     shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_p1.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf"
   - name: copy main_net_p2.tf to work area for later use
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_p2.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main_net_p2.tf"
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_p2.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\"  >> {{ working_dir }}/tf/main_net_p2.tf"
   - name: copy output.tf to tf/output_net.tf
     copy:
       src: "tf/output_net.tf"
