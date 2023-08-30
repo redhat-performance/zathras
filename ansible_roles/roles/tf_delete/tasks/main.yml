@@ -2,14 +2,26 @@
 # tasks file for terraform deletion
 #
 
-
 - name: terraform create delete plan
   shell: terraform -chdir="{{ working_dir }}/{{ tf_dir }}" plan -var-file=env.tfvars -destroy -out=destroy.tfplan
 
 - name: terraform delete
-  shell: terraform -chdir="{{ working_dir }}/{{ tf_dir }}" apply  destroy.tfplan
+  shell: timeout --signal=9 20m terraform -chdir="{{ working_dir }}/{{ tf_dir }}" apply  destroy.tfplan
+  register: destroy
+  ignore_errors: yes
 
-#- name: rm .terraform dircetory
-#  file:
-#    path:  "{{ working_dir }}/{{ tf_dir }}/.terraform"
-#    state: absent
+#
+# If the destroy timed out, remove the old plan and try again.
+#
+# Ansible changes the rtc from the timeout command
+# 
+- name: retry if need be because the command timedout
+  block:
+  - name: remove the destroy plan
+    file:
+      path:  "{{ working_dir }}/{{ tf_dir }}/destroy.tfplan"
+      state: absent
+  - name: Retry the destroy
+    include_role:
+      name: tf_delete
+  when: destroy.rc == -9
