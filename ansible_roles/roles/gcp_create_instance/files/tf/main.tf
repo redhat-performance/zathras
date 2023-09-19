@@ -27,7 +27,7 @@ resource "google_compute_instance" "test" {
   allow_stopping_for_update = "true"
   zone                      = var.zone
   labels = {
-    Name = var.run_label
+    name = var.run_label
   }
 
   boot_disk {
