@@ -1324,6 +1324,8 @@ disk_check()
 #
 generate_tags()
 {
+  echo "************ gl_test_def_dir=="
+  echo $gl_test_def_dir
 	if [[ -f ${gl_test_def_dir}/tags.conf ]]; then
 		#
 		# First generate the set of information
@@ -1362,6 +1364,13 @@ generate_tags()
 		echo "    location = var.location" >> add_main_vars.tf
 		echo "    tags = {" >> add_main_vars.tf
 		indent="        "
+	fi
+	if [[ $gl_system_type == "gcp" ]]; then
+	  echo "provider \"${gl_system_type}\" {" >> add_main_vars.tf
+	  echo "  profile = \"default\"" >> add_main_vars.tf
+	  echo "  region  = var.region" >> add_main_vars.tf
+	  echo "    tags = {" >> add_main_vars.tf
+		indent="      "
 	fi
 
 	#
@@ -1759,6 +1768,8 @@ create_ansible_options()
 		echo "  test_iterations: ${gl_test_iterations}" >> ansible_vars_main.yml
 		echo "  user_running: ${user_name}" >> ansible_vars_main.yml
 		set_user_name $user_name
+		echo "**************************************************"
+		echo $user_name
 		generate_tags $user_name
 		#
 		# Installation options
