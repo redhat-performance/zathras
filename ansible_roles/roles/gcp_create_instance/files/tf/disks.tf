@@ -6,6 +6,9 @@ resource "google_compute_disk" "default" {
   type                      = var.disk_type
   zone                      = var.disk_zone
   size                      = var.disk_size
+  labels = {
+    Name = var.run_label
+  }
 }
 
 # Attaches disks to the instance
