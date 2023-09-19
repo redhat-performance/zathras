@@ -3,9 +3,6 @@ resource "google_compute_network" "test-network" {
   count                   = var.network_count
   name                    = "${var.run_label}-${var.project_id}-${var.machine_type}-${count.index}"
   auto_create_subnetworks = false
-  labels = {
-    Name = var.run_label
-  }
 }
 
 resource "google_compute_subnetwork" "test-subnet" {
