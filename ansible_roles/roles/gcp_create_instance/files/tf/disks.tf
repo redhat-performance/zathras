@@ -7,7 +7,7 @@ resource "google_compute_disk" "default" {
   zone                      = var.disk_zone
   size                      = var.disk_size
   labels = {
-    Name = var.run_label
+    name = var.run_label
   }
 }
 
