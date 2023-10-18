@@ -24,6 +24,12 @@
       delegate_to: "{{ target_sys }}"
       become: yes
 
+- name: Upload and stall any rpms.
+  include_role:
+    name: install_rpms
+  vars:
+    results_file: "/tmp/rpm_installs"
+
 - name: Install pbench agent
   include_role:
     name: pbench_agent_install

@@ -172,6 +172,7 @@ gl_test_list_out="--tests "
 gl_rhel_tuned_setting=$value_not_set
 gl_rhel_tuned_reboot=0
 gl_update_target=$value_not_set
+gl_upload_rpms=$value_not_set
 gl_cli_supplied_options=""
 gl_test_override_options=""
 gl_warning_string=""
@@ -660,6 +661,18 @@ make_list_of_uploads()
 	done
 }
 
+make_list_of_rpms_to_upload()
+{
+	echo "rpm:" >> upload_rpms.yml
+	rpm_uploads=`echo $gl_upload_rpms | sed "s/,/ /g"`
+	for rpm in $rpm_uploads; do
+		if [[ ! -f ${rpm} ]] && [[ ${rpm} != "none" ]];  then
+			cleanup_and_exit "${file_to_upload}: Can not find" 1
+		fi
+		echo "  - ${rpm}" >> upload_rpms.yml
+	done
+}
+
 #
 # Set the repo image type.
 #
@@ -950,6 +963,7 @@ determine_what_has_to_be_installed()
 		#
 		create_test_run_file $local_test_name
 	done
+	make_list_of_rpms_to_upload
 #
 #  Now java packages if need be.
 #
@@ -3261,6 +3275,7 @@ usage()
 	echo "    profiles to use.  if the system type is a cloud environment, then each tuned profile is a"
 	echo "    distinct cloud instance."
 	echo "  --tuned_reboot: reboot when a new tuned is set.  Default is not to reboot"
+	echo "  --upload_rpms <rpm 1>,<rpm 2>....: Comma separated list of rpms (full path) to upload and install"
 	echo "  --update_target: Image to update"
 	echo "    Note:  only 1 update image can be used, makes no difference"
 	echo "           if designate a different one for each system in the"
@@ -3593,6 +3608,13 @@ set_general_value()
 			gl_update_test_versions=1
 			shift_by=1
 		;;
+		--upload_rpms)
+			if [[ $gl_upload_rpms == $value_not_set ]]; then
+				echo "$1 $2" >> $gl_cli_supplied_options
+				gl_upload_rpms=$2
+			fi
+			shift_by=2
+		;;
 		--usage)
 			usage "0"
 			shift_by=1
@@ -3657,6 +3679,7 @@ grab_cli_data()
 		"tf_terminate_list"
 		"tuned_reboot"
 		"update_target"
+		"upload_rpms"
 	)
 
 	NO_ARGUMENTS=(

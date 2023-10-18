@@ -1,0 +1,34 @@
+---
+- name: include dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+# 
+# Upload the required tests.
+#
+- name: upload the rpm file
+  become: no
+  local_action: shell scp -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ rpm }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }}:{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}
+
+- name: Get rpm file name
+  shell: "echo {{ rpm }} | rev | cut -d'/' -f 1 | rev"
+  register: rpm_out
+
+- name: Present rpm file info
+  debug:
+    var: rpm_out
+
+- name: install the rpm file
+  shell: sudo yum install -y {{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ rpm_out.stdout }}
+  ignore_errors: yes
+  register: install_results
+
+- name: Error check
+  include_role:
+    name: package_install_error
+  vars:
+    rtc_val: "{{ install_results.rc }}"
+    packages: "{{ rpm_out.stdout }}"
+
+
