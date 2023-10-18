@@ -319,6 +319,19 @@
       exit_msg: "Code repo installation failure"
     when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
 
+ #
+ # Determine where to upload from, assumption is all test systems have the same
+ # disk space.
+ #
+- hosts: localhost
+  vars_files:
+    - ansible_vars.yml
+  gather_facts: no 
+  tasks:
+  - name: Determine disk space
+    include_role:
+      name: upload_disk_space
+ 
 #
 # Install the packages.
 # 
@@ -423,6 +436,21 @@
     when:
       - config_info.pbench_install != 0
       - config_info.system_type != "local"
+
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files:
+    - ansible_vars.yml
+  gather_facts: yes
+  tasks:
+  - name: Upload and stall any rpms.
+    include_role:
+      name: install_rpms
+    vars:
+      results_file: "/tmp/rpm_installs"
+    when: config_info.pbench_install == 0
 
 #
 # Install the packages.
@@ -752,20 +780,6 @@
         src: "/tmp/system_config"
         dest: "{{ working_dir }}/boot_info/"
         flat: yes
-
- #
- # Determine where to upload from, assumption is all test systems have the same
- # disk space.
- #
-- hosts: localhost
-  vars_files:
-    - ansible_vars.yml
-  gather_facts: no 
-  tasks:
-  - name: Determine disk space
-    include_role:
-      name: upload_disk_space
- 
 
 - hosts: test_group
   vars_files:
