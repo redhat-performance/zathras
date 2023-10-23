@@ -9,7 +9,7 @@
 #
 - name: upload the rpm file
   become: no
-  local_action: shell scp -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ rpm }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }}:{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}
+  local_action: shell scp -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ rpm }} {{ config_info.test_user }}@{{ inventory_hostname }}:{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}
 
 - name: Get rpm file name
   shell: "echo {{ rpm }} | rev | cut -d'/' -f 1 | rev"
