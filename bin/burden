@@ -172,10 +172,11 @@ gl_test_list_out="--tests "
 gl_rhel_tuned_setting=$value_not_set
 gl_rhel_tuned_reboot=0
 gl_update_target=$value_not_set
+gl_upload_rpms=$value_not_set
 gl_cli_supplied_options=""
 gl_test_override_options=""
 gl_warning_string=""
-gl_max_systems=3
+gl_max_systems=1
 gl_max_systems_set=0
 #
 # We want the version check on.  We do this, as no options to burden
@@ -660,6 +661,18 @@ make_list_of_uploads()
 	done
 }
 
+make_list_of_rpms_to_upload()
+{
+	echo "rpm:" >> upload_rpms.yml
+	rpm_uploads=`echo $gl_upload_rpms | sed "s/,/ /g"`
+	for rpm in $rpm_uploads; do
+		if [[ ! -f ${rpm} ]] && [[ ${rpm} != "none" ]];  then
+			cleanup_and_exit "${file_to_upload}: Can not find" 1
+		fi
+		echo "  - ${rpm}" >> upload_rpms.yml
+	done
+}
+
 #
 # Set the repo image type.
 #
@@ -950,6 +963,7 @@ determine_what_has_to_be_installed()
 		#
 		create_test_run_file $local_test_name
 	done
+	make_list_of_rpms_to_upload
 #
 #  Now java packages if need be.
 #
@@ -2389,6 +2403,14 @@ convert_scenario_file()
 	if [ $? -eq 1 ]; then
 		cleanup_and_exit "The file, parse_file does not meet yaml requirements." 1
 	fi
+	#
+	# Check to make sure we have the proper number of host configs
+	# 
+	sc_cnt=`grep host_config $1 | wc -l`
+	ps_cnt=`grep host_config parse_file | wc -l`
+	if [ $ps_cnt != $sc_cnt ]; then
+		cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
+	fi
 }
 
 #
@@ -2585,7 +2607,7 @@ run_scenario()
 			let "sys_index=$sys_index+1"
 			sysexpect="system"$sys_index":"
 			if [[ $gl_use_spot -eq 1 ]]; then
-				test_cli="${test_cli} --use_spot"
+				test_cli="${test_cli} --use_spot 1"
 			fi
 			#
 			# Host config causing issues with calling burden directly.  So as a workaround
@@ -2595,9 +2617,11 @@ run_scenario()
 				#
 				# Wait for all outstanding tests to finish before we do more.
 				#
-				for pid in ${pids[*]}; do
-					wait $pid
-				done
+				if [ $pindex != 0 ]; then
+					for pid in ${pids[*]}; do
+						wait $pid
+					done
+				fi
 				pindex=0
 				pid=""
 			else
@@ -3261,6 +3285,7 @@ usage()
 	echo "    profiles to use.  if the system type is a cloud environment, then each tuned profile is a"
 	echo "    distinct cloud instance."
 	echo "  --tuned_reboot: reboot when a new tuned is set.  Default is not to reboot"
+	echo "  --upload_rpms <rpm 1>,<rpm 2>....: Comma separated list of rpms (full path) to upload and install"
 	echo "  --update_target: Image to update"
 	echo "    Note:  only 1 update image can be used, makes no difference"
 	echo "           if designate a different one for each system in the"
@@ -3593,13 +3618,20 @@ set_general_value()
 			gl_update_test_versions=1
 			shift_by=1
 		;;
+		--upload_rpms)
+			if [[ $gl_upload_rpms == $value_not_set ]]; then
+				echo "$1 $2" >> $gl_cli_supplied_options
+				gl_upload_rpms=$2
+			fi
+			shift_by=2
+		;;
 		--usage)
 			usage "0"
 			shift_by=1
 		;;
 		--use_spot)
-			gl_use_spot=1
-			shift_by=1
+			gl_use_spot=$2
+			shift_by=2
 		;;
 		--verbose)
 			usage "1"
@@ -3657,6 +3689,8 @@ grab_cli_data()
 		"tf_terminate_list"
 		"tuned_reboot"
 		"update_target"
+		"upload_rpms"
+		"use_spot"
 	)
 
 	NO_ARGUMENTS=(
@@ -3676,7 +3710,6 @@ grab_cli_data()
 		"tf_terminate_all"
 		"update_test_versions"
 		"usage"
-		"use_spot"
 		"verbose"
 	)
 
@@ -4063,7 +4096,7 @@ for i in `ls -d *`; do
 			date=`date`
 			echo "$data: $date tests completed: ${tests}, tests left ${tests_left}" >> /home/zathras_log/spot_fails
 		fi
-		sed "s/--use_spot/--no_spot_recover/g" $gl_top_dir/$file_to_use | sed "s/${tests}//g" > $gl_top_dir/rerun
+		sed "s/--use_spot 1/--no_spot_recover/g" $gl_top_dir/$file_to_use | sed "s/${tests}//g" > $gl_top_dir/rerun
 		pushd $gl_top_dir > /dev/null
 		chmod 755 rerun
 		./rerun
