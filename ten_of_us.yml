@@ -1,0 +1,1061 @@
+---
+#
+#                       License
+#
+# Copyright (C) 2022  David Valin dvalin@redhat.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+# ten_of_us.yml is part of the Zathras automation framework.  It reads in the yml file
+#   created by burden, and performs the following:
+#   1) Call the appropriate modules to create the designated system type.
+#   2) Install all required packages
+#   3) Invokes the test to be executed.
+#   
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Terminate wrong cpu instances if required.
+    block:
+    - name: terminate bad cpu type instance
+      include_role:
+        name: tf_delete
+      vars:
+        tf_dir: "{{ delete_tf }}"
+    - name: Abort, all we are doing is killing off a bad cpu type instance.
+      fail:
+        msg: we were not able to get the cpu type.
+    when: delete_tf != "none"
+
+- hosts: local
+  vars_files: ansible_vars.yml
+
+  gather_facts: no
+  tasks:
+  #
+  # Start with the instance not being created.
+  # 
+  - set_fact:
+      instance_created: 0
+
+  #
+  # Set the ssh key, if one is designated.
+  #
+
+  - name: ssh value set
+    block:
+    - name: set ssh dash i file for ssh
+      set_fact:
+        dash_i_value: "ssh_i_option: \"-i {{ config_info.ssh_key }}\""
+      when: config_info.ssh_key != "none_designated"
+    - name: No ssh dash i file designated, default null string.
+      set_fact:
+        dash_i_value: "ssh_i_option: \"\""
+      when: config_info.ssh_key == "none_designated"
+
+#
+# Preset the tf.rtc file
+#
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: preset terraform rtc to be false
+    lineinfile:
+      path: "{{ working_dir }}/tf.rtc"
+      line: "rtc: 1"
+      create: yes
+
+
+#
+# Create the cloud systems if required.
+#
+  - name: only on startup
+    block:
+    - name: add the ssh line to the file
+      lineinfile:
+        path: "{{ working_dir }}/ansible_run_vars.yml"
+        line: "{{ dash_i_value }}"
+        create: yes
+
+    - name: aws operations
+      block:
+      - name: aws_operations
+        include_role:
+          name: aws_create
+      when: config_info.system_type == "aws"
+
+    - name: azure operations
+      block:
+      - name: azure_operations
+        include_role:
+          name: azure_create
+      when: config_info.system_type == "azure"
+
+    - name: create gcp instances
+      block:
+        - include_role:
+            name: gcp_create_instance  
+      when: config_info.system_type == "gcp"
+
+    - name: local operations
+      block:
+      - name: local_operations
+        include_role:
+          name: local_setup
+      when: config_info.system_type == "local"
+    when: config_info.init_system == "yes"
+
+#
+# Move meta data to its own role
+# Pull metada for azure
+#
+#
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: pull meta data
+    include_role:
+      name: retrieve_meta_data
+
+#
+# update the system if required.
+#
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - set_fact:
+      ansible_python_interpreter: "auto"
+  - name: update_os_image
+    include_role:
+      name: update_os_image
+  - name: Terminate on update_failure failure
+    include_role:
+      name: terminate_on_error
+    vars:
+      status_file: "os_update_status"
+      exit_msg: "Failed to update the os image."
+
+#
+# Set the home dir, we will use it over and over again.
+#
+- hosts: install_group
+  gather_facts: yes
+  tasks:
+  - name: figure out home dir
+    set_fact:
+      cd_homedir: "{{ ansible_env.HOME }}"
+
+#
+# Upload the metadata for saving with pbench data
+#
+- hosts: install_group
+  gather_facts: yes
+  vars_files: ansible_vars.yml
+  tasks:
+  - name: upload meta data for various usage.
+    include_role:
+      name: upload_meta_data
+
+#
+# install tools
+# 
+- hosts: install_group
+  user: config_info.test_user
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: install tools
+    include_role:
+      name: install_tools
+  - name: retrieve install tools status
+    include_role:
+      name: retrieve_status
+    vars:
+      status_file: "tar_status"
+
+#
+# Terminate if told to.
+# 
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Terminate on repo failure
+    include_role:
+      name: terminate_on_error
+    vars:
+      status_file: "tar_status"
+      exit_msg: "tools installation failure."
+
+#
+# Make sure CodeReady Builder repo is enabled, thanks inconsistent clouds
+#
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files: ansible_vars.yml
+
+  gather_facts: no
+  tasks:
+  - name: install codready repo (if RHEL)
+    block:
+    - name: Enable CodeReady Builder for Azure
+      block:
+      - name: Enable CodeReady Builder for Azure
+        shell: "yum-config-manager --enable rhui-codeready-builder-for-rhel-8-x86_64-rhui-rpms"
+        register: yum_config
+        ignore_errors: yes
+      - name: Record status of yum config sucess
+        include_role:
+          name: record_status
+        vars:
+          results: "{{ yum_config }}"
+          status_file: "/tmp/cr_status"
+      when:
+        - config_info.system_type == "azure"
+
+    - name: Enable CodeReady Builder for AWS
+      block:
+      - name: get codeready repo name
+        shell:
+          cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
+          warn: false
+        register: repo_name
+        ignore_errors: yes
+      - name: Record status of yum config sucess
+        include_role:
+          name: record_status
+        vars:
+          results: "{{ repo_name }}"
+          status_file: "/tmp/cr_status"
+      - name: aws upload the codeready repo
+        shell: "yum-config-manager --enable {{ repo_name.stdout }}"
+        register: yum_config
+        ignore_errors: yes
+      - name: Record status of yum config sucess
+        include_role:
+          name: record_status
+        vars:
+          results: "{{ yum_config }}"
+          status_file: "/tmp/cr_status"
+      when:
+        - config_info.system_type == "aws"
+
+    - name: Enable CodeReady Builder for GCP
+      block:
+
+        - name: Install yum utils
+          become: yes
+          shell: "yum install yum-utils -y"
+
+        #- name: get codeready repo name
+        #  shell:
+        #    cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
+        #    warn: false
+        #    register: repo_name
+        #    ignore_errors: yes
+        #- name: Record status of yum config sucess
+        #  include_role:
+        #    name: record_status
+        #  vars:
+        #    results: "{{ repo_name }}"
+        #   status_file: "/tmp/cr_status"
+
+        - name: Enable CodeReady Builder for GCP
+          become: yes
+          shell: "yum-config-manager --enable rhui-codeready-builder-for-rhel-9-x86_64-rhui-rpms"
+          register: yum_config
+          ignore_errors: yes
+
+        - name: Record status of yum config sucess
+          include_role:
+            name: record_status
+          vars:
+            results: "{{ yum_config }}"
+            status_file: "/tmp/cr_status"
+      when:
+        - config_info.system_type == "gcp"
+
+    - name: retrieve repo config status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "cr_status"
+      when:
+        - config_info.system_type != "local"
+    when:
+      - config_info.os_vendor == "rhel"
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Terminate on repo failure
+    include_role:
+      name: terminate_on_error
+    vars:
+      status_file: "cr_status"
+      exit_msg: "Code repo installation failure"
+    when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
+
+#
+# Install the packages.
+# 
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files:
+    - ansible_vars.yml
+    - install_opts.yml
+
+  gather_facts: yes
+  tasks:
+  - name: init sys_terminate
+    set_fact:
+      sys_terminate: "no"
+
+  - name: rhel installation
+    block:
+    - name: install_pkgs
+      include_role:
+        name: install_packages
+      vars:
+        results_file: "/tmp/install_status"
+    - name: Gather the rpm package facts
+      package_facts:
+        manager: auto
+    - name: pbench prep
+      include_role:
+        name: pbench_prep
+    - name: retrieve pbench prep status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "pbench_prep_status"
+    - name: dev environment for uperf
+      include_role:
+        name: install_dev_environment
+    - name: retrieve dev env status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "dev_env_status"
+    when:
+      - config_info.os_vendor == "rhel"
+      - config_info.init_system == "yes"
+      - config_info.do_not_install_packages == 0
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name : Terminate on repo or dev env failure
+    block:
+    - name: Terminate on repo failure
+      include_role:
+        name: terminate_on_error
+      vars:
+        status_file: "pbench_prep_status"
+        exit_msg: "pbench prep failure"
+    - name: Terminate on dev env failure
+      include_role:
+        name: terminate_on_error
+      vars:
+        status_file: "dev_env_status"
+        exit_msg: "Failure on dev environment."
+    when:
+      - config_info.os_vendor == "rhel"
+      - config_info.init_system == "yes"
+      - config_info.system_type != "local"
+      - config_info.do_not_install_packages == 0
+
+#
+# Install pbench
+#
+- hosts: install_group
+  vars_files:
+    - ansible_vars.yml
+
+  gather_facts: no
+  tasks:
+  - name: pbench_installation
+    block:
+    - name: Read in dynamic information
+      include_vars:
+        file: "{{ working_dir }}/ansible_run_vars.yml"
+        name: dyn_data
+    - name: install pbench on server
+      include_role:
+        name: install_pbench
+        apply:
+          become: yes
+      vars:
+        target_sys: "{{ dyn_data.test_hostname }}"
+    - name: install pbench on client
+      include_role:
+        name: install_pbench
+      vars:
+        target_sys: "{{ dyn_data.net_hostname }}"
+      when:
+        - config_info.network_required == "yes"
+    when:
+      - config_info.pbench_install != 0
+      - config_info.system_type != "local"
+
+#
+# Install the packages.
+# 
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files:
+    - ansible_vars.yml
+
+  gather_facts: yes
+  tasks:
+  - name: pbench test install
+    block:
+    - name: pbench install tests
+      block:
+      - name: install pbench tests
+        include_role:
+          name: install_pbench_tests
+    - name: retrieve pbench test install status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "pbench_test_inst_status"
+    when:
+      - config_info.pbench_install != 0
+      - config_info.do_not_install_packages == 0
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Terminate on pbench test install failure
+    block:
+    - name: Check results
+      include_role:
+        name: terminate_on_error
+      vars:
+        status_file: "pbench_test_inst_status"
+        exit_msg: "Failure on pbench test installation."
+    when:
+      - config_info.pbench_install != 0
+
+# Install packages for other OSes
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files:
+    - ansible_vars.yml
+    - install_opts.yml
+
+  gather_facts: no
+  tasks:
+  - name: amazon/ubuntu installation
+    block:
+    - name: update apts
+      shell: "apt-get update -y"
+    - name: install_pkgs
+      include_role:
+        name: install_packages
+      vars:
+        results_file: "/tmp/install_status"
+    when:
+      - config_info.os_vendor == "ubuntu"
+      - config_info.init_system == "yes"
+      - config_info.do_not_install_packages == 0
+
+# Install packages for other OSes
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files:
+    - ansible_vars.yml
+    - install_opts.yml
+
+  gather_facts: no
+  tasks:
+  - name: amazon
+    block:
+    - name: install_pkgs
+      include_role:
+        name: install_packages
+      vars:
+        results_file: "/tmp/install_status"
+    when:
+      - config_info.os_vendor == "amazon"
+      - config_info.init_system == "yes"
+      - config_info.do_not_install_packages == 0
+#
+# Terminate if told to.
+# 
+- hosts: install_group
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: retrieve install status
+    include_role:
+      name: retrieve_status
+    vars:
+      status_file: "install_status"
+    when:
+      - config_info.system_type != "local"
+      - config_info.do_not_install_packages == 0
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Terminate on repo failure
+    block:
+    - name: determine pack failure
+      include_role:
+        name: terminate_on_error
+      vars:
+        status_file: "install_status"
+        exit_msg: "Package installation failure."
+    when:
+      - config_info.do_not_install_packages == 0
+      - config_info.system_type != "local"
+
+#
+# Reboot the system if we did an update.
+# 
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files: ansible_vars.yml
+
+  gather_facts: no
+  tasks:
+  - name: reboot after update
+    block:
+    - name: Reboot system to have new os take effect, wait for it to come back
+      reboot:
+        reboot_timeout: 1800
+    when:
+      - config_info.os_vendor == "rhel"
+      - config_info.update_os_version != "none"
+
+#
+# connect systems if required.  Local systems are expected to already be
+# connected.  The best way we can see to get the current time in seconds is simply
+# to use the date command.  There is lookup('pipe','date'), but it actually just
+# executes the date command underneath.
+# 
+#
+- hosts: local
+  vars_files: ansible_vars.yml
+
+  gather_facts: no
+  tasks:
+    - name: connect systems
+      block:
+      - name: network start time
+        command: "date -u +%s"
+        register: network_connect_start
+
+      - name: network setup
+        include_role:
+          name: connect_systems
+
+      - name: network end time
+        command: "date -u +%s"
+        register: network_connect_end
+
+      - name: Report client creation time
+        lineinfile:
+          path: "{{ working_dir }}/cloud_timings"
+          line: "network setup time: {{ (network_connect_end.stdout) | int  - (network_connect_start.stdout) | int }}"
+          create: yes
+      when:
+        - config_info.system_type != "local"
+        - config_info.cloud_numb_networks > 0
+        - config_info.init_system == "yes"
+#
+# Reboot the system after doing the network connections
+# 
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files: ansible_vars.yml
+
+  gather_facts: no
+  tasks:
+  - name: reboot after network configs (aws only)
+    block:
+    - name: Reboot system so the private/nics can be seen.
+      reboot:
+        reboot_timeout: 1800
+    - name: Wait for 60 seconds.
+      command: sleep 60
+    when:
+      - config_info.system_type == "aws"
+      - config_info.cloud_numb_networks > 0
+      - config_info.cloud_numb_network_type != "public"
+      - config_info.init_system == "yes"
+
+#
+# set the install groups
+# We need the ignore file, in case ansible_install_group is not present.
+# 
+- hosts: local
+  vars_files: 
+  - ansible_vars.yml
+  - [ "{{ working_dir }}/ansible_install_group", "{{ working_dir }}/ignore.yml" ]
+
+  gather_facts: no
+  tasks:
+    - name: assign group hosts
+      block:
+      - name: Read the install hosts in and set them
+        add_host:
+          name: "{{ install_hostname }}"
+          groups: install_group
+          ansible_user: "{{ config_info.test_user }}"
+          ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
+        loop: "{{ install_group_list }}"
+        loop_control:
+          loop_var: install_hostname
+      when: config_info.init_system == "no"
+
+#
+# Set the test_group
+#
+- hosts: local
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files: 
+  - ansible_vars.yml
+  - [ "{{ working_dir }}/ansible_test_group", "{{ working_dir }}/ignore.yml" ]
+
+  gather_facts: no
+ 
+  tasks:
+    - name: assign test hosts
+      block:
+      - name: Read the test hosts in and set them
+        add_host:
+          name: "{{ test_hostname }}"
+          groups: test_group
+          ansible_user: "{{ config_info.test_user }}"
+          ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
+        loop: "{{ test_group_list }}"
+        loop_control:
+          loop_var: test_hostname
+      when: config_info.init_system == "no"
+#
+# Clear out our install disk.
+# 
+- hosts: local
+  vars_files: ansible_vars.yml
+
+  gather_facts: no
+  tasks:
+  - name: install tools for cloud
+    block:
+    - name: install_cleanup
+      include_role:
+        name: install_cleanup
+    when:
+      - config_info.os_vendor == "rhel"
+      - config_info.update_os_version != "none"
+      - config_info.init_system == "yes"
+#
+# Disable selinux if required, if we do, reboot the system
+# 
+- hosts: install_group
+  user: root
+  become: true
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: disable selinux
+    block:
+    - name: disabling selinux
+      selinux:
+        state: disabled
+    - name: reboot the system now for disabled selinux to take effect
+      reboot:
+        reboot_timeout: 1800
+    when: (config_info.selinux_state == "disabled")
+
+#
+# Set sys config values.
+#
+- hosts: install_group
+  user: root
+  become: true
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+    - name: system_configuration
+      include_role:
+        name: sys_config
+      vars:
+        sysctl_settings: "{{ config_info.sys_config }}"
+
+#
+# Retrieve boot time information
+#
+- hosts: test_group
+  user: root
+  become: true
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+    - name: obtain various stats
+      shell: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/tools_bin/gather_boot_info initial"
+
+    - name: obtain system config info
+      shell: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/tools_bin/data_gather > /tmp/system_config"
+
+    - name: retrieve boot time stats
+      fetch:
+        src: "/tmp/initial_boot_info.tar"
+        dest: "{{ working_dir }}/boot_info/"
+        flat: yes
+
+    - name: retrieve system config info
+      fetch:
+        src: "/tmp/system_config"
+        dest: "{{ working_dir }}/boot_info/"
+        flat: yes
+
+ #
+ # Determine where to upload from, assumption is all test systems have the same
+ # disk space.
+ #
+- hosts: localhost
+  vars_files:
+    - ansible_vars.yml
+  gather_facts: no 
+  tasks:
+  - name: Determine disk space
+    include_role:
+      name: upload_disk_space
+ 
+
+- hosts: test_group
+  vars_files:
+    - ansible_vars.yml
+    - upload_files.yml
+  user: root
+  become: true
+  gather_facts: no
+  tasks:
+  - name: include dynamic info
+    include_vars:
+      file: "{{ working_dir }}/ansible_run_vars.yml"
+      name: dyn_data
+#
+#
+#
+- hosts: test_group
+  vars_files:
+    - ansible_vars.yml
+    - upload_files.yml
+  user: root
+  become: true
+  gather_facts: no
+  tasks:
+  - name: include dynamic info
+    include_vars:
+      file: "{{ working_dir }}/ansible_run_vars.yml"
+      name: dyn_data
+  - name: handle_existing_uploads
+    include_role:
+      name: existing_uploads_dir
+    vars:
+      type: "uploads"
+      real_dir: "{{ dyn_data.kit_upload_directory }}"
+
+ #
+ # Now upload the file.  Due to Ansible copying the file first to ~/.ans* we need to do an ssh.
+ #
+ #
+- hosts: localhost
+  vars_files:
+    - ansible_vars.yml
+    - upload_files.yml
+  gather_facts: yes
+  tasks:
+  - name: upload extra files
+    include_role:
+      name: upload_extra
+
+- hosts: test_group
+  vars_files:
+    - ansible_vars.yml
+    - upload_files.yml
+  user: root
+  become: true
+  gather_facts: no
+  tasks:
+  - name: include dynamic info
+    include_vars:
+      file: "{{ working_dir }}/ansible_run_vars.yml"
+      name: dyn_data
+  - name: handle existing workloads dir
+    include_role:
+      name: existing_uploads_dir
+    vars:
+      type: "workloads"
+      real_dir: "{{ dyn_data.kit_upload_directory }}"
+
+- hosts: test_group
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: retrieve install status
+    include_role:
+      name: retrieve_status
+    vars:
+      status_file: "install_status"
+    when:
+      - config_info.system_type != "local"
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Terminate on repo failure
+    include_role:
+      name: terminate_on_error
+    vars:
+      status_file: "install_status"
+      exit_msg: "Package installation failure."
+    when:
+      - config_info.do_not_install_packages == 0
+      - config_info.system_type != "local"
+#
+# retrieve the test
+#
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+    - name: retrieve the test
+      include_role:
+        name: retrieve_test
+      vars:
+        test_exec: "{{ test_item }}"
+      loop: "{{ config_info.test_to_run }}"
+      loop_control:
+        loop_var: test_item
+    - name: Terminate on retrieve_test error
+      include_role:
+        name: terminate_on_error
+      vars:
+        status_file: "copy_git_file_status"
+        exit_msg: "Failed to load test repo"
+      when: config_info.cloud_execute_tests == 1
+
+#
+# Retrieve the system configuration information
+# 
+- hosts: test_group
+  user: root
+  become: true
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: retrieve system configuration
+    include_role:
+      name: retrieve_sys_config
+  - name: retrieve sys config info
+    fetch:
+      src: "/tmp/sysconfig_info.tar"
+      dest: "{{ working_dir }}/"
+      flat: yes
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Add test start file file.
+    lineinfile:
+      path: "{{ working_dir }}/test_started"
+      line: "Test started"
+      create: yes
+#
+# If we are creating the system only, bail out here.
+#
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: end it
+    fail:
+      msg: Do not execute the test.
+    when:
+      - config_info.cloud_terminate_instance == 0
+      - config_info.cloud_execute_tests == 0
+
+#
+#
+#
+- hosts: test_group
+  vars_files:
+    - ansible_vars.yml
+    - upload_files.yml
+  user: root
+  become: true
+  gather_facts: no
+  tasks:
+  - name: include dynamic info
+    include_vars:
+      file: "{{ working_dir }}/ansible_run_vars.yml"
+      name: dyn_data
+  - name: execute remotely
+    block:
+    - name: delete the timing file if it exists
+      file:
+        path: /tmp/test_times
+        state: absent
+    - name: execute remote tests
+      include_role:
+        name: test_execute_loop
+      vars:
+        test_location: "remote"
+    - name: Add completion file.
+      lineinfile:
+        path: "{{ working_dir }}/test_returned"
+        line: "Test completed"
+        create: yes
+    when: config_info.test_exec_location == "remote"
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Add test complete file.
+    lineinfile:
+      path: "{{ working_dir }}/test_returned"
+      line: "Test returned"
+      create: yes
+    when: config_info.test_exec_location == "remote"
+
+#
+# execute the test that need to be executed from the local system (reboot)
+# 
+- hosts: localhost
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: test local test
+    include_role:
+      name: test_execute_loop
+    vars:
+      test_location: "local"
+    when: config_info.test_exec_location == "local"
+
+- hosts: test_group
+  vars_files:
+    - ansible_vars.yml
+    - upload_files.yml
+  user: root
+  become: true
+  gather_facts: no
+  tasks:
+  - name: restore uploads on bare metal systems if need be.
+    block:
+    - name: See if uploads_back_zathras_exists
+      stat:
+        path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads_back_zathras"
+      register: stat_result
+    - name: restore dir if required
+      block:
+      - name: First remove the uploads we created.
+        ansible.builtin.file:
+          path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
+          state: absent
+      - name: Restore the original uploads
+        command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads_back_zathras /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/uploads"
+      when: stat_result.stat.exists
+  - name: restore workloads on bare metal systems if need be.
+    block:
+    - name: See if workloads_back_zathras_exists
+      stat:
+        path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads_back_zathras"
+      register: stat_result
+    - name: restore dir if required
+      block:
+      - name: First remove the workloads we created.
+        ansible.builtin.file:
+          path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
+          state: absent
+      - name: Restore the original workloads
+        command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads_back_zathras /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
+      when: stat_result.stat.exists
+    when: dir_stat_result.stat.isdir is defined and dir_stat_result.stat.isdir
+
+#
+# Terminate the systems
+#
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+   
+  - name: terminate instance
+    block:
+    - name: terminate start time
+      command: "date -u +%s"
+      register: terminate_start_time
+
+#
+# When azure goes to terraform, the when statement goes away as everyone
+# is using the same termiante routine.
+# 
+    - name: Terraform terminate
+      include_role:
+        name: tf_delete
+      vars:
+        tf_dir: "tf"
+      when: config_info.system_type == "aws" or config_info.system_type == "gcp" or config_info.system_type == "azure"
+    
+    - name: terminate end time
+      command: "date -u +%s"
+      register: terminate_end_time
+
+    - name: Report termination time
+      lineinfile:
+        path: "{{ working_dir }}/cloud_timings"
+        line: "terminate time: {{ (terminate_end_time.stdout) | int  - (terminate_start_time.stdout) | int }}"
+    when: 
+      - config_info.system_type != "local"
+      - config_info.cloud_terminate_instance == 1
+      - config_info.term_system == "yes"
+
