@@ -450,7 +450,6 @@
       name: install_rpms
     vars:
       results_file: "/tmp/rpm_installs"
-    when: config_info.pbench_install == 0
 
 #
 # Install the packages.
@@ -629,29 +628,6 @@
         - config_info.system_type != "local"
         - config_info.cloud_numb_networks > 0
         - config_info.init_system == "yes"
-#
-# Reboot the system after doing the network connections
-# 
-- hosts: install_group
-  user: config_info.test_user
-  become_user: root
-  become: true
-  vars_files: ansible_vars.yml
-
-  gather_facts: no
-  tasks:
-  - name: reboot after network configs (aws only)
-    block:
-    - name: Reboot system so the private/nics can be seen.
-      reboot:
-        reboot_timeout: 1800
-    - name: Wait for 60 seconds.
-      command: sleep 60
-    when:
-      - config_info.system_type == "aws"
-      - config_info.cloud_numb_networks > 0
-      - config_info.cloud_numb_network_type != "public"
-      - config_info.init_system == "yes"
 
 #
 # set the install groups
