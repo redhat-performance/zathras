@@ -1,0 +1,28 @@
+---
+# 
+# Upload the required tests.
+#
+
+- name: include_rpms
+  include_vars:
+    file: "{{ working_dir }}/upload_rpms.yml"
+    name: rpms
+
+- name: Load in configuration information
+  include_vars:
+    file: "{{ working_dir }}/ansible_vars.yml"
+
+#
+# Default status.
+#
+# If we are pulling a file
+#
+- name: perform rpm upload
+  include_role:
+    name: rpm_upload_and_install
+  vars:
+    rpm: "{{ rpm_file }}"
+  when: rpm_file != "none"
+  loop:  "{{ rpms.rpm }}"
+  loop_control:
+    loop_var: rpm_file
