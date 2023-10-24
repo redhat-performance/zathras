@@ -176,7 +176,7 @@ gl_upload_rpms=$value_not_set
 gl_cli_supplied_options=""
 gl_test_override_options=""
 gl_warning_string=""
-gl_max_systems=1
+gl_max_systems=3
 gl_max_systems_set=0
 #
 # We want the version check on.  We do this, as no options to burden
