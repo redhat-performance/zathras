@@ -1,0 +1,3 @@
+      User                                          Run label   Instance                     Date  Price         Test   Time     Cost
+    dvalin                         arm_chip_compare_rhel_rhel m6g.xlarge      2023.10.26-11.35.34  0.154     coremark    239    .0102
+    dvalin                         arm_chip_compare_rhel_rhel m6g.xlarge      2023.10.26-12.02.12  0.154     coremark    240    .0102
