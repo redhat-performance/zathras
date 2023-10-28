@@ -1,0 +1,26 @@
+---
+# tasks file for pbench_install_tools
+- name: List existing tools in the tool group {{ group }}
+  ansible.builtin.find:
+    paths:
+      - /var/lib/pbench-agent/tools-v1-{{ group }}/{{ ansible_facts['fqdn'] | replace('.localdomain', '') }} # On systems without a hostname, pbench simply uses localhost instead of localhost.localdomain
+    depth: 1
+  register: installed_tools
+
+- name: Remove tools from the tool group {{ group }}
+  ansible.builtin.file:
+    path: "{{ previous_pbench_tool['path'] }}"
+    state: absent
+  loop: "{{ installed_tools['files'] }}"
+  loop_control:
+    loop_var: previous_pbench_tool
+    label: "{{ previous_pbench_tool['path'] }}"
+
+- name: Register PBench Tools
+  vars:
+    tool_definition: "{{ pbench_tool_install_tool }}"
+  ansible.builtin.include_tasks: register.yml
+  loop: "{{ tools }}"
+  loop_control:
+    loop_var: pbench_tool_install_tool
+    label: "{{ pbench_tool_install_tool['name'] | default(pbench_tool_install_tool['tool']) }}"

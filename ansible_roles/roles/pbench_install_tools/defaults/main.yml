@@ -1,0 +1,19 @@
+---
+# defaults file for pbench_install_tools
+interval: 10
+tools:
+  - tool: iostat
+  - tool: mpstat
+  - tool: perf
+  - tool: pidstat
+  - tool: proc-interrupts
+  - tool: proc-vmstat
+  - tool: sar
+  - tool: turbostat
+
+tool_options:
+  perf: --record-opts="'-a --freq 100'"
+
+group: default
+
+user_tool_path: /root/zathras_tools

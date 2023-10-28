@@ -1,0 +1,6 @@
+{% if tool_definition['tool'] != 'perf' %}--interval={{ interval }}{% endif %}
+{% if tool_definition['options'] is defined %}
+{{ tool_definition['options'] }}
+{% elif tool_options[tool_definition['tool']] is defined %}
+{{ tool_options[tool_definition['tool']] }}
+{% endif %}

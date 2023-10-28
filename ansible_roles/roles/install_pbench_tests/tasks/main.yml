@@ -27,17 +27,18 @@
 #
 # install pbench tools
 #
+  - name: fetch pbench tool vars
+    ansible.builtin.include_vars:
+      name: pbench_tools_to_install
+      file: pbench_tools.yml
+      
   - name: install pbench tools
-    command: sudo -i /opt/pbench-agent/util-scripts/pbench-register-tool-set
-    ignore_errors: yes
-    register: pbench_register
-  - name: record pbench register status
+    vars: 
+      tools: "{{ pbench_tools_to_install['tools'] }}"
     include_role:
-      name: record_status
-    vars:
-      results: "{{ pbench_register }}"
-      status_file: "/tmp/pbench_test_inst_status"
-
+      name: pbench_install_tools
+      apply:
+        become: yes
 
   when:
     - config_info.pbench_install == 1
