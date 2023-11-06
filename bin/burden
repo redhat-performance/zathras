@@ -1324,8 +1324,6 @@ disk_check()
 #
 generate_tags()
 {
-  echo "************ gl_test_def_dir=="
-  echo $gl_test_def_dir
 	if [[ -f ${gl_test_def_dir}/tags.conf ]]; then
 		#
 		# First generate the set of information
@@ -1366,12 +1364,12 @@ generate_tags()
 		indent="        "
 	fi
 	if [[ $gl_system_type == "gcp" ]]; then
-	  echo "provider \"${gl_system_type}\" {" >> add_main_vars.tf
-	  echo "  profile = \"default\"" >> add_main_vars.tf
-	  echo "  region  = var.region" >> add_main_vars.tf
-	  echo "    tags = {" >> add_main_vars.tf
-		indent="      "
-	fi
+    echo "provider \"google\" {" >> add_main_vars.tf
+    echo "  project     = \"${1}\"" >> add_main_vars.tf
+    echo "  default_tags {" >> add_main_vars.tf
+    echo "    tags = {" >> add_main_vars.tf
+    indent="        "
+fi
 
 	#
 	# Generic addition of information.
@@ -1413,9 +1411,12 @@ generate_tags()
 		echo "        delete = \"15m\"" >> add_main_vars.tf
 		echo "    }" >> add_main_vars.tf
 	fi
+	if [[ $gl_system_type == "gcp" ]]; then
+		echo "    }" >> add_main_vars.tf
+		echo "  }" >> add_main_vars.tf
+	fi
 	echo "}" >> add_main_vars.tf
 }
-
 #
 #  Using all the options entered, create the working directory for the configuration and it's
 #  associated files.

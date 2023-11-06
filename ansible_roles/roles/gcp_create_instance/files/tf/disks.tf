@@ -8,6 +8,7 @@ resource "google_compute_disk" "default" {
   size                      = var.disk_size
   labels = {
     name = var.run_label
+    project = var.project_id
   }
 }
 
@@ -16,4 +17,8 @@ resource "google_compute_attached_disk" "default" {
   count    = var.disk_count * var.vm_count
   disk     = google_compute_disk.default[count.index].id
   instance = google_compute_instance.test[count.index % var.vm_count].id
+  labels = {
+    name = var.run_label
+    project = var.project_id
+  }
 }
