@@ -1769,8 +1769,6 @@ create_ansible_options()
 		echo "  test_iterations: ${gl_test_iterations}" >> ansible_vars_main.yml
 		echo "  user_running: ${user_name}" >> ansible_vars_main.yml
 		set_user_name $user_name
-		echo "**************************************************"
-		echo $user_name
 		generate_tags $user_name
 		#
 		# Installation options
