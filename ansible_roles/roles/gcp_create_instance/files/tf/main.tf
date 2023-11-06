@@ -1,6 +1,6 @@
 
 locals {
-  is_preemptible = var.instance_type == "preemptible" ? true : false
+  is_preemptible = var.vm_type == "preemptible" ? true : false
 }
 
 terraform {
