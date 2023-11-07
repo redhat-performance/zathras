@@ -4,11 +4,6 @@
   include_vars:
     file: "{{ working_dir }}/ansible_vars.yml"
 
-#
-# Append tags to end of file
-#
-- name: copy general tf files
-  shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf//vars.tf"
 
 - name: move files
   copy:
