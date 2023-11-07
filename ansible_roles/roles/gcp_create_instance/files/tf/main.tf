@@ -28,8 +28,10 @@ resource "google_compute_instance" "test" {
   zone                      = var.zone
   labels = {
     name = "${var.run_label}-${var.machine_type}"
-    project = var.project_id
+    user = var.User
+    project = var.Project
   }
+
 
   boot_disk {
     initialize_params {

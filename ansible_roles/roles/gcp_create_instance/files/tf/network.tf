@@ -5,7 +5,8 @@ resource "google_compute_network" "test-network" {
   auto_create_subnetworks = false
   labels = {
     name = var.run_label
-    project = var.project_id
+    user = var.User
+    project = var.Project
   }
 }
 
@@ -16,7 +17,8 @@ resource "google_compute_subnetwork" "test-subnet" {
   network       = google_compute_network.test-network[count.index].id
   labels = {
     name = var.run_label
-    project = var.project_id
+    user = var.User
+    project = var.Project
   }
 }
 
@@ -26,7 +28,8 @@ resource "google_compute_firewall" "uperf-ingress" {
   network = google_compute_network.test-network[count.index].id
   labels = {
     name = var.run_label
-    project = var.project_id
+    user = var.User
+    project = var.Project
   }
 
   # Allow all communication 0.0.0.0/0 on the specific network
