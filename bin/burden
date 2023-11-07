@@ -176,7 +176,7 @@ gl_upload_rpms=$value_not_set
 gl_cli_supplied_options=""
 gl_test_override_options=""
 gl_warning_string=""
-gl_max_systems=1
+gl_max_systems=3
 gl_max_systems_set=0
 #
 # We want the version check on.  We do this, as no options to burden
@@ -241,7 +241,7 @@ cleanup_and_exit()
 		else
 			error_string="${timestamp} $1"
 		fi
-		echo -e ${error_string}
+		echo -e "${error_string}"
 		if [[ $2 -eq 1 ]]; then
 			flock -x $gl_top_dir/failed_runs echo -e "${error_string}" >> $gl_top_dir/failed_runs
 		fi
@@ -382,34 +382,19 @@ cloud_image_lookup()
 }
 
 #
-# Pull the version information for the git repository (using tags).  At this time
-# we clone the repo, and then grab the git information.  We have not found a way
-# yet on how to pull the tag information without cloning the git.
+# Pull the version information for the git repository (using tags).
 #
 retrieve_versions()
 {
 	file=$1.yml
 	if  test -f "$file" ; then
-		location=`grep location: ${file} | cut -d: -f2- | sed "s/ //g"`
+		location=`grep location: ${file} | cut -d: -f2- | sed "s/ //g" | cut -d'/' -f 1-5`
+		echo $location
+		echo ============================
+		echo $1
+		echo ============================
 		if [[ $location == "https://github.com"* ]]; then
-			#
-			# Only way to show the versions with tags is to clone the repo
-			#
-			temp_dir=`mktemp -d`
-			pushd $temp_dir > /dev/null
-			repo=`echo $location | cut -d'/' -f 1-5`
-			git clone $repo 2> /dev/null
-			if [ $? -ne 0 ]; then
-				cleanup_and_exit "Unable to clone repo $repo" 1
-			fi
-			cd *
-			echo ============================
-			echo $1
-			echo ============================
-			git tag -n
-			echo ""
-			popd > /dev/null
-			rm -rf $temp_dir 2> /dev/null
+			git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags $location
 		else
 			echo "${location} only github supported at this time"
 		fi
@@ -424,10 +409,8 @@ retrieve_versions()
 show_test_version()
 {
 	gl_test_list=`echo $1 | sed "s/,/ /g"`
-	integrate_templates ${gl_test_def_dir}/test_defs.yml
 	make_dir_report_errors tests_to_run
 	for test_name in $gl_test_list; do
-		create_test_run_file $test_name
 		cd tests_to_run
 		retrieve_versions $test_name
 		cd ..
@@ -2670,63 +2653,6 @@ run_scenario()
 }
 
 #
-# Pull the git repo branches.  Once we have that determine if the repo actually exist
-# as well as the designated tag.  If either of them fail, report the error and bail out.
-# If they both are ok, compare the versions and report as warnings any test that is using an
-# outdated tag.
-#
-# $1: points to the git repo using.
-# $2: gives the tag that is being used.
-#
-#
-pull_git_repo()
-{
-	git_repo=${1}
-	git_version=$2
-	info_file=$(mktemp /tmp/zath_temp_git_info.XXXXXX)
-
-	#
-	# If the git_repo is not present we will get prompted for login information.
-	# To get around this, run the command via the timeout.
-	#
-	timeout $gl_git_timeout git ls-remote $git_repo  1> $info_file 2> /dev/null
-
-	#
-	# If the info_file is empty, then the repo does not exist, or we can not connect
-	# to the git repo.
-	#
-	if [[ ! -s $info_file ]]; then
-		#
-		# We may have been prompted for user name via the git ls-remote and any
-		# new text will appear on that line.  Simply echo a new line out to make
-		# the text appear on a line by itself.
-		#
-		cleanup_and_exit "\nError: $git_repo ls-remote request timed out.\n  Is there an issue with access to the git repo, or\n  perhaps the requested repo does not exist?" 1
-	fi
-
-	#
-	# Check that the tag is present.
-	#
-	tag_looking_for="refs/tags/${2}"
-	grep ${tag_looking_for}$ $info_file > /dev/null
-	if [[ $? -ne 0 ]]; then
-		cleanup_and_exit "Error: Tag ${2} not found in repo ${1}" 1
-	fi
-	#
-	# Check for latest version, if not, flag the warning. Due to the JSON format, we
-	# do not use this to make sure the tag is present or latest.
-	#
-	curl $git_repo/-/tags > $info_file 2> /dev/null
-	latest_git_tag=`grep "div data-link" $info_file | head -n 1 | cut -d'{' -f 2 | cut -d';' -f 8 | cut -d'&' -f 1 | cut -d'-' -f 3 | sed "s/.zip//g"`
-
-	if [[ $latest_git_tag != $git_version ]]; then
-		echo Warning: Latest tag version for $git_repo is $latest_git_tag, you are using ${git_version}
-		gl_warning_string="${gl_warning_string}\nWarning: Latest tag version for $git_repo is $latest_git_tag, you used $git_version"
-	fi
-	rm $info_file 2> /dev/null
-}
-
-#
 # Verify the contents of full_test_defs.yml is somewhat sane.
 #
 # $1: the file checking.
@@ -2779,30 +2705,23 @@ verify_test_configuration()
 			using_version=`grep repo_file $test_repo | cut -d':' -f2 | sed "s/.zip//g" |cut -d'"' -f2`
 			location=`grep location: ${test_repo} | cut -d: -f2- | sed "s/ //g"`
 			if [[ $location == "https://github.com"* ]]; then
-				temp_dir=`mktemp -d`
-				pushd $temp_dir > /dev/null
 				repo=`echo $location | cut -d'/' -f 1-5`
-				git clone $repo 2> /dev/null
-				if [ $? -ne 0 ]; then
-					cleanup_and_exit "1 Unable to clone repo $repo" 1
-				fi
-				cd *
+				git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags $repo | rev | cut -d'/' -f1 | rev >  git_vers
 				#
 				# Make sure the tag we want is present
 				#
 				version_fail=""
-				git tag | grep ${using_version} > /dev/null
+				grep ${using_version} git_vers > /dev/null
 				if [ $? -ne 0 ]; then
 					version_fail="$repo, version $using_version is not defined."
 					bail_out=1
 				fi
-				latest=`git tag --sort=committerdate | tail -1`
+				latest=`tail -1 git_vers`
 				if [[ $using_version != $latest ]]; then
 					version_ok="no"
 				else
 					version_ok="yes"
 				fi
-				popd > /dev/null
 				if [[ $gl_update_test_versions -eq 0 ]]; then
 					printf '%32s%10s%10s%6s\n' $test_repo $using_version $latest $version_ok
 					if [[ $version_fail != "" ]]; then
@@ -3482,6 +3401,7 @@ set_general_value()
 			shift_by=2
 		;;
 		--show_tests)
+			gl_test_version_check=0
 			gl_show_tests=1
 			shift_by=1
 		;;
@@ -3743,6 +3663,22 @@ grab_cli_data()
 	done
 }
 
+check_for_scen_value()
+{
+	grep "$1" $2 >2 /dev/null
+	if [ $? -ne 0 ]; then
+		cleanup_and_exit "Scenario file "$2": missing $1" 1
+	fi
+}
+
+scenario_file_sanity()
+{
+	check_for_scen_value "^systems:" $1
+	check_for_scen_value "^global:" $1
+	check_for_scen_value "^    tests:" $1
+	check_for_scen_value "^    host_config:" $1
+}
+
 grab_vars_data()
 {
 	if [[ $gl_first_invocation -eq 1 ]]; then
@@ -3777,7 +3713,6 @@ first_invocation()
 		if [[ -z $gl_system_type ]]; then
 			cleanup_and_exit "\nError: Need to designate the system type \(--system_type\) when using n-config_vars." 1
 		fi
-		#
 		# Save a copy of the scenario file.
 		#
 		gl_scenario_to_restore=${gl_scenario_to_run}.restore
@@ -3951,6 +3886,10 @@ fi
 # process.
 #
 if [[ $gl_first_invocation -eq 1 ]]; then
+	#
+	# Sanity check scenario file
+	#
+	scenario_file_sanity $gl_scenario_to_run
 	first_invocation
 else
 #
