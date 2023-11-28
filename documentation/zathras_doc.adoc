@@ -270,6 +270,7 @@ General options
   --tuned_reboot &lt;<val>&gt;, only for RHEL. If value is 1 we will reboot the system each time
     a new tuned profile is set.
   --verbose: Verbose usage message
+  --upload_rpms <rpm 1>,<rpm 2>....: Comma separated list of rpms (full path) to upload and install
   --update_target: Image to update
     Note:  only 1 update image can be used, makes no difference
            if designate a different one for each system in the
