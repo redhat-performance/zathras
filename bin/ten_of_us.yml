@@ -333,6 +333,19 @@
       name: upload_disk_space
  
 #
+# Determine where to upload from, assumption is all test systems have the same
+# disk space.
+#
+- hosts: localhost
+  vars_files:
+    - ansible_vars.yml
+  gather_facts: no 
+  tasks:
+  - name: Determine disk space
+    include_role:
+      name: upload_disk_space
+     
+#
 # Install the packages.
 # 
 - hosts: install_group
