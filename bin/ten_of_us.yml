@@ -445,7 +445,7 @@
     - ansible_vars.yml
   gather_facts: yes
   tasks:
-  - name: Upload and stall any rpms.
+  - name: Upload and install any rpms.
     include_role:
       name: install_rpms
     vars:
