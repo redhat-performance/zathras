@@ -3885,22 +3885,26 @@ fi
 # Set up the various config files, if everything is started from this 
 # process.
 #
-if [[ $gl_first_invocation -eq 1 ]]; then
+if [[ $gl_scenario_to_run != "" ]]; then
+	if [[ $gl_first_invocation -eq 1 ]]; then
+		#
+		# Sanity check scenario file
+		#
+		scenario_file_sanity $gl_scenario_to_run
+		first_invocation
+	else
 	#
-	# Sanity check scenario file
+	# A bit of sanity check.
 	#
-	scenario_file_sanity $gl_scenario_to_run
-	first_invocation
-else
-#
-# A bit of sanity check.
-#
-	if [[ -z "$gl_host_config" ]] || [[ -z "$gl_system_type" ]]; then
-		echo "missing one of these"
-		echo "host_config: $gl_host_config"
-		echo "gl_system_type: $gl_system_type"
-		usage "0"
+		if [[ -z "$gl_host_config" ]] || [[ -z "$gl_system_type" ]]; then
+			echo "missing one of these"
+			echo "host_config: $gl_host_config"
+			echo "gl_system_type: $gl_system_type"
+			usage "0"
+		fi
 	fi
+else
+	first_invocation
 fi
 
 # If a scenario is designated, then run it.
