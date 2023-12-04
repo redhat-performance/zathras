@@ -419,9 +419,9 @@ azure_image_lookup()
 gcp_image_lookup()
 {
 	if [[ $gl_os_vendor == "ubuntu" ]]; then
-		project = "ubuntu-os-cloud"
+		project="ubuntu-os-cloud"
 	elif [[ $gl_os_vendor == "rhel" ]]; then
-		project = "rhel-cloud"
+		project="rhel-cloud"
 	else
 		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel" 1 ${gl_system_type}
 	fi
