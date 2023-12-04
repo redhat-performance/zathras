@@ -4,7 +4,6 @@
   include_vars:
     file: "{{ working_dir }}/ansible_vars.yml"
 
-
 - name: move files
   copy:
     src: "tf/{{ item }}"

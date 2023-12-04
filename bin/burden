@@ -1364,12 +1364,12 @@ generate_tags()
 		indent="        "
 	fi
 	if [[ $gl_system_type == "gcp" ]]; then
-    echo "provider \"google\" {" >> add_main_vars.tf
-    echo "  project     = \"${1}\"" >> add_main_vars.tf
-    echo "  default_tags {" >> add_main_vars.tf
-    echo "    tags = {" >> add_main_vars.tf
-    indent="        "
-fi
+	  echo "provider \"google\" {" >> add_main_vars.tf
+	  echo "  project     = \"${1}\"" >> add_main_vars.tf
+	  echo "  default_tags {" >> add_main_vars.tf
+	  echo "    tags = {" >> add_main_vars.tf
+	  indent="        "
+	fi
 
 	#
 	# Generic addition of information.
