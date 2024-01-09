@@ -2329,7 +2329,6 @@ obtain_network_info()
 {
 	entry=$1
 
-	echo bin/parse_net_line \"${entry}\"
 	networks_string=`bin/parse_net_line \"${entry}\"`
 	entries=`echo $networks_string | wc -w`
 	if [ $entries -lt 2 ]; then
@@ -2491,12 +2490,15 @@ convert_scenario_file()
 	# sed does not handle / in the strings very well, and to
 	# escape it, things get messy fast.
 	#
-	list=`grep ^% $1 | sed "s/% //g"`
-	sed_string="cat $1"
+
+	scenario_cnvt_file=$(mktemp /tmp/zath_convert.XXXXXX)
+	sed "s/;/----/g" $1 > $scenario_cnvt_file
+	list=`grep ^% $scenario_cnvt_file | sed "s/% //g"`
+	sed_string="cat $scenario_cnvt_file"
 	for i in $list; do
 		string=`echo $i | sed "s/\//+++/g"`
 		replace=`echo $string | cut -d'=' -f 1`
-		with=`echo $string  | cut -d'=' -f 2`
+		with=`echo $string  | cut -d'=' -f 2-`
 		sed_string="${sed_string} | sed \"s/${replace}/${with}/g\""
 	done
 	#
@@ -2508,7 +2510,10 @@ convert_scenario_file()
 	#
 	echo "${sed_string}" > parse_reduce
 	chmod 755 parse_reduce
-	./parse_reduce | sed "s/+++/\//g" | yq .  > parse_file
+
+	tmp_run_file=$(mktemp /tmp/zath_temp_run.XXXXXX)
+	./parse_reduce | sed "s/+++/\//g" > $tmp_run_file
+	cat $tmp_run_file | yq .  > parse_file.tmp
 	if [ $? -ne 0 ]; then
 		cleanup_and_exit "Creation of the parse_file via yq failed" 1
 	fi
@@ -2522,11 +2527,13 @@ convert_scenario_file()
 	#
 	# Check to make sure we have the proper number of host configs
 	# 
-	sc_cnt=`grep host_config $1 | grep -o ,|  wc -l`
-	ps_cnt=`grep host_config parse_file | grep -o ,| wc -l`
+	sc_cnt=`grep host_config $tmp_run_file | grep -o ,|  wc -l`
+	ps_cnt=`grep host_config parse_file.tmp | grep -o ,| wc -l`
 	if [ $ps_cnt != $sc_cnt ]; then
 		cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
 	fi
+	sed "s/----/;/g" parse_file.tmp > parse_file
+	rm $tmp_run_file $scenario_cnvt_file
 }
 
 #
