@@ -2520,6 +2520,7 @@ convert_scenario_file()
 	#
 	# Verify the file just created is valid.
 	#
+	sed "s/----/;/g" parse_file.tmp > parse_file
 	python -c 'import yaml, sys; print(yaml.safe_load(sys.stdin))' < parse_file
 	if [ $? -eq 1 ]; then
 		cleanup_and_exit "The file, parse_file does not meet yaml requirements." 1
@@ -2532,7 +2533,6 @@ convert_scenario_file()
 	if [ $ps_cnt != $sc_cnt ]; then
 		cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
 	fi
-	sed "s/----/;/g" parse_file.tmp > parse_file
 	rm $tmp_run_file $scenario_cnvt_file
 }
 
