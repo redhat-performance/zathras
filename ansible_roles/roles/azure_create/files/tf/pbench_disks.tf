@@ -11,7 +11,7 @@ resource "azurerm_managed_disk" "pbench_volume" {
 resource "azurerm_virtual_machine_data_disk_attachment" "pbenchdisk" {
   count              = var.vm_count
   managed_disk_id    = element(azurerm_managed_disk.pbench_volume.*.id, count.index)
-  virtual_machine_id = element(azurerm_linux_virtual_machine.virtualmachine.*.id, count.index)
+  virtual_machine_id = azurerm_linux_virtual_machine.virtualmachine[count.index].id
   lun                = "10"
   caching            = "ReadWrite"
 }
