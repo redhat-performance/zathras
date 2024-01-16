@@ -5,7 +5,7 @@ cloud_os_version = "{{ config_info.cloud_os_version }}"
 # This should be the project ID in GCP 
 project_id = "{{ project_id.stdout }}"
 
-run_label = "{{ config_info.run_label | lower() | replace('.','-',63) | replace('_', '-', 63)}}"
+run_label = "{{ config_info.user_running }}-{{ config_info.run_label | lower() | replace ('.','-',63) | replace('_','-',63) | replace('/','-')}}"
 
 region = "{{ config_info.cloud_region }}"
 
