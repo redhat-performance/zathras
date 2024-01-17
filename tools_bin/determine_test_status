@@ -25,8 +25,9 @@ determine_tests()
 			top_dir=`tar --list --file=${tball} | head -1 | cut -d'/' -f 1`
 			tar xf $tball
 			pushd $top_dir > /dev/null
-			if [[ -f test_results_report ]]; then
-				grep -q Ran test_results_report
+			value=`find . -print | grep test_results_report | head -1`
+			if [[ $? -eq 0 ]]; then
+				grep -q Ran $value
 				if [ $? -ne 0 ]; then
 					echo ${instance}:${check} test_results_report indicates failure >> ${curdir}/initial_summary
 				else
