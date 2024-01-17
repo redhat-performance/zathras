@@ -4200,5 +4200,10 @@ for i in `ls -d *`; do
 		popd > /dev/null
 	fi
 done
+#
+# Generate report of test status.
+# 
+$gl_top_dir/tools_bin/determine_test_status
+grep failed initial_summary > $gl_top_dir/failures
 popd > /dev/null
 cleanup_and_exit "" 0

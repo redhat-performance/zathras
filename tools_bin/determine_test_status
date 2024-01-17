@@ -1,0 +1,94 @@
+#!/bin/bash
+
+rm initial_summary
+rm all_sys
+rm test_summary
+curdir=`pwd`
+
+determine_tests()
+{
+	tests=`grep test_to_run: ansible_vars.yml | cut -d'[' -f 2 | cut -d']' -f 1 | sed "s/,/ /g"`
+	sys=`pwd | rev | cut -d'/' -f 1 | rev`
+	instance=`echo $sys | rev | cut -d_ -f 2- | rev` 
+	echo $instance >> $curdir/all_sys
+	for check in $tests; do
+		#
+		# First check to see if we have a results file.
+		#
+		ls  results_${check}_tuned_*tar  >>/dev/null 2>&1
+		if [[ $? -ne 0 ]]; then
+			echo ${instance}:${check} no results >> ${curdir}/initial_summary
+			continue
+		fi
+		file=`ls  results_${check}_tuned_*tar`
+		for tball in $file; do
+			top_dir=`tar --list --file=${tball} | head -1 | cut -d'/' -f 1`
+			tar xf $tball
+			pushd $top_dir > /dev/null
+			if [[ -f test_results_report ]]; then
+				grep -q Ran test_results_report
+				if [ $? -ne 0 ]; then
+					echo ${instance}:${check} test_results_report indicates failure >> ${curdir}/initial_summary
+				else
+					echo ${instance}:${check} passed >> ${curdir}/initial_summary
+				fi
+			else
+				echo ${instance}:${check} no test_results_report file >>  ${curdir}/initial_summary
+			fi
+			popd > /dev/null
+			rm -rf $top_dir
+		done
+	done
+}
+
+find . -print | grep ansible_vars_main.yml | cut -d/ -f2 > results_dirs
+while IFS= read -r rdir
+do
+	pushd  $rdir > /dev/null
+	determine_tests
+	popd > /dev/null
+done < "results_dirs"
+#
+# Now flag the tests that actually did not run.
+#
+
+#
+# First need a list of all possible tests
+#
+cut -d: -f 2 initial_summary | cut -d' ' -f1 | sort -u > potential_tests
+
+#
+# List of possible systems
+#
+sort -u all_sys > systems
+while IFS= read -r sys
+do
+	#
+	# Grep for sys to start with
+	#
+	grep $sys initial_summary > test_list
+	while IFS= read -r ptest
+	do
+		#
+		# Now grep for the test itself.  If not present simply skip.  Note, need space
+		# afterwards because of coremark and coremark_pro
+		grep "${ptest} " test_list > check_for
+		if [ $? -eq 1 ]; then
+			#
+			# Did not request the test, skip it.
+			#
+			continue
+		fi
+		grep -q passed check_for 
+		if [ $? -eq 0 ]; then
+			echo ${sys}:${ptest}:ran >> test_summary
+		else
+			grep -q failure check_for 
+			if [ $? -eq 0 ]; then
+				echo ${sys}:${ptest}:failed results_failure >> test_summary
+			else
+				echo ${sys}:${ptest}:failed results_no_report_file >> test_summary
+			fi
+		fi
+	done < "potential_tests"
+done < "systems"
