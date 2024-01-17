@@ -15,17 +15,17 @@ determine_tests()
 		#
 		# First check to see if we have a results file.
 		#
-		ls  results_${check}_tuned_*tar  >>/dev/null 2>&1
+		ls results_${check}_tuned_*tar >>/dev/null 2>&1
 		if [[ $? -ne 0 ]]; then
 			echo ${instance}:${check} no results >> ${curdir}/initial_summary
 			continue
 		fi
-		file=`ls  results_${check}_tuned_*tar`
+		file=`ls results_${check}_tuned_*tar`
 		for tball in $file; do
 			top_dir=`tar --list --file=${tball} | head -1 | cut -d'/' -f 1`
 			tar xf $tball
 			pushd $top_dir > /dev/null
-			value=`find . -print | grep test_results_report | head -1`
+			value=`find . -name test_results_report | head -1`
 			if [[ $? -eq 0 ]]; then
 				grep -q Ran $value
 				if [ $? -ne 0 ]; then
@@ -34,7 +34,7 @@ determine_tests()
 					echo ${instance}:${check} passed >> ${curdir}/initial_summary
 				fi
 			else
-				echo ${instance}:${check} no test_results_report file >>  ${curdir}/initial_summary
+				echo ${instance}:${check} no test_results_report file >> ${curdir}/initial_summary
 			fi
 			popd > /dev/null
 			rm -rf $top_dir
@@ -42,10 +42,10 @@ determine_tests()
 	done
 }
 
-find . -print | grep ansible_vars_main.yml | cut -d/ -f2 > results_dirs
+find . -name "ansible_vars_main.yml" | cut -d/ -f2 | cut -d/ -f2 > results_dirs
 for rdir in `cat results_dirs`
 do
-	pushd  $rdir > /dev/null
+	pushd $rdir > /dev/null
 	determine_tests
 	popd > /dev/null
 done < "results_dirs"
