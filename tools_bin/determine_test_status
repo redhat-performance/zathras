@@ -42,7 +42,7 @@ determine_tests()
 	done
 }
 
-find . -name "ansible_vars_main.yml" | cut -d/ -f2 | cut -d/ -f2 > results_dirs
+find . -name "ansible_vars_main.yml" | cut -d/ -f2 > results_dirs
 for rdir in `cat results_dirs`
 do
 	pushd $rdir > /dev/null
