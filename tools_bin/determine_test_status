@@ -43,7 +43,7 @@ determine_tests()
 }
 
 find . -print | grep ansible_vars_main.yml | cut -d/ -f2 > results_dirs
-while IFS= read -r rdir
+for rdir in `cat results_dirs`
 do
 	pushd  $rdir > /dev/null
 	determine_tests
