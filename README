@@ -225,6 +225,6 @@ systems:
     host_config: "m5.xlarge"
 
 
-# ./burden --scenario aws_sample --test_def_dir https://git.com/user/zathras_config
+# ./burden --scenario aws_sample --test_def_dir https://github.com/redhat-performance/zathras_test_configs
 
-https://git.com/user/zathras_config: where the test config files can be found.
+https://github.com/redhat-performance/zathras_test_configs: where the test config files can be found.
