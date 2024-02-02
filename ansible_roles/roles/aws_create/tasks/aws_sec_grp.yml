@@ -1,0 +1,18 @@
+---
+- name: retrieve security group from terraform
+  shell: "grep  id=sg {{ working_dir }}/tf/terraform_apply.out | grep -v prvt | cut -d'=' -f 2 | cut -d']' -f 1"
+  register: results
+
+- name: record security group
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "aws_sec_grp: {{ results.stdout }}"
+
+- name: retrieve security group from terraform
+  shell: "grep  id=sg {{ working_dir }}/tf/terraform_apply.out | grep prvt | cut -d'=' -f 2 | cut -d']' -f 1"
+  register: results
+
+- name: record prvt security group
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "aws_sec_prvt_grp: {{ results.stdout }}"
