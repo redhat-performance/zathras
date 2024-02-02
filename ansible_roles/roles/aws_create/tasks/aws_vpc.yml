@@ -6,22 +6,20 @@
 # Variables passed in:
 #   working_dir: the directory we are running from.
 #
-- name: include vars for vpc gathering
-  include_vars:
-    file: "{{ working_dir }}/ansible_run_vars.yml"
-    name: dyn_data
+- name: retrieve public vpc from terraform
+  shell: "grep  \"zathras_vpc: Creation\" {{ working_dir }}/tf/terraform_apply.out | cut -d'=' -f 2 | cut -d']' -f 1"
+  register: results
 
-- name: aws vpc id
-  ec2_instance_info:
-    instance_ids:
-      - "{{ dyn_data.aws_instance_id }}"
-  register: vpc_info
-
-
-#- name: set aws vpc id
-
-- name: record vpc
+- name: record vpc group
   lineinfile:
     path: "{{ working_dir }}/ansible_run_vars.yml"
-    line: "aws_vpc_id: {{ vpc_info.instances[0].vpc_id }}"
+    line: "aws_vpc_id: {{ results.stdout }}"
 
+- name: retrieve prvt vpc from terraform
+  shell: "grep \"zathras_prvt_vpc: Creation\" {{ working_dir }}/tf/terraform_apply.out | cut -d'=' -f 2 | cut -d']' -f 1"
+  register: results
+
+- name: record prvt vpc group
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "aws_prvt_vpc_id: {{ results.stdout }}"

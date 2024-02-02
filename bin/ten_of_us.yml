@@ -618,26 +618,28 @@
 
   gather_facts: no
   tasks:
-    - name: connect systems
+    - name: Record public ips
       block:
-      - name: network start time
-        command: "date -u +%s"
-        register: network_connect_start
-
-      - name: network setup
-        include_role:
-          name: connect_systems
-
-      - name: network end time
-        command: "date -u +%s"
-        register: network_connect_end
-
-      - name: Report client creation time
+      - name: include dynamic info
+        include_vars:
+          file: "{{ working_dir }}/ansible_run_vars.yml"
+          name: dyn_data
+      - name: set server ip
         lineinfile:
-          path: "{{ working_dir }}/cloud_timings"
-          line: "network setup time: {{ (network_connect_end.stdout) | int  - (network_connect_start.stdout) | int }}"
-          create: yes
+          path: "{{ working_dir }}/ansible_run_vars.yml"
+          line: "ct_uperf_server_ip: {{ dyn_data.test_hostname }}"
+      - name: set server ip
+        lineinfile:
+          path: "{{ working_dir }}/ansible_run_vars.yml"
+          line: "ct_uperf_client_list: {{ dyn_data.net_hostname }}"
+      - name: add net hostname
+        add_host:
+          name: "{{ dyn_data.net_hostname }}"
+          groups: test_group
+          ansible_user: "{{ config_info.test_user }}"
+          ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
       when:
+        - config_info.cloud_numb_network_type == "public"
         - config_info.system_type != "local"
         - config_info.cloud_numb_networks > 0
         - config_info.init_system == "yes"
