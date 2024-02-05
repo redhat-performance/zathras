@@ -123,8 +123,8 @@ resource "aws_security_group" "zathras_aws_prvt_sg" {
     name = "zathras_sg"
     vpc_id = "${aws_vpc.zathras_prvt_vpc.id}"
     ingress {
-        from_port = 22
-        to_port = 22
+        from_port = 0
+        to_port = 65535
         protocol = "tcp"
         cidr_blocks = ["0.0.0.0/0"]
     }

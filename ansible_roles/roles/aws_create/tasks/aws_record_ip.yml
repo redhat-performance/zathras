@@ -1,0 +1,24 @@
+- name: Record the ip address system 1
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "ct_uperf_server_ip: {{ ip1 }}"
+- name: Record the ip addresses systems 2
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "ct_uperf_client_ip: {{ ip2 }}"
+- name: Record the ip address system 1
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "ct_uperf_server_list: {{ ip1 }}"
+- name: Record the ip addresses systems 2
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "ct_uperf_client_list: {{ ip2 }}"
+ 
+- name: connect so no ssh prompt part 1
+  become: no
+  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} ec2-user@{{ aws_tf_info.public_dns_host0 }} "sudo ssh -oStrictHostKeyChecking=no root@{{ ip1 }} cat /etc/passwd > /dev/null"
+
+- name: connect so no ssh prompt part 2
+  become: no
+  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} ec2-user@{{ aws_tf_info.public_dns_host1 }} "sudo ssh -oStrictHostKeyChecking=no root@{{ ip2 }} cat /etc/passwd > /dev/null"
