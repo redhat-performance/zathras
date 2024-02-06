@@ -1,0 +1,43 @@
+---
+#
+# Setup the network systems information
+#
+- name: Define ip list 
+  set_fact:
+    public_ips: "{{ public_ips + [ item ] }}"
+  with_items:
+    - "{{ dyn_data.test_hostname }}"
+    - "{{ dyn_data.net_hostname }}"
+  vars:
+    public_ips: []
+
+- ec2_instance_info:
+    instance_ids:
+      - "{{ aws_tf_info.aws_instance_id1 }}"
+  register: ec2_metadata
+
+- local_action:
+    module: copy
+    content: "{{ ec2_metadata | to_nice_yaml( width=50, explicit_start=True, explicit_end=True) }}"
+    dest: "{{ working_dir }}/meta_data_1.yml"
+- name: Setup ssh if paired network systems
+  include_role:
+    name:  ssh_key_exchange
+  vars:
+    ip_list: "{{ public_ips }}"
+- name: Record private ip address
+  block:
+  - name: Record the addresses
+    include_tasks: aws_record_ip.yml
+    vars:
+      ip1: "10.0.25.101"
+      ip2: "10.0.25.100"
+  when: config_info.cloud_numb_network_type != "public"
+- name: Record public ip address
+  block:
+  - name: Record the addresses
+    include_tasks: aws_record_ip.yml
+    vars:
+      ip1: "{{ dyn_data.net_hostname }}"
+      ip2: "{{ dyn_data.test_hostname }}"
+  when: config_info.cloud_numb_network_type == "public"
