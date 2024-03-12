@@ -43,7 +43,6 @@ repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
 
 # run dnf config-manager
 dnf config-manager --add-repo $repo_url
-echo "dnf config-manager --add-repo " $repo_url
 
 
 # install other required packages
