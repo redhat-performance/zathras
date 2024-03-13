@@ -63,4 +63,4 @@ echo "****If running a local system, create the local config file for the system
 echo "****If using an existing system, ssh-copy-id between the system Zathras is installed on and the SUT."
 echo "****If working in a cloud environment do not perform the ssh-copy-id."
 echo "****Replace the test configuration files in /zathras/config/! The default files are placeholders and do nothing!"
-echo "    If you are RH, use the internal-install script now."
+echo "    Update/create the test configuration files in the config directory to reflect your requirements."
