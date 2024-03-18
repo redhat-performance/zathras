@@ -2548,7 +2548,6 @@ convert_scenario_file()
 	sed "s/;/----/g" $1 > $scenario_cnvt_file
 	sed_string="cat $scenario_cnvt_file"
 	list=`grep ^% $scenario_cnvt_file | sed "s/% //g"`
-	sed_string="cat $scenario_cnvt_file"
 	#
 	# Filter out comments and the assignments
 	#
