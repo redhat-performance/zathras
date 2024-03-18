@@ -218,6 +218,7 @@ General options
   --persistent_log: enable persistent logging
   --preflight_check: Performs various checks on the scenario file, and Zathras and then exits
   --results_prefix &lt;prefix&gt;: Run directory prefix
+  --retry_failed_tests &lt;0/1&gt;: Indicates to retry any detected failed tests if set to 1 (1 is the default).
   --scenario &lt;scenario definition file&gt;: Reads in a scenario and then runs it
     (if used, host configs are designated in the file).  If the scenario name starts with https: or git:
     then we are retrieving the scenario from a git repo. If the line in the scenario file starts with #
