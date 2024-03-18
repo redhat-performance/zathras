@@ -87,7 +87,9 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   gl_cloud_region_zone: zone to create the instance in.
 #
 value_not_set="none"
+gl_sys_index_rerun=1
 gl_kit_upload_directory="none"
+gl_retry_failed_tests=1
 gl_base_cost=0
 gl_host_uses_nvme=0
 gl_cloud_net_type="default"
@@ -200,6 +202,27 @@ gl_no_packages=0
 gl_no_pbench_install=0
 gl_cpu_type_request="none"
 gl_run_file=""
+
+#
+# Generate report of test status.
+# 
+process_results()
+{
+	if [ $gl_first_invocation -eq 1 ]; then
+		sort -u run_info > run_info.sorted
+		while IFS= read -r run_data
+		do
+			pushd $gl_top_dir/$run_data >& /dev/null
+			$gl_top_dir/tools_bin/determine_test_status
+			grep failed initial_summary > $gl_top_dir/failures
+			$gl_top_dir/tools_bin/report_missing_failed_test
+			if [[ $? -ne 0 ]] && [[ $gl_retry_failed_tests -eq 1 ]]; then
+				handle_error_reruns
+			fi
+			popd  >& /dev/null
+		done < "run_info.sorted"
+	fi
+}
 
 break_appened_to_file()
 {
@@ -1692,6 +1715,7 @@ create_ansible_options()
 			rc=$?
 		done
 
+		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> ${gl_top_dir}/run_info
 		make_dir_report_errors $run_dir
 		dir_list=$dir_list$run_dir" "
 		cp ${gl_test_def_dir}/test_defs.yml $run_dir
@@ -2486,7 +2510,26 @@ run_burden_remove_dups()
 	echo ./burden --test_def_file  $gl_test_def_dir/full_test_defs.yml $real_string > $1
 }
 
-#
+replace_scenario_vars()
+{
+	list=`grep ^% $gl_scenario_to_run | sed "s/% //g"`
+	if [[ $list != "" ]]; then
+		scenario_wrk_file1=$(mktemp /tmp/zath_convert_scen.XXXXXX)
+		scenario_wrk_file2=$(mktemp /tmp/zath_convert_scen.XXXXXX)
+		cp $gl_scenario_to_run $scenario_wrk_file1
+		for i in $list; do
+			string=`echo $i | sed "s/\//+++/g"`
+			replace=`echo $string | cut -d'=' -f 1`
+			with=`echo $string  | cut -d'=' -f 2-`
+			sed "s/${replace}/${with}/g" $scenario_wrk_file1 > $scenario_wrk_file2
+			mv  $scenario_wrk_file2 $scenario_wrk_file1
+		done
+		grep -v  "^%" $scenario_wrk_file1 > ${gl_scenario_to_run}_cnvt
+		gl_scenario_to_run=${gl_scenario_to_run}_cnvt
+		rm -rf  scenario_wrk_file2 scenario_wrk_file1
+	fi
+}
+
 # Convert the scenario file to yml format.  Any line that starts with a '#' is a comment.
 # Any line that starts with a '%' is a replacement in the format of
 # % <string replacing>=<new string>
@@ -2503,18 +2546,12 @@ convert_scenario_file()
 
 	scenario_cnvt_file=$(mktemp /tmp/zath_convert.XXXXXX)
 	sed "s/;/----/g" $1 > $scenario_cnvt_file
-	list=`grep ^% $scenario_cnvt_file | sed "s/% //g"`
 	sed_string="cat $scenario_cnvt_file"
-	for i in $list; do
-		string=`echo $i | sed "s/\//+++/g"`
-		replace=`echo $string | cut -d'=' -f 1`
-		with=`echo $string  | cut -d'=' -f 2-`
-		sed_string="${sed_string} | sed \"s/${replace}/${with}/g\""
-	done
+	list=`grep ^% $scenario_cnvt_file | sed "s/% //g"`
 	#
 	# Filter out comments and the assignments
 	#
-	sed_string="${sed_string} | grep -v ^# | grep -v ^%"
+	sed_string="${sed_string} | grep -v ^#"
 	#
 	# Now create the parse file to use.
 	#
@@ -3303,6 +3340,7 @@ usage()
 	echo "  --persistent_log: enable persistent logging"
 	echo "  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits"
 	echo "  --results_prefix <prefix>: Run directory prefix"
+	echo "  --retry_failed_tests 0/1>: Indicates to retry any detected failed tests if set to 1 (1 is the default)."
 	echo "  --scenario <scenario definition file>: Reads in a scenario and then runs it"
 	echo "    (if used, host configs are designated in the file).  If the scenario name starts with https: or git:"
 	echo "    then we are retrieving the scenario from a git repo. If the line in the scenario file starts with #"
@@ -3539,6 +3577,10 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--retry_failed_tests)
+			gl_retry_failed_tests=$2
+			shift_by=2
+		;;
 		--run_file)
 			gl_run_file=$2
 			shift_by=2
@@ -3742,6 +3784,7 @@ grab_cli_data()
 		"package_name"
 		"no_pbench_install"
 		"results_prefix"
+		"retry_failed_tests"
 		"run_file"
 		"scenario"
 		"ssh_key_file"
@@ -3827,6 +3870,127 @@ scenario_file_sanity()
 	check_for_scen_value "^global:" $1
 	check_for_scen_value "^    tests:" $1
 	check_for_scen_value "^    host_config:" $1
+}
+
+add_test_to_file()
+{
+	system=$1
+	test=$2
+	new_scen_file=$3
+
+	if [ $gl_sys_index_rerun -ne 1 ]; then
+		echo "  system${gl_sys_index_rerun}:" >> $new_scen_file
+		echo "    host_config: \"SYS_BARRIER\"" >> $new_scen_file
+		let "gl_sys_index_rerun=$gl_sys_index_rerun+1"
+	fi
+	echo "  system$gl_sys_index_rerun:" >> $new_scen_file
+	let "gl_sys_index_rerun=$gl_sys_index_rerun+1"
+	while IFS= read -r test_info
+	do
+		if [[ "$test_info" == "tests:"* ]]; then
+			echo "    tests: $test" >> $new_scen_file
+			continue
+		fi
+		if [[ "$test_info" == "host_config:"* ]]; then
+			echo "    host_config: $system" >> $new_scen_file
+			continue
+		fi
+			echo "    $test_info" >> $new_scen_file
+	done < "new_info"
+}
+
+check_for_test()
+{
+	system=$1
+	test_list=$2
+	new_scen_file=$3
+
+	grep -q $system new_info
+	if [ $? -eq 0 ]; then
+		for test in $test_list; do
+			grep -q $test new_info
+			if [ $? -eq 0 ]; then
+				add_test_to_file $system $test $new_scen_file
+			fi
+		done
+	fi
+}
+
+add_missing_test()
+{
+	system=$1
+	test=$2
+	new_scenario=$4
+	scenario_file=$3
+	start_of_test_found=0
+	test_section_start=0
+	test_section=0
+	while IFS= read -r test_info
+	do
+		if [ $start_of_test_found -eq 0 ]; then
+			if [[ $test_info  == "systems:"* ]]; then
+				start_of_test_found=1
+			fi
+			continue
+		fi
+		if [[ $test_info == "  system"* ]];then
+			if [ $test_section_start -eq 1 ]; then
+				check_for_test  $system "$test" $new_scen_file
+				rm new_info 2> /dev/null
+			fi
+			test_section_start=1
+			continue
+		fi
+		echo $test_info >> new_info
+	done < $scenario_file
+	if [[ -f new_info ]]; then
+		check_for_test  $system "$test" $new_scen_file
+		rm new_info 2> /dev/null
+	fi
+}
+
+handle_error_reruns()
+{
+	scenario_to_run=${gl_top_dir}/${gl_scenario_to_run}_fix
+	#
+	# Replace all +++ in the scenario file
+	#
+	sed "s/+++/\//g" ${gl_top_dir}/${gl_scenario_to_run} > $scenario_to_run
+
+	new_scen_file=${scenario_to_run}_rerun
+	rm $new_scen_file 2> /dev/null
+	gl_sys_index_rerun=1
+
+	#
+	# First get all the headers
+	#
+	while IFS= read -r test_info
+	do
+		if [[ $test_info  == "systems:"* ]]; then
+			echo $test_info >> $new_scen_file
+			break
+		fi
+		if [[ $test_info != *"use_spot:"* ]]; then
+			echo "$test_info" >> $new_scen_file
+		fi
+	done < "${scenario_to_run}"
+
+	while IFS= read -r bad_test
+	do
+		system=`echo $bad_test | cut -d':'  -f 2`
+		test=`echo $bad_test | cut -d':'  -f 3`
+		add_missing_test $system "$test" $scenario_to_run $new_scen_file $scenario_to_run
+	done < test_errors
+	#
+	# If we have spot failures, handle them here.
+	# We will not run spot on any test failure, it simplifies
+	# having to deal with spot but test failed vs spot failure.
+	# We have already removed the spot request in the scenario file.
+	#
+	rm */spot_failure
+	pushd $gl_top_dir > /dev/null
+	./burden --scenario  $new_scen_file --retry_failed_tests 0
+	popd > /dev/null
 }
 
 grab_vars_data()
@@ -3953,7 +4117,9 @@ first_invocation()
 cli_data="$@"
 grab_cli_data "$@"
 grab_vars_data
-
+if [[ $gl_scenario_to_run != "" ]]; then
+	replace_scenario_vars
+fi
 #
 # Does not return
 #
@@ -3980,7 +4146,7 @@ fi
 # check to make sure the packages that are required are installed.
 #
 if [[ $gl_first_invocation -eq 1 ]]; then
-	rm utils_version 2> /dev/null
+	rm utils_version run_info 2> /dev/null
 	package_check
 fi
 
@@ -4065,6 +4231,7 @@ fi
 #
 if [[ $gl_scenario_to_run != "" ]]; then
         run_scenario $gl_scenario_to_run
+	process_results
         cleanup_and_exit "" 0
 fi
 
@@ -4161,49 +4328,10 @@ if [[ $gl_warning_string != "" ]]; then
 fi
 
 #
-# Ok, go back through things and see if we have to perform any runs because of spot failures.
+# Ok, go back through things and perfrom any runs related to spot failirues or other such things.
+# We try only once.
 #
-pushd ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} > /dev/null
-for i in `ls -d *`; do
-	if [ -f $i/spot_failure ]; then
-		rm $i/spot_failure
-		echo $i has spot failure running again without spot
-		next_one=0
-		for data in `cat $i/exec_command`; do
-			if [ $next_one -eq 1 ]; then
-				file_to_use=$data
-				break
-			fi
-			if [[ $data == "--run_file" ]]; then
-				next_one=1
-			fi
-		done
-		test_separ=""
-		tests=""
-		pushd $i > /dev/null
-		for i in `cat test_times | cut -d' ' -f2`; do
-			tests=${tests}${test_separ}${i}
-			test_separ=","
-		done
-		popd > /dev/null
-		echo tests >/tmp/tests
-		tests=${tests}","
-		tests_left=`sed "s/${tests}//g" $gl_top_dir/$file_to_use`
-		if [[ -f /home/zathras_log/spot_fails ]]; then
-			date=`date`
-			echo "$data: $date tests completed: ${tests}, tests left ${tests_left}" >> /home/zathras_log/spot_fails
-		fi
-		sed "s/--use_spot 1/--no_spot_recover/g" $gl_top_dir/$file_to_use | sed "s/${tests}//g" > $gl_top_dir/rerun
-		pushd $gl_top_dir > /dev/null
-		chmod 755 rerun
-		./rerun
-		popd > /dev/null
-	fi
-done
-#
-# Generate report of test status.
-# 
-$gl_top_dir/tools_bin/determine_test_status
-grep failed initial_summary > $gl_top_dir/failures
+
+process_results
 popd > /dev/null
 cleanup_and_exit "" 0
