@@ -3,12 +3,32 @@
 provider "aws" {
     alias = "zathras_prov"
     region = "${var.region}"
+    default_tags {
+      tags = {
+        User = "${var.User}"
+        Owner = "${var.Owner}"
+        Manager = "${var.Manager}"
+        Project = "${var.Project}"
+        Environment = "${var.Environment}"
+        Jirald = "${var.Jirald}"
+        TicketID = "${var.TicketID}"
+      }
+    }
 }
 
 resource "aws_vpc" "zathras_vpc" {
     provider = aws.zathras_prov
     enable_dns_support = true
     enable_dns_hostnames = true
+    tags = {
+      User = "${var.User}"
+      Owner = "${var.Owner}"
+      Manager = "${var.Manager}"
+      Project = "${var.Project}"
+      Environment = "${var.Environment}"
+      Jirald = "${var.Jirald}"
+      TicketID = "${var.TicketID}"
+    }
 #
 # Uncoment when using ipv6
 #
