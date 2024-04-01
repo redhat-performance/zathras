@@ -15,7 +15,6 @@ do
 			echo "Missing: $sys $expt_test" >> ${curdir}/missing_test
 			continue
 		fi
-		tball=`echo $tball | tail -1`
 		#
 		# Untar test results, verify worked.
 		#
