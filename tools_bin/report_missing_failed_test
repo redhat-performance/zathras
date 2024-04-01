@@ -45,7 +45,6 @@ if [ -f ${curdir}/failed_test ]; then
 	do
 		while IFS= read -r expt_test
 		do
-
 			list=`grep $sys failed_test | grep $expt_test`
 			if [[ $list != "" ]]; then
 				failed_test=`echo $list | sed "s/Failed: $sys //g"`
