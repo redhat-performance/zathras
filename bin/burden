@@ -2967,22 +2967,43 @@ verify_test_configuration()
 	#
 	# Verify any upload_extra files.  They are expected to be local on the system
 	#
-	grep "^    upload_extra:" $config_file | cut -d':' -f 2 | sed "s/^ //g" > $verify_tmp_file
+
 	while IFS= read -r fline
 	do
-		if [[ $fline == \""none\"" ]]; then
+		if [[ $fline == *" test_name:"* ]]; then
+			test_name=`echo $fline | awk '{print $2}'`
 			continue
 		fi
-		if [[ $fline == \""<replace with kit location>\"" ]]; then
+		if [[ $fline != *" upload_extra:"* ]]; then
 			continue
 		fi
-		file_check=`echo $fline | sed "s/\"//g" | sed "s/,/ /g"`
+		file=`echo $fline | awk '{print $2}'`
+		if [[ $file == \""none\"" ]] || [[ $file == \""<replace with kit location>\"" ]]; then
+			continue
+		fi
+		file_check=`echo $file | sed "s/\"//g" | sed "s/,/ /g"`
 		for file in $file_check; do
 			if [[ ! -f "$file" ]]; then
-				cleanup_and_exit "Error: Upload extra file $file not found." 1
+				if [[ $gl_scenario_to_run != "" ]]; then
+					grep -q $test_name $gl_scenario_to_run
+					rtc=$?
+				else
+					 echo $gl_test_list_out | grep -q
+					 rtc=$?
+				fi
+				#
+				# Bail only if we are suppose to run the associated test.  Else
+				# simply issue a warning.
+				#
+				echo test: $test_name
+				if [ $rtc -eq 0 ]; then
+					cleanup_and_exit "Error: Upload extra file $file not found." 1
+				else
+					echo Warning: Upload extra file $file not found.
+				fi
 			fi
 		done
-	done < "${verify_tmp_file}"
+	done < "${config_file}"
 	#
 	# Verify test_run_from field.  Valid values is local and remote
 	#
