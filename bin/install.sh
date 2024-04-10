@@ -17,6 +17,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+# Check if script is being run as root
+if (( $EUID == 0 )); then
+    read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N" yesno
+
+    case $yesno in
+        [Yy]* )
+            echo "You answered yes, continuing install as root." ;;
+        [Nn]* )
+            echo "You answered no, exiting"; exit 1 ;; 
+        *) 
+            echo "Unknown input, exiting"; exit 1 ;;
+    esac
+fi
+
+if (( $EUID != 0 )); then
+    echo "Not running as root, proceed."
+fi
 
 # Add the terraform repository from HashiCorp
 # for reference: https://developer.hashicorp.com/terraform/cli/install/yum
