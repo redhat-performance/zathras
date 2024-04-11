@@ -81,6 +81,7 @@ pip3 install yq --user
 
 
 echo "Before you can run Zathras:"
+echo "****Ensure ~/.local/bin is in your path"
 echo "****Set up a scenario file"
 echo "****If running a local system, create the local config file for the system under test (SUT)"
 echo "****If using an existing system, ssh-copy-id between the system Zathras is installed on and the SUT."
