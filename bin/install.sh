@@ -29,9 +29,7 @@ if (( $EUID == 0 )); then
         *) 
             echo "Unknown input, exiting"; exit 1 ;;
     esac
-fi
-
-if (( $EUID != 0 )); then
+else
     echo "Not running as root, proceed."
 fi
 
