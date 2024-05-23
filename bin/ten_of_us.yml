@@ -711,8 +711,9 @@
       - config_info.os_vendor == "rhel"
       - config_info.update_os_version != "none"
       - config_info.init_system == "yes"
+
 #
-# Disable selinux if required, if we do, reboot the system
+# Perform selinux operations.
 # 
 - hosts: install_group
   user: root
@@ -720,15 +721,9 @@
   vars_files: ansible_vars.yml
   gather_facts: no
   tasks:
-  - name: disable selinux
-    block:
-    - name: disabling selinux
-      selinux:
-        state: disabled
-    - name: reboot the system now for disabled selinux to take effect
-      reboot:
-        reboot_timeout: 1800
-    when: (config_info.selinux_state == "disabled")
+  - name: selinux config
+    include_role:
+      name: selinux_config
 
 #
 # Set sys config values.
