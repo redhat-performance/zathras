@@ -1,0 +1,94 @@
+---
+#
+# Ubuntu we have to disable and uninstall apparmor and install slinux.
+# This works on 5/17/2024
+#
+- name: Ubuntu enable
+  block:
+  - name: stop apparmor
+    shell: "systemctl stop apparmor"
+  - name: disable apparmor
+    shell:  "systemctl disable apparmor"
+  - name: uninstall app armor
+    shell: "apt-get remove apparmor -y"
+  - name: reboot the system now for disabled aparmor to take effect
+    reboot:
+      reboot_timeout: 1800
+  - name: install selinux on ubuntu
+    shell: "apt-get install policycoreutils selinux-utils selinux-basics -y"
+  - name: Activate selinux
+    shell: "selinux-activate"
+  - name: reboot the system now for selinux to be enabled.
+    reboot:
+      reboot_timeout: 1800
+  - name: We want permissive for selinux
+    shell: "setenforce 0"
+    when: (config_info.selinux_level == "permissive")
+  - name: We want enforcing for selinux
+    fail:
+      msg: "We do not support enforcing on Ubuntu at this time."
+    when: (config_info.selinux_level == "enforcing")
+  - name: reboot the system now to get the proper settings
+    reboot:
+      reboot_timeout: 1800
+  when:
+    - (ansible_facts.selinux.status == 'disabled')
+    - (config_info.selinux_state == "enabled")
+    - (config_info.os_vendor == "ubuntu")
+
+- name: RHEL 2023 selinux
+  block:
+  #
+  # If we do not disable via grubby, there is still some selinux code path we call.
+  #
+  - name: general enablement
+    block:
+    - name: enable selinux RHEL/amazon
+      shell: "grubby --update-kernel=ALL --remove-args=\"selinux\""
+    #
+    # Update the selinux config file
+    # 
+    - name: First get the line to replace
+      shell: "grep ^SELINUX= /etc/selinux/config"
+      register: se_line
+    - name: Remove config_file
+      shell: "rm -rf /tmp/zathras_selinux"
+      ignore_errors: yes
+    - name: If we want to be enforcing
+      shell: "cat /etc/selinux/config | sed \"s/{{ se_line.stdout }}/SELINUX=enforcing/g\" > /tmp/zathras_selinux"
+      ignore_errors: yes
+      when: (config_info.selinux_level == "enforcing")
+    - name: If we want to be permissive
+      shell: "cat /etc/selinux/config | sed \"s/{{ se_line.stdout }}/SELINUX=permissive/g\" > /tmp/zathras_selinux"
+      ignore_errors: yes
+      when: (config_info.selinux_level == "permissive")
+    - name: If we want to be disabled via config
+      shell: "cat /etc/selinux/config | sed \"s/{{ se_line.stdout }}/SELINUX=disabled/g\" > /tmp/zathras_selinux"
+      ignore_errors: yes
+      when: (config_info.selinux_level == "disabled")
+    - name: Move the file if present
+      shell: "mv /tmp/zathras_selinux /etc/selinux/config"
+      ignore_errors: yes
+    - name: reboot the system now to enable selinux
+      reboot:
+        reboot_timeout: 1800
+    when:
+      (config_info.selinux_state == "enabled")
+#
+# If we do not disable via grubby, there is still some selinux code path we call.
+#
+  - name: general disablement
+    block:
+    - name: disabling selinux for RHEL/Amazon
+      shell: "grubby --update-kernel=ALL --args=\"selinux=0\""
+    - name: reboot the system now for disabled selinux to take effect
+      reboot:
+        reboot_timeout: 1800
+    #
+    # For some unkown reason, we ignore the check 
+    # (config_info.selinux_state != "dsiabled") so we will use
+    # (config_info.selinux_state != "enabled")
+    when: (config_info.selinux_state != "enabled")
+  when: 
+    config_info.os_vendor == "rhel" or
+    config_info.os_vendor == "amnazon"
