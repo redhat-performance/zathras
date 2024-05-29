@@ -225,7 +225,10 @@ General options
     , then that line is a comment.  If the line starts with a %, it indicates to replace the string.
     Format to replace a string  % &lt;current string&gt;=&lt;new string&gt;
   --scenario_vars &lt;file&gt;: file that contains the variables for the scenario file, default is config/zathras_scenario_vars_def
-  --selinux_state: disabled/enabled
+  --selinux_level: ennforcing/permissive/disabled.  The setting to have in /etc/selinux/config file.  Note: Ubuntu we do not support
+    enforcing at this time.
+  --selinux_state: disabled/enabled.  If disabled is selected, selinux will be disabled via grubby (Amazon and RHEL). For Ubuntu,
+    enabled will install the require packages, update the config file and reboot.
   --ssh_key_file: Designates the ssh key file we are to use.
   --show_os_versions: given the cloud type, and OS vendor, show the available os versions
   --show_tests:  list the available test as defined in config/test_defs.yml
