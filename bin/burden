@@ -45,9 +45,11 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   gl_host_config: m5.xlarge
 #   gl_host_config_info: m5.xlarge
 #   host_or_cloud_inst: m5.xlarge
-#   gl_selinux_state: state of selinux
+#   gl_selinux_level: state of selinux
 #     enforcing - SELinux security policy is enforced.
 #     permissive - SELinux prints warnings instead of enforcing.
+#   gl_selinux_state: state of selinux
+#     enabled - SELinux security policy is active.
 #     disabled - No SELinux policy is loaded.
 #   gl_cloud_os_version: Cloud specific, indicates what OS version we are to load.
 #   gl_test_repos: Where we will find the tests to use.
@@ -162,6 +164,7 @@ gl_run_dir_index=0
 gl_run_prefix=""
 gl_scenario_to_run=""
 gl_scenario_to_restore=""
+gl_selinux_level="enforcing"
 gl_selinux_state="enabled"
 gl_selinux_state_set=0
 gl_ssh_key_file=""
@@ -1841,6 +1844,7 @@ create_ansible_options()
 		echo "  spot_start_price: ${gl_spot_price}" >> ansible_vars_main.yml
 		echo "  spot_range: ${spot_pricing}" >> ansible_vars_main.yml
 		echo "  "selinux_state: $gl_selinux_state >> ansible_vars_main.yml
+		echo "  "selinux_level: $gl_selinux_level >> ansible_vars_main.yml
 		user_name=`id | cut -d'(' -f 2 | cut -d')' -f 1`
 		#
 		# Verify the cloud os version is valid
@@ -2344,10 +2348,31 @@ verify_force_upload_value()
 #
 # Verify that the value set for selinux is either enabled or disabled.
 #
-verify_selinux_value()
+verify_selinux_state()
 {
-	if [[ $1 -ne "enabled" ]] && [[ $1 -ne "disabled" ]] ; then
-		cleanup_and_exit "Error: $1, is an unrecognized selinux value.  Valid values are enabled/disabled" 1
+	if [[ $1 -ne "enabled" ]] && [[ $1 -ne "disabled" ]]; then
+		cleanup_and_exit "Error: $1, is an unrecognized selinux state value.  Valid values are enabled/disabled" 1
+	fi
+}
+
+#
+# Verify that the value set for selinux level  is either enforcing, permissive or disabled.
+#
+verify_selinux_level()
+{
+	if [[ $1 -ne "enforcing" ]] && [[ $1 -ne "disabled" ]] && [[ $1 -ne "permissive" ]]; then
+		cleanup_and_exit "Error: $1, is an unrecognized selinux level value.  Valid values are enforcing/permissive/disabled" 1
+	fi
+}
+
+#
+# Ubuntu we do not do enforcing.  Issue is Ubuntu does not have it on by default and to get everything to work properly
+# requires a lot of work, and long reboot times.
+#
+verify_selinux()
+{
+	if [[ $gl_os_vendor == "ubuntu" ]] && [[ $gl_selinux_state == "enabled" ]] && [[ $gl_selinux_level == "enforcing" ]]; then
+		cleanup_and_exit "Error: We do not support enforcing with selinux on ubuntu" 1
 	fi
 }
 
@@ -3394,6 +3419,7 @@ usage()
 	echo "    , then that line is a comment.  If the line starts with a %, it indicates to replace the string."
 	echo "    Format to replace a string  % <current string>=<new string>"
 	echo "  --scenario_vars <file>: file that contains the variables for the scenario file. The default is config/zathras_scenario_vars_def."
+	echo "  --selinux_level: enforcing/permissive/disabled"
 	echo "  --selinux_state: disabled/enabled"
 	echo "  --ssh_key_file: Designates the ssh key file we are to use."
 	echo "  --show_os_versions: given the cloud type, and OS vendor, show the available os versions"
@@ -3653,13 +3679,17 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--selinux_level)
+			gl_selinux_level=$2
+			echo "$1 $gl_selinux_level" >> $gl_cli_supplied_options
+			verify_data verify_selinux_level $gl_selinux_level
+			shift_by=2
+		;;
 		--selinux_state)
-			if [[ $gl_selinux_state_set -eq 0 ]]; then
-				gl_selinux_state_set=1
-				echo "$1 $2" >> $gl_cli_supplied_options
-				gl_selinux_state=$2
-				verify_data verify_selinux_value $gl_selinux_state
-			fi
+			gl_selinux_state_set=1
+			gl_selinux_state=$2
+			echo "$1 $gl_selinux_state" >> $gl_cli_supplied_options
+			verify_data verify_selinux_state $gl_selinux_state
 			shift_by=2
 		;;
 		--show_os_versions)
@@ -3837,6 +3867,7 @@ grab_cli_data()
 		"ssh_key_file"
 		"tuned_profiles"
 		"scenario_vars"
+		"selinux_level"
 		"selinux_state"
 		"system_type"
 		"terminate_cloud"
@@ -4208,6 +4239,8 @@ else
 	gl_test_def_dir=`echo ${gl_test_def_file} | cut -d'/' -f 1-${chars}`
 
 fi
+
+verify_selinux
 
 #
 # Are we looking up the cloud images?
