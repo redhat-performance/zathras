@@ -39,7 +39,8 @@
 - name: RHEL 2023 selinux
   block:
   #
-  # If we do not disable via grubby, there is still some selinux code path we call.
+  # By default, grubby does not have selinux in the boot line.  If it is not there
+  # then the system assumes selinux=1
   #
   - name: general enablement
     block:
@@ -79,6 +80,7 @@
       (config_info.selinux_state == "enabled")
 #
 # If we do not disable via grubby, there is still some selinux code path we call.
+# By default, there is no selinux in the grubby boot line.  
 #
   - name: general disablement
     block:
