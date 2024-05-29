@@ -43,8 +43,11 @@
   #
   - name: general enablement
     block:
+    - name: Get name of kernel
+      shell: "uname -r"
+      register: kernel
     - name: enable selinux RHEL/amazon
-      shell: "grubby --update-kernel=ALL --remove-args=\"selinux\""
+      shell: "grubby --update-kernel=/boot/vmlinuz-{{ kernel.stdout }} --remove-args=\"selinux\""
     #
     # Update the selinux config file
     # 
@@ -79,8 +82,11 @@
 #
   - name: general disablement
     block:
+    - name: Get name of kernel
+      shell: "uname -r"
+      register: kernel
     - name: disabling selinux for RHEL/Amazon
-      shell: "grubby --update-kernel=ALL --args=\"selinux=0\""
+      shell: "grubby --update-kernel=/boot/vmlinuz-{{ kernel.stdout }} --args=\"selinux=0\""
     - name: reboot the system now for disabled selinux to take effect
       reboot:
         reboot_timeout: 1800
