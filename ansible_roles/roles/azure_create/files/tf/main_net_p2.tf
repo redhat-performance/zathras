@@ -27,6 +27,7 @@ resource "azurerm_linux_virtual_machine" "virtualmachine" {
         sku       = var.sku
         version   = var.azversion
     }
+    tags = local.tags
 }
 
 data "azurerm_public_ip" "publicip" {

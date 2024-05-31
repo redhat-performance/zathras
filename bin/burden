@@ -1539,10 +1539,8 @@ generate_tags()
 		indent="      "
 	fi
 	if [[ $gl_system_type == "azure" ]]; then
-		echo "resource \"azurerm_resource_group\" \"resource_group\" {" >> add_main_vars.tf
-    		echo "    name     = var.resource_group"  >> add_main_vars.tf
-		echo "    location = var.location" >> add_main_vars.tf
-		echo "    tags = {" >> add_main_vars.tf
+		echo "locals {" >> add_main_vars.tf
+		echo "  tags = {" >> add_main_vars.tf
 		indent="        "
 	fi
 	if [[ $gl_system_type == "gcp" ]]; then
@@ -1588,9 +1586,6 @@ generate_tags()
 		echo "  }" >> add_main_vars.tf
 	fi
 	if [[ $gl_system_type == "azure" ]]; then
-		echo "    }" >> add_main_vars.tf
-		echo "    timeouts {" >> add_main_vars.tf
-		echo "        delete = \"15m\"" >> add_main_vars.tf
 		echo "    }" >> add_main_vars.tf
 	fi
 	if [[ $gl_system_type == "gcp" ]]; then

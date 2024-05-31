@@ -90,7 +90,14 @@
   shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf//vars.tf"
 
 - name: Add tag info in.
-  shell: "cat {{ working_dir }}/add_main_vars.tf >> {{ working_dir }}/tf/main.tf"
+  shell: "cp {{ working_dir }}/add_main_vars.tf {{ working_dir }}/temp_file.tf"
+
+- name: Add main info in.
+  shell: "cat {{ working_dir }}/tf/main.tf >> {{ working_dir }}/temp_file.tf"
+
+- name: Move file
+  shell: "cp {{ working_dir }}/temp_file.tf {{ working_dir }}/tf/main.tf"
+
 
 - name: Set up terraform variables
   include_role:
