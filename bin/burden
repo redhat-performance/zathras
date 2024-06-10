@@ -2626,7 +2626,7 @@ convert_scenario_file()
 	#
 	# Check to make sure we have the proper number of host configs
 	# 
-	sc_cnt=`grep host_config $tmp_run_file | grep -o ,|  wc -l`
+	sc_cnt=`grep host_config $tmp_run_file |  wc -l`
 	ps_cnt=`grep host_config parse_file.tmp | grep -o ,| wc -l`
 	if [ $ps_cnt != $sc_cnt ]; then
 		cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
