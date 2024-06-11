@@ -89,8 +89,11 @@
 - name: copy general tf files
   shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf//vars.tf"
 
-- name: Add tag info in.
-  shell: "cat {{ working_dir }}/add_main_vars.tf >> {{ working_dir }}/tf/main.tf"
+- name: Move main.tf off to the side
+  shell: "mv {{ working_dir }}/tf/main.tf {{ working_dir }}/main_back.tf"
+
+- name: Add tag info in to main info, must be in the front.
+  shell: "cat {{ working_dir }}/add_main_vars.tf  {{ working_dir }}/main_back.tf > {{ working_dir }}/tf/main.tf"
 
 - name: Set up terraform variables
   include_role:

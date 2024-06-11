@@ -5,6 +5,7 @@ resource "azurerm_managed_disk" "datadisk" {
   resource_group_name  = azurerm_resource_group.resource_group.name
   storage_account_type = var.disk_type
   create_option        = "Empty"
+  tags                 = local.tags
   disk_size_gb         = var.disk_size
 }
 
