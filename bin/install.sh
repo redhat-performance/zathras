@@ -76,7 +76,8 @@ done
 
 
 # pip install requirements
-pip3 install -U boto boto3 yq --user
+pip3 install boto boto3 --user
+pip3 install 'yq==2.10.0' 
 
 
 echo "Before you can run Zathras:"
