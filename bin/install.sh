@@ -34,7 +34,7 @@ else
 fi
 
 # check for and install system packages
-packages=(ansible git jq python python3-pip terraform wget)
+packages=(ansible-core git jq python python3-pip terraform wget)
 
 for package in "${packages[@]}"; do 
     if dnf list installed "$package" &> /dev/null; then
