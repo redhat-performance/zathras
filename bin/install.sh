@@ -69,7 +69,7 @@ for package in "${packages[@]}"; do
         # install the package
         sudo dnf install terraform -y
     else
-        echo "package is not installed and not available."
+        echo "package $package is not installed and not available."
     fi
 
 done
