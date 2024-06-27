@@ -42,11 +42,15 @@
   # By default, grubby does not have selinux in the boot line.  If it is not there
   # then the system assumes selinux=1
   #
+  - name: Get the current selinux state.
+    shell: "sestatus | grep \"SELinux status\" | cut -d: -f 2 | sed \"s/ //g\""
+    register: selinux_state
+  - name: Get name of kernel
+    shell: "uname -r"
+    register: kernel
+
   - name: general enablement
     block:
-    - name: Get name of kernel
-      shell: "uname -r"
-      register: kernel
     - name: enable selinux RHEL/amazon
       shell: "grubby --update-kernel=/boot/vmlinuz-{{ kernel.stdout }} --remove-args=\"selinux\""
     #
@@ -77,16 +81,14 @@
       reboot:
         reboot_timeout: 1800
     when:
-      (config_info.selinux_state == "enabled")
+      - (config_info.selinux_state == "enabled")
+      - (selinux_state.stdout != "enabled")
 #
 # If we do not disable via grubby, there is still some selinux code path we call.
 # By default, there is no selinux in the grubby boot line.  
 #
   - name: general disablement
     block:
-    - name: Get name of kernel
-      shell: "uname -r"
-      register: kernel
     - name: disabling selinux for RHEL/Amazon
       shell: "grubby --update-kernel=/boot/vmlinuz-{{ kernel.stdout }} --args=\"selinux=0\""
     - name: reboot the system now for disabled selinux to take effect
@@ -96,7 +98,9 @@
     # For some unkown reason, we ignore the check 
     # (config_info.selinux_state != "dsiabled") so we will use
     # (config_info.selinux_state != "enabled")
-    when: (config_info.selinux_state != "enabled")
+    when: 
+      - (config_info.selinux_state != "enabled")
+      - (selinux_state.stdout == "enabled")
   when: 
     config_info.os_vendor == "rhel" or
     config_info.os_vendor == "amnazon"
