@@ -34,7 +34,7 @@ else
 fi
 
 # check for and install system packages
-packages=(ansible git jq python python3-pip terraform wget)
+packages=(ansible-core git jq python python3-pip terraform wget)
 
 for package in "${packages[@]}"; do 
     if dnf list installed "$package" &> /dev/null; then
@@ -69,14 +69,15 @@ for package in "${packages[@]}"; do
         # install the package
         sudo dnf install terraform -y
     else
-        echo "package is not installed and not available."
+        echo "package $package is not installed and not available."
     fi
 
 done
 
 
 # pip install requirements
-pip3 install -U boto boto3 yq --user
+pip3 install boto boto3 --user
+pip3 install 'yq==2.10.0' --user 
 
 
 echo "Before you can run Zathras:"
