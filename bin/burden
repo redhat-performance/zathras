@@ -1379,7 +1379,7 @@ azure_specific_os_version()
 	# Azure wants to be difficult about this ... fine.
 	# This is gross, fix it to be pretty some day
 	#
-	azpublisher=$(echo $gl_cloud_os_version | cut -f 1 -d:)
+	azpublisher=`az vm image show --location eastus --urn ${gl_cloud_os_version} | grep publisher | cut -d: -f 2 | cut -d'"' -f 2`
 	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
 	azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
 	azversion=$(echo $gl_cloud_os_version | cut -f 4 -d:)
