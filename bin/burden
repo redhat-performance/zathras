@@ -204,6 +204,7 @@ gl_zathras_specific_vals="config/zathras_specific_vals_def"
 gl_zathras_specific_vals_set=0
 gl_no_packages=0
 gl_no_pbench_install=0
+gl_pbench_stats="medium"
 gl_cpu_type_request="none"
 gl_run_file=""
 
@@ -1960,6 +1961,7 @@ create_ansible_options()
 			fi
 			echo "  pbench_install: 0" >> ansible_vars_main.yml
 		fi
+		echo "  pbench_tool_level: ${gl_pbench_stats}" >> ansible_vars_main.yml
 		if [[ $gl_install_pbench -eq 1 ]]; then
 			if [[ "$gl_os_vendor" != "rhel" ]]; then
 				cleanup_and_exit "Pbench is only usable with RHEL at this time." 1
@@ -3403,6 +3405,7 @@ usage()
 	echo "  --no_pbench_install: Do not install pbench.  The default is 0 (install pbench)"
 	echo "  --no_spot_recover: Do not recover from a spot system going away."
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
+	echo "  --pbench_install_stats: level of pbench stats to insall: light, medium, legacy, heavy.  Default is medium."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
 	echo "  --persistent_log: enable persistent logging"
 	echo "  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits"
@@ -3621,6 +3624,11 @@ set_general_value()
 				echo "$1 $2" >> $gl_cli_supplied_options
 				gl_package_name=$2
 			fi
+			shift_by=2
+		;;
+		--pbench_install_stats)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_pbench_stats=$2
 			shift_by=2
 		;;
 		--persistent_log)
@@ -3855,6 +3863,7 @@ grab_cli_data()
 		"os_vendor"
 		"package_name"
 		"no_pbench_install"
+		"pbench_install_stats"
 		"results_prefix"
 		"retry_failed_tests"
 		"run_file"
