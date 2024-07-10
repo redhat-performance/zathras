@@ -226,5 +226,3 @@ systems:
 
 
 # ./burden --scenario aws_sample --test_def_dir https://git.com/user/zathras_config
-
-https://git.com/user/zathras_config: where the test config files can be found.
