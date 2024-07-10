@@ -135,6 +135,16 @@
     shell: "{{ working_dir }}/remove_wrong_cpus {{ working_dir }}"
   when: config_info.cpu_type_request != "none"
 
+- name: Add host(s) to test and install groups
+  include_tasks: add_host_to_groups.yml
+
+- name: ssh key exchange
+  include_role:
+    name: ssh_key_exchange
+  vars:
+    ip_list: "{{ public_ip_address }}"
+  when: config_info.cloud_numb_networks|int >= 1
+
 - name: Azure set up pbench disk
   include_role:
     name: pbench_disk_set
@@ -155,12 +165,3 @@
     line: "instance start_time: {{ (azure_create_time_end.stdout) | int - (azure_create_time_start.stdout) | int }}"
     create: yes
 
-- name: Add host(s) to test and install groups
-  include_tasks: add_host_to_groups.yml
-
-- name: ssh key exchange
-  include_role:
-    name: ssh_key_exchange
-  vars:
-    ip_list: "{{ public_ip_address }}"
-  when: config_info.cloud_numb_networks|int >= 1
