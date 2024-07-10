@@ -216,6 +216,10 @@ General options
   --package_name &lt;name&gt;: Use this set of packages to override the default in the test config
     file instead of the default. Default format  package name &lt;os&gt;_pkg, new name &lt;os&gt;_pkg_&lt;ver&gt;.
   --pbench_install_stats: level of pbench stats to insall: light, medium, legacy, heavy.  Default is medium.
+       light = vmstat
+       medium = vmstat,iostat,sar
+       heavy = vmstat,iostat,sar,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,turbostat
+       legacy = iostat,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,sar turbostat
   --persistent_log: enable persistent logging
   --preflight_check: Performs various checks on the scenario file, and Zathras and then exits
   --results_prefix &lt;prefix&gt;: Run directory prefix
