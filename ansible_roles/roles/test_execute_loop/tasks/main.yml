@@ -19,6 +19,7 @@
       test_exec_loca: "{{ test_location }}"
       test_exec: "{{ test_item }}"
       sys_confg: "tuned_none_sys_file_{{ none }}"
+      tuned: "{{ config_info.rhel_tuned_setting }}"
     loop: "{{ config_info.test_to_run }}"
     loop_control:
       loop_var: test_item
