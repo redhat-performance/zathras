@@ -111,10 +111,10 @@
       block:
       - name: What we are looking for
         debug:
-          msg: "/tmp/results_{{ test_data.test_name }}_{{ sys_confg }}.tar"
+          msg: "/tmp/results_{{ test_data.test_name }}.zip"
       - name: retrieve data
         fetch:
-          src: "/tmp/results_{{ test_data.test_name }}_{{ sys_confg }}.tar"
+          src: "/tmp/results_{{ test_data.test_name }}.zip"
           dest: "{{ working_dir }}/"
           flat: yes
         ignore_errors: yes
