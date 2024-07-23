@@ -257,10 +257,4 @@ if [[ -f test_times ]]; then
         report_usage
 fi
 
-for i in `ls results*tar`; do
-	check_file=`tar tvf $i | grep "_tuned\.status"` 
-	echo ============ >> tuned_run_info
-	echo $i >> tuned_run_info
-	cat $check_file >> tuned_run_info
-done
 exit 0

@@ -2090,14 +2090,19 @@ create_ansible_options()
 				else
 					make_dir_report_errors junk
 					cd junk
-					results_report=`tar xvf ../${results_file} | grep test_results_report`
-					if [[ $results_report != "" ]]; then
-						grep -q Failed $results_report
-						if [ $? -ne 1 ]; then
-							echo "${timestamp} Error: System: ${test_sys}, Test, $i, reported failure" >> $gl_top_dir/failed_runs
-							echo "    Error: reported a failure" >> ../results_info
+					for i in $results_file; do
+						unzip -q ../${i}
+						tfile=`ls *tar`
+						results_report=`tar xvf ${tfile} | grep test_results_report`
+						if [[ $results_report != "" ]]; then
+							grep -q Failed $results_report
+							if [ $? -ne 1 ]; then
+								echo "${timestamp} Error: System: ${test_sys}, Test, $i, reported failure" >> $gl_top_dir/failed_runs
+								echo "    Error: reported a failure" >> ../results_info
+							fi
 						fi
-					fi
+						rm $tfile
+					done
 					cd ..
 					rm -rf junk
 					echo "    results_ptr: ${direct}/${results_file}" >> results_info
