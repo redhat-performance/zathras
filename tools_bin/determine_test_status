@@ -1,8 +1,6 @@
 #!/bin/bash
 
-rm initial_summary
-rm all_sys
-rm test_summary
+rm initial_summary all_sys test_summary 2>&1 /dev/null
 curdir=`pwd`
 
 determine_tests()
@@ -22,7 +20,7 @@ determine_tests()
 		fi
 		file=`unzip -l results_${check}.zip | grep tar | awk '{print $4}'`
 		if [ ! -f $file ]; then
-			unzip results_${check}*zip
+			unzip -q results_${check}.zip
 		fi
 		for tball in $file; do
 			top_dir=`tar --list --file=${tball} | head -1 | cut -d'/' -f 1`
