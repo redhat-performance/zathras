@@ -56,6 +56,8 @@ The following packages will need to be installed on the controller to run Zathra
 ### Installation
 Installing Zathras is easy! First, clone this repository to your controller system.
 
+    git clone https://github.com/redhat-performance/zathras.git
+
 Installation can then be completed by running the install script located within the repo's bin/ directory:
 
     ./install.sh
@@ -64,14 +66,13 @@ Installation can then be completed by running the install script located within 
 Note: for most installations the install script should be run as a user, not root.
 
 ### Test config files
-
+Test config files, stored in the config/ directory of the Zathras installation, are the connective tissue between Zathras and the test wrappers. Currently this Zathras repo does not contain any defined test config files. Before you can use this tool, you will need to write your own test configs using the included example.yml, or add the configs from an external source if one is available to you.
 
 ### Testing Quickstarts
 In general, testing with Zathras follows a similar set of steps across modalities: configure the tests to run, then run burden via the command line. 
 
 
-
-However, there are some aspects that are particular to the testing environment being used.
+However, there are some aspects that are particular to the testing environment being used. Please refer to the following documentation that matches your use case:
 
 - Testing on bare metal
 - Testing on cloud
