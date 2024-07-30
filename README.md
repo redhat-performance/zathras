@@ -39,10 +39,22 @@ The user configures the Zathras installation with information about the system u
 ## Getting Started
 
 ### Requirements
-- git 
+To use Zathras, you need: 
+1. A system that will coordinate the execution of tests, which we will call the *control node* or simply the *controller*.
+2. One or more systems where tests will be run. This can be another physical system (aka bare metal), an instance on a public cloud like Amazon Web Services (AWS), or even a virtual machine (VM) either on the controller or another host system.
+
+The following packages will need to be installed on the controller to run Zathras. If you use the included installer script (next section), they will be installed for you.
+- ansible-core
+- git
+- jq
+- python
+- python3-pip
+- terraform
+- yq, version 2.10.0 (newer versions currently break Zathras)
+- wget
 
 ### Installation
-First, clone this repository to your controller system.
+Installing Zathras is easy! First, clone this repository to your controller system.
 
 Installation can then be completed by running the install script located within the repo's bin/ directory:
 
@@ -50,6 +62,9 @@ Installation can then be completed by running the install script located within 
 
 
 Note: for most installations the install script should be run as a user, not root.
+
+### Test config files
+
 
 ### Testing Quickstarts
 In general, testing with Zathras follows a similar set of steps across modalities: configure the tests to run, then run burden via the command line. 
