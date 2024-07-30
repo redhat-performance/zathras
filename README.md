@@ -44,6 +44,13 @@ The user configures the Zathras installation with information about the system u
 ### Installation
 First, clone this repository to your controller system.
 
+Installation can then be completed by running the install script located within the repo's bin/ directory:
+
+    ./install.sh
+
+
+Note: for most installations the install script should be run as a user, not root.
+
 ### Testing Quickstarts
 In general, testing with Zathras follows a similar set of steps across modalities: configure the tests to run, then run burden via the command line. 
 
