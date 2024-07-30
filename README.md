@@ -9,23 +9,23 @@ Zathras is a test automation framework for use with bare metal, cloud, and virtu
 
 Currently, Zathras offers the following test wrappers:
 
-| Test Name                                          | Description                                                                         | Wrapper URL                                                |   |   |
-|----------------------------------------------------|-------------------------------------------------------------------------------------|------------------------------------------------------------|---|---|
-| CoreMark                                           | Test processor core functionality                                                   | https://github.com/redhat-performance/coremark-wrapper     |   |   |
-| CoreMark Pro                                       | EEMBC's advanced processor benchmark.                                               | https://github.com/redhat-performance/coremark_pro-wrapper |   |   |
-| Flexible I/O tester                                | Test the Linux I/O subsystem and schedulers                                         | https://github.com/redhat-performance/fio-wrapper          |   |   |
-| HPL                                                | Freely available implementation of the High Performance Computing Linpack Benchmark | https://github.com/redhat-performance/autohpl-wrapper      |   |   |
-| HammerDB                                           | Database benchmarking                                                               | https://github.com/redhat-performance/hammerdb-wrapper     |   |   |
-| IOzone                                             | File system benchmarking                                                            | https://github.com/redhat-performance/iozone-wrapper       |   |   |
-| Linpack                                            | Licensed version of Linpack benchmark (see also: HPL)                               | https://github.com/redhat-performance/linpack-wrapper      |   |   |
-| NUMA STREAM                                        | Extension of STREAM benchmark to measure NUMA effects                               | https://github.com/redhat-performance/numa_streams-wrapper |   |   |
-| Passmark                                           | CPU benchmark                                                                       | https://github.com/redhat-performance/passmark-wrapper     |   |   |
-| pig                                                | Processor scheduler efficiency test                                                 | https://github.com/redhat-performance/pig_wrapper          |   |   |
-| Python Performance Benchmark Suite (pyperformance) | Performance testing for Python using real-world benchmarks                          | https://github.com/redhat-performance/pyperf-wrapper       |   |   |
-| SPEC CPU 2017                                      | Suite of benchmarks for compute-intensive performance                               | https://github.com/redhat-performance/speccpu2017-wrapper  |   |   |
-| SPEC JBB2005                                       | Evaluate the performance of server side Java                                        | https://github.com/redhat-performance/specjbb-wrapper      |   |   |
-| STREAM                                             | Benchmark for sustained memory bandwidth                                            | https://github.com/redhat-performance/streams-wrapper      |   |   |
-| Uperf                                              | Network performance testing                                                         | https://github.com/redhat-performance/uperf-wrapper        |   |   |
+| Test Name                                          | Description                                                                         | Wrapper URL                                                |
+|----------------------------------------------------|-------------------------------------------------------------------------------------|------------------------------------------------------------|
+| CoreMark                                           | Test processor core functionality                                                   | https://github.com/redhat-performance/coremark-wrapper     |
+| CoreMark Pro                                       | EEMBC's advanced processor benchmark.                                               | https://github.com/redhat-performance/coremark_pro-wrapper |
+| Flexible I/O tester                                | Test the Linux I/O subsystem and schedulers                                         | https://github.com/redhat-performance/fio-wrapper          |
+| HPL                                                | Freely available implementation of the High Performance Computing Linpack Benchmark | https://github.com/redhat-performance/autohpl-wrapper      |
+| HammerDB                                           | Database benchmarking                                                               | https://github.com/redhat-performance/hammerdb-wrapper     |
+| IOzone                                             | File system benchmarking                                                            | https://github.com/redhat-performance/iozone-wrapper       |
+| Linpack                                            | Licensed version of Linpack benchmark (see also: HPL)                               | https://github.com/redhat-performance/linpack-wrapper      |
+| NUMA STREAM                                        | Extension of STREAM benchmark to measure NUMA effects                               | https://github.com/redhat-performance/numa_streams-wrapper |
+| Passmark                                           | CPU benchmark                                                                       | https://github.com/redhat-performance/passmark-wrapper     |
+| pig                                                | Processor scheduler efficiency test                                                 | https://github.com/redhat-performance/pig_wrapper          |
+| Python Performance Benchmark Suite (pyperformance) | Performance testing for Python using real-world benchmarks                          | https://github.com/redhat-performance/pyperf-wrapper       |
+| SPEC CPU 2017                                      | Suite of benchmarks for compute-intensive performance                               | https://github.com/redhat-performance/speccpu2017-wrapper  |
+| SPEC JBB2005                                       | Evaluate the performance of server side Java                                        | https://github.com/redhat-performance/specjbb-wrapper      |
+| STREAM                                             | Benchmark for sustained memory bandwidth                                            | https://github.com/redhat-performance/streams-wrapper      |
+| Uperf                                              | Network performance testing                                                         | https://github.com/redhat-performance/uperf-wrapper        |
 
 ## How It Works
 1. Zathras is installed to a controller system.
