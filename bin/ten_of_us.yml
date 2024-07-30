@@ -240,7 +240,6 @@
       - name: get codeready repo name
         shell:
           cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
-          warn: false
         register: repo_name
         ignore_errors: yes
       - name: Record status of yum config sucess
