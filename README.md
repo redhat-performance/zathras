@@ -33,7 +33,7 @@ Currently, Zathras offers the following test wrappers:
 
 ## How It Works
 1. Zathras is installed to a controller system.
-2. Zathras runs using either a configuration file or by supplying parameters in your command-line interface (CLI).  
+2. Zathras runs using either a configuration file or by supplying parameters in your command-line interface (CLI) (see the [CLI reference](docs/command_line_reference.md) for more info).  
 3. Test(s) run on the system under test (SUT).
 4. When tests finish, Zathras copies the results back to the controller system.
 5. Once results have been retrieved, Zathras will attempt to cleanup the testing environment (such as by tearing down instances in the cloud or by removing directories and files on bare metal). 
