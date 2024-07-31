@@ -1,7 +1,11 @@
 ## Table of Contents
 - [About](#about)
 - [How It Works](#how-it-works)
-- [Installation and Quick Start](#installation-and-quick-start)
+- [Getting started](#getting-started)
+    - [Requirements](#requirements)
+    - [Installation](#installation)
+    - [Test config files](#test-config-files)
+    - [Testing Quick Start](#installation-and-quick-start)
 - [License](#license)
 
 ## About
