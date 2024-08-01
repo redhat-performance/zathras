@@ -17,7 +17,7 @@ do
         do
 		rm -rf tar_check 2> /dev/null
 		mkdir tar_check
-		tball=`ls ${sys}*/results*${expt_test}_t*tar | tail -1 2> /dev/null`
+		tball=`ls ${sys}*/results*${expt_test}_*tar | tail -1 2> /dev/null`
 		if [ $? -ne 0 ]; then
 			echo "Missing: $sys $expt_test" >> ${curdir}/missing_test
 			continue
