@@ -1,6 +1,10 @@
 # Testing with Zathras - Quickstart
 
 ## Testing on bare metal
+- Define a scenario file
+- ssh-copy-id from the SUT to the controller
+- Add a local_config for the SUT
+- Add SUT to the controller's known hosts
 
 
 ## Testing on cloud
@@ -28,3 +32,10 @@ We could then begin running tests by entering in the command line:
 
 
 ## Testing in virtualization
+If the virtual machine is hosted on the controller, then the process follows the same steps as testing on bare metal.
+- Define a scenario file
+- ssh-copy-id from the SUT to the controller
+- Add a local_config for the SUT
+- Add SUT to the controller's known hosts
+
+If the virtual machine is hosted on an external system, then you will need to create a network bridge so that Zathras can reach the SUT.
