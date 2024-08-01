@@ -1,7 +1,14 @@
 #!/bin/bash
 find . -name ansible_vars_main.yml -print > ans_files
 cut -d '/' -f 2 ans_files | rev | cut -d_  -f 2- | rev | sort -u > systems
-rm -rf failed_test tar_check missing_test test_errors 2> /dev/null
+
+for rm_file in initial_summary all_sys test_summary;
+do
+	if [ -f $rm_file ]; then
+		rm $rm_file
+	fi
+done
+
 curdir=`pwd`
 while IFS= read -r sys
 do
