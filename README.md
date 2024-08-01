@@ -80,6 +80,6 @@ In general, testing with Zathras follows a similar set of steps across modalitie
 
 However, there are some aspects that are particular to the testing environment being used. Please refer to the following documentation that matches your use case:
 
-- Testing on bare metal
-- Testing on cloud
-- Testing on virtualization
+- [Testing on bare metal](https://github.com/redhat-performance/zathras/blob/documentation-rewrite/docs/test_config_files.md)
+- [Testing on cloud](https://github.com/redhat-performance/zathras/blob/documentation-rewrite/docs/test_config_files.md)
+- [Testing on virtualization](https://github.com/redhat-performance/zathras/blob/documentation-rewrite/docs/test_config_files.md)
