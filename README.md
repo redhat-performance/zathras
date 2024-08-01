@@ -72,6 +72,8 @@ Note: for most installations the install script should be run as a user, not roo
 ### Test config files
 Test config files, stored in the config/ directory of the Zathras installation, are the connective tissue between Zathras and the test wrappers. Currently this Zathras repo does not contain any defined test config files. Before you can use this tool, you will need to write your own test configs using the included example.yml, or add the configs from an external source if one is available to you.
 
+The process of creating test configuration files is further explained here.
+
 ### Testing Quickstarts
 In general, testing with Zathras follows a similar set of steps across modalities: configure the tests to run, then run burden via the command line. 
 
