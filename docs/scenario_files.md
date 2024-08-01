@@ -32,7 +32,8 @@ Scenario files are placed within your Zathras working directory, and can be give
 ## Examples
 
 ### Scenario file for bare metal
-Example 1: This scenario would run the STREAM benchmark on a local bare metal system named "test_sys".
+#### Example 1 
+This scenario would run the STREAM benchmark on a local bare metal system named "test_sys".
 
     global:
         result_prefix: just_a_test
@@ -43,7 +44,8 @@ Example 1: This scenario would run the STREAM benchmark on a local bare metal sy
             host_config: "test_sys"
 
 ### Scenario files for cloud
-Example 2: Create an AWS system, list system information, then delete the instance.
+#### Example 1 
+Create an AWS system, list system information, then delete the instance.
   
     global:
         ssh_key_file: replace_your_ssh_key
@@ -57,7 +59,8 @@ Example 2: Create an AWS system, list system information, then delete the instan
             cloud_os_id: ami-078cbc4c2d057c244
             host_config: "m6a.xlarge"
 
-Example 3: This scenario would run a test on public cloud using AWS with two hosts, "m5.xlarge" and "m5.12xlarge".
+#### Example 2 
+This scenario would run a test on public cloud using AWS with two hosts, "m5.xlarge" and "m5.12xlarge".
 
     global:
         ssh_key_file: /home/test_user/permissions/aws_region_2_ssh_key
@@ -78,6 +81,7 @@ Example 3: This scenario would run a test on public cloud using AWS with two hos
           system_type: aws
           host_config: "m5.4xlarge"
 
+#### Example 3 
 Run fio on AWS m5.xlarge (2 disks) and m5.12xlarge (4 disks); disks are 6TB, and type is gp2:
 
     global:
@@ -92,4 +96,22 @@ Run fio on AWS m5.xlarge (2 disks) and m5.12xlarge (4 disks); disks are 6TB, and
         tests: fio
             host_config: "m5.xlarge:Disks;number=2;size=6000;type=gp2,m12.xlarge:Disks;number=4;size=6000;type=gp2
 
+#### Example 4 
 Run fio on AWS m5.xlarge with 2 disks, and then run uperf on AWS m5.xlarge, 1 network. Note the SYS_BARRIER that indicates we will pause at that point, wait for all tests to finish, and then start the next batch. The m5.xlarge created for fio will be terminated at the end of the fio run and a new m5.xlarge for the uperf run will be created:
+
+    global:
+        ssh_key_file: /home/test_user/permissions/aws_region_2_ssh_key
+        terminate_cloud: 1
+        cloud_os_id: ami-0fdea47967124a409
+        os_vendor: rhel
+        results_prefix: just_a_test
+        system_type: aws
+    systems:
+        system1:
+            tests: fio
+            host_config: "m5.xlarge:Disks;number=2;size=6000;type=gp2"
+        system2:
+            host_config: "SYS_BARRIER"
+        system3:
+            tests: uperf
+            host_config: "m5.xlarge:Networks;number=1"
