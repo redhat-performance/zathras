@@ -5,7 +5,7 @@
     - [Requirements](#requirements)
     - [Installation](#installation)
     - [Test config files](#test-config-files)
-    - [Testing Quick Start](#installation-and-quick-start)
+    - [Testing Quick Starts](#installation-and-quick-start)
 
 
 ## About
