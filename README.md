@@ -6,7 +6,7 @@
     - [Installation](#installation)
     - [Test config files](#test-config-files)
     - [Testing Quick Start](#installation-and-quick-start)
-- [License](#license)
+
 
 ## About
 Zathras is a test automation framework for use with bare metal, cloud, and virtualized systems. Tests are defined by wrappers - external, self-contained scripts that enable easy extension of Zathras's functionality. 
@@ -83,5 +83,3 @@ However, there are some aspects that are particular to the testing environment b
 - Testing on bare metal
 - Testing on cloud
 - Testing on virtualization
-
-## License
