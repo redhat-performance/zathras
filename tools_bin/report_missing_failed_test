@@ -7,7 +7,7 @@ rm -f initial_summary all_sys test_summary;
 curdir=`pwd`
 while IFS= read -r sys
 do
-	grep test_to_run ${sys}*/ansible_vars_main.yml | cut -d'[' -f 2 | cut -d ']' -f 1 | sed "s/,/\n/g" | sort -u > expected_test
+	grep test_to_run ${sys}*/ansible_vars_main.yml | cut -d'[' -f 2 | cut -d ']' -f 1 | sed "s/,/\n/g" | sed "s/pbench_//g" | sort -u > expected_test
 	while IFS= read -r expt_test
         do
 		rm -rf tar_check 2> /dev/null
