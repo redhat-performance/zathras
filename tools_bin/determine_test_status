@@ -1,6 +1,7 @@
 #!/bin/bash
 
-rm initial_summary all_sys test_summary 2>&1 /dev/null
+rm  -f initial_summary all_sys test_summary;
+
 curdir=`pwd`
 
 determine_tests()
