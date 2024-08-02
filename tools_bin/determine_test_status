@@ -1,6 +1,12 @@
 #!/bin/bash
 
-rm initial_summary all_sys test_summary 2>&1 /dev/null
+for rm_file in initial_summary all_sys test_summary;
+do
+        if [ -f $rm_file ]; then
+                rm $rm_file
+        fi
+done
+
 curdir=`pwd`
 
 determine_tests()
