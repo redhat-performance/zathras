@@ -1,11 +1,6 @@
 #!/bin/bash
 
-for rm_file in initial_summary all_sys test_summary;
-do
-        if [ -f $rm_file ]; then
-                rm $rm_file
-        fi
-done
+rm  -f initial_summary all_sys test_summary;
 
 curdir=`pwd`
 
