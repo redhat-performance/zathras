@@ -64,7 +64,7 @@ report_usage()
 	# Get the instance price.
 	#
 	inst_price=`cat instance_cost`
-	if [[ $inst_price == "0" ]]; then
+	if [[ $inst_price == "0" ]] && [[ -f ansible_spot_price.yml ]]; then
 		inst_price=`grep cur_spot_price ansible_spot_price.yml | awk '{print $2}'`
 	fi
 	while IFS= read -r line
