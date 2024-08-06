@@ -48,7 +48,9 @@ find . -name "ansible_vars_main.yml" | cut -d/ -f2 > results_dirs
 for rdir in `cat results_dirs`
 do
 	pushd $rdir > /dev/null
-	determine_tests
+	if [[ -f ansible_vars.yml ]]; then
+		determine_tests
+	fi
 	popd > /dev/null
 done < "results_dirs"
 #
