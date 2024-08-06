@@ -2061,7 +2061,11 @@ create_ansible_options()
 		worker=`echo $gl_test_list_out | cut -d' ' -f2- | sed "s/,/ /g"`
 		if [ -d "tests_to_run" ]; then
 			echo "========================================" > results_info
-			test_sys=`grep host_or_cloud_ins ansible_vars.yml | cut -d':' -f 2 | sed "s/ //g"`
+			if [[ $gl_sys_type != "local" ]]; then
+				test_sys=`grep host_or_cloud_ins ansible_vars.yml | cut -d':' -f 2 | sed "s/ //g"`
+			else
+				test_sys=${gl_host_config}
+			fi
 			echo "system config: ${test_sys}" >> results_info
 			for i in `ls tests_to_run`
 			do
