@@ -305,6 +305,7 @@
         - config_info.system_type != "local"
     when:
       - config_info.os_vendor == "rhel"
+      - config_info.do_not_install_packages == 0
 
 - hosts: local
   vars_files: ansible_vars.yml
@@ -316,7 +317,7 @@
     vars:
       status_file: "cr_status"
       exit_msg: "Code repo installation failure"
-    when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
+    when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp") and (config_info.do_not_install_packages == 0)
 
  #
  # Determine where to upload from, assumption is all test systems have the same
