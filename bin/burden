@@ -4386,18 +4386,6 @@ gl_test_list_out=$gl_test_list
 
 
 #
-# At this time, local systems (systems designated via  an ip)
-# are expected to be running RHEL.
-#
-if [[ $gl_system_type == "local" ]]; then
-	#
-	# FIXME, we will need to allow for multiple
-	# types in the future. 
-	#
-	gl_os_vendor="rhel"
-fi
-
-#
 # Update the OS image if a target is designated.
 #
 if [[ $gl_update_target != $value_not_set ]]; then
