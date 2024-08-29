@@ -2188,7 +2188,6 @@ verify_test_def_file()
 #
 verify_os_vendor()
 {
-	echo $1
 	os_vendor_found=0
 	os_name=$(echo "$1" | awk -F ":" '{ print $1 }')
 	os_args=$(echo "$1" | awk -F ":" '{ print $2 }')
@@ -2211,7 +2210,6 @@ verify_os_vendor()
 }
 
 process_os_args() {
-	pwd
 	arg_file="/tmp/osargs.yaml"
 	$gl_top_dir/util/parse_optstring.sh "$1" > $arg_file
 	mode=$(yq -r .mode $arg_file)
