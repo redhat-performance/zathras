@@ -112,6 +112,7 @@ gl_git_timeout_set=0
 gl_archive_location=$value_not_set
 gl_error_repo_errors=1
 gl_valid_os_vendors="rhel ubuntu amazon private none"
+gl_valid_os_args="mode"
 gl_valid_system_types="aws azure gcp local"
 gl_package_name=$value_not_set
 gl_show_tests=0
@@ -159,6 +160,7 @@ gl_host_config=""
 gl_host_config_info=""
 gl_java_version=$value_not_set
 gl_os_vendor=$value_not_set
+gl_os_type=$value_not_set
 gl_persistent_log=0
 gl_run_dir_index=0
 gl_run_prefix=""
@@ -2188,17 +2190,46 @@ verify_test_def_file()
 #
 verify_os_vendor()
 {
+	echo $1
 	os_vendor_found=0
+	os_name=$(echo "$1" | awk -F ":" '{ print $1 }')
+	os_args=$(echo "$1" | awk -F ":" '{ print $2 }')
 
-	for os_vendor_check in  $gl_valid_os_vendors; 
+	for os_vendor_check in $gl_valid_os_vendors;
 	do
-		if [[ $1 == $os_vendor_check ]]; then
+		if [[ $os_name == $os_vendor_check ]]; then
 			os_vendor_found=1
+			gl_os_vendor=$os_name
 		fi
 	done
 	if [[ $os_vendor_found -eq 0 ]]; then
 		cleanup_and_exit "Error: $1, is an unrecognized OS vendor.  Possible values are: $gl_valid_os_vendors" 1
 	fi
+
+	if [ -n "$os_args" ]; then
+		echo $os_args
+		process_os_args "$os_args"
+	fi
+}
+
+process_os_args() {
+	pwd
+	arg_file="/tmp/osargs.yaml"
+	$gl_top_dir/util/parse_optstring.sh "$1" > $arg_file
+	mode=$(yq -r .mode $arg_file)
+
+	case $mode in
+		"package")
+			gl_no_packages=0
+		;;
+		"image")
+			gl_no_packages=1
+		;;
+		*)
+			cleanup_and_exit "Error $mode is an unknown mode, valid options are: 'package' and 'image'" 1
+		;;
+	esac
+	rm $arg_file
 }
 
 #
@@ -3281,6 +3312,7 @@ usage()
 	echo "    Burden will select the right ami for the designated host."
 	echo "  --create_only: Only do the VM creation and OS install action."
 	echo "  --os_vendor <os vendor>: currently rhel, ubuntu, amazon"
+	echo "  --os_type <os type>: currently $gl_valid_os_types (default $value_not_set)"
 	echo "  --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running."
 	echo "      Default is to terminate"
 	echo "  --use_spot: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not"
