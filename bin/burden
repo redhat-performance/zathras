@@ -2218,8 +2218,12 @@ process_os_args() {
 		"package")
 			gl_no_packages=0
 		;;
+		# Image mode is Read only root, /root is writeable
 		"image")
 			gl_no_packages=1
+			if [ "$gl_kit_upload_directory" == $value_not_set ]; then # Allow the user to overwrite this default
+				gl_kit_upload_directory="/root"
+			fi
 		;;
 		*)
 			cleanup_and_exit "Error $mode is an unknown mode, valid options are: 'package' and 'image'" 1
