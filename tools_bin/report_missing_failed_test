@@ -2,7 +2,7 @@
 find . -name ansible_vars_main.yml -print > ans_files
 cut -d '/' -f 2 ans_files | rev | cut -d_  -f 2- | rev | sort -u > systems
 
-rm -f initial_summary all_sys test_summary;
+rm -f initial_summary all_sys test_summary expected_test missing_test failed_test test_errors
 
 curdir=`pwd`
 while IFS= read -r sys
@@ -12,7 +12,7 @@ do
         do
 		rm -rf tar_check 2> /dev/null
 		mkdir tar_check
-		tball=`ls ${sys}*/results*${expt_test}_*tar | tail -1 2> /dev/null`
+		tball=`ls -rt ${sys}*/results*${expt_test}_*tar | tail -1 2> /dev/null`
 		if [ $? -ne 0 ]; then
 			echo "Missing: $sys $expt_test" >> ${curdir}/missing_test
 			continue
