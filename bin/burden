@@ -1356,7 +1356,7 @@ set_user_name()
 			# Azure normally defaults to the running username
 			gl_test_user=${user_name}
 		elif [[ $gl_system_type == "gcp" ]]; then
-			g_l_test_user=${user_name}
+			gl_test_user=${user_name}
 		else
 			#
 			# Default to root
