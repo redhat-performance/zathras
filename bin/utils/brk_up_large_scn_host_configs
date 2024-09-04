@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 #
-# This script takes a Zathras scenario file that has large lines in it and breaks
+# This script takes a Zathras scenario file that has large host lines in it and breaks
 # it down to be about 1024 characters without breaking the expected Zathras format.
 #
 gl_scenario_to_run=""
@@ -144,6 +144,11 @@ break_sub_tests()
 
 usage()
 {
+	echo "Look for hosts line in the scenario file and if over"
+	echo "1024 characters break the entire test into a series"
+	echo "of tests where the host line is less then 1024 characters."
+	echo "We do this so the run script that is created does not"
+	echo "run into issues of being to large and not executing properly"
 	echo "Usage: $0"
 	echo "--scenario <file>: scenario file to break up"
 	echo "--usage: this usage message"
@@ -197,7 +202,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ $gl_scenario_to_run == "" ]]; then
-	exit_out "You must designatea scenario file to use" 1
+	exit_out "You must designate a scenario file to use" 1
 fi
 
 if [[ ! -f $gl_scenario_to_run ]]; then

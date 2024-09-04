@@ -4071,7 +4071,7 @@ first_invocation()
 		#
 		# Need to make sure the lines do not get to big.
 		#
-		gl_scenario_to_run=`$UTILS_DIR/break_up_scenario --scenario $gl_scenario_to_run`
+		gl_scenario_to_run=`$UTILS_DIR/brk_up_large_scn_host_configs --scenario $gl_scenario_to_run`
 		if [ $? -ne 0 ]; then
 			cleanup_and_exit "Break up of scenario file failed" 1
 		fi
