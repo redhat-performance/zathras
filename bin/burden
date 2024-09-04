@@ -4257,8 +4257,6 @@ else
 
 fi
 
-verify_selinux
-
 #
 # Are we looking up the cloud images?
 #
@@ -4275,6 +4273,8 @@ if [[ $gl_show_os_versions -eq 1 ]]; then
 	cloud_image_lookup
 	cleanup_and_exit "" 0
 fi
+
+verify_selinux
 
 #
 # Retrieve the scenario file if need be.
