@@ -2211,7 +2211,7 @@ verify_os_vendor()
 
 process_os_args() {
 	arg_file="/tmp/osargs.yaml"
-	$gl_top_dir/util/parse_optstring.sh "$1" > $arg_file
+	$UTILS_DIR/parse_optstring.sh "$1" > $arg_file
 	mode=$(yq -r .mode $arg_file)
 
 	case $mode in
