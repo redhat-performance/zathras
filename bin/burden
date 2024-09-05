@@ -207,6 +207,7 @@ gl_no_pbench_install=0
 gl_pbench_stats="medium"
 gl_cpu_type_request="none"
 gl_run_file=""
+gl_test_user=""
 
 UTILS_DIR=`echo $BASH_SOURCE | rev | cut -d/ -f2- | rev`
 echo $UTILS_DIR | grep -q "^/"
@@ -1221,21 +1222,26 @@ set_cloud_region()
 #
 set_user_name()
 {
-	if [[ $gl_system_type == "aws" ]]; then
-		if [[ $gl_os_vendor == "ubuntu" ]]; then
-			echo "  test_user: ubuntu" >> ansible_vars_main.yml
+	if [[ $gl_test_user == "" ]]; then
+		if [[ $gl_system_type == "aws" ]]; then
+			if [[ $gl_os_vendor == "ubuntu" ]]; then
+				gl_test_user=ubuntu
+			else
+				gl_test_user=ec2-user
+			fi
+		elif [[ $gl_system_type == "azure" ]]; then
+			# Azure normally defaults to the running username
+			gl_test_user=${user_name}
+		elif [[ $gl_system_type == "gcp" ]]; then
+			gl_test_user=${user_name}
 		else
-			echo "  test_user: ec2-user" >> ansible_vars_main.yml
+			#
+			# Default to root
+			#
+			gl_test_user=root
 		fi
-	elif [[ $gl_system_type == "azure" ]]; then
-		# Azure normally defaults to the running username
-		echo "  test_user: ${user_name}" >> ansible_vars_main.yml
-	elif [[ $gl_system_type == "gcp" ]]; then
-		echo "  test_user: ${user_name}" >> ansible_vars_main.yml
 	fi
-	if [[ $gl_system_type == "local" ]]; then
-		echo "  test_user: root" >> ansible_vars_main.yml
-	fi
+	echo "  test_user: $gl_test_user" >> ansible_vars_main.yml
 }
 
 #
@@ -3342,6 +3348,8 @@ usage()
 	echo "  --test_iter <iterations>: how many iterations of the test to run (includes linpack)."
 	echo "     For cloud instances, this will terminate the cloud image and start"
 	echo "     a new one for each iteration"
+	echo "  --test_user <user>:  Name of the user to log into the system with.  The setting of this"
+	echo "    option will override the defaults based on cloud or local system."
 	echo "  --test_versions <test>,<test>....: Shows the versions of the test the are available"
 	echo "    and brief description of the version.  This only applies to git repos"
 	echo "  --test_version_check: Checks to see if we are running the latest versions of the tests and"
@@ -3650,6 +3658,11 @@ set_general_value()
 		--test_version_check)
 			shift_by=1
 		;;
+		--test_user)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_test_user=$2
+			shift_by=2
+		;;
 		--test_versions)
 			#
 			# Does not return
@@ -3770,6 +3783,7 @@ grab_cli_data()
 		"test_def_dir"
 		"test_def_file"
 		"test_override"
+		"test_user"
 		"test_versions"
 		"tf_terminate_list"
 		"tuned_reboot"
