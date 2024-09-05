@@ -2210,7 +2210,7 @@ verify_os_vendor()
 }
 
 process_os_args() {
-	arg_file="/tmp/osargs.yaml"
+	arg_file=$(mktemp)
 	$UTILS_DIR/parse_optstring.sh "$1" > $arg_file
 	mode=$(yq -r .mode $arg_file)
 
