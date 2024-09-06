@@ -30,19 +30,120 @@
 # Note this script should be called via exec, that way when we exit, we will exit
 # back to the shell, not the calling program.
 #
-cli_supplied_options=""
-msg_string=""
-rtc="0"
-sysname=""
-restore_file=""
-separ=""
-top_dir=`pwd`
-pid=""
-fail_report="failed_test"
 
-UTILS_DIR=`echo $0 | rev | cut -d'/' -f2- | rev`
-cleanup_and_exit()
+
+cle_usage()
 {
+	echo "Usage: $0"
+	echo "--cli_supplied_options <file>, file containing cli options to be removed."
+	echo "--fail_report <file>: File to report failures in. Default: failed_test."
+	echo "--msg_string <string>: Message to output."
+	echo "--pid <pid>: Pid of the process that holds any locks."
+	echo "--restore_file <copy,original>: Restores a file from a copy.  You may"
+	echo "  designate multile --restor_file"
+	echo "--rtc <rtc>: Return code. Default is 0"
+	echo "--sysname <sysname>: Name of system."
+	echo "--top_dir <dir>: Execution top level directory.  Default is current directory"
+	echo "--usage: this usage message"
+	echo "-h: this usage message"
+	exit 0
+}
+
+cleanup_and_exit_out()
+{
+	cli_supplied_options=""
+	msg_string=""
+	rtc="0"
+	sysname=""
+	restore_file=""
+	separ=""
+	top_dir=`pwd`
+	pid=""
+	fail_report="failed_test"
+
+	ARGUMENT_LIST=(
+		"cli_supplied_options"
+		"fail_report"
+		"msg_string"
+		"pid"
+		"restore_file"
+		"rtc"
+		"sysname"
+		"top_dir"
+	)
+
+	NO_ARGUMENTS=(
+		"usage"
+	)
+
+	# read arguments
+	opts=$(getopt \
+		--longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")" \
+		--longoptions "$(printf "%s," "${NO_ARGUMENTS[@]}")" \
+		--name "$(basename "$0")" \
+		--options "h" \
+		-- "$@"
+	)
+
+	eval set --$opts
+	if [[ $? -ne 0 ]]; then
+		cle_usage $0
+	fi
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			--cli_supplied_options)
+				cli_supplied_options=$2
+				shift 2
+			;;
+			--fail_report)
+				fail_report=$2
+				shift 2
+			;;
+			--msg_string)
+				msg_string=$2
+				shift 2
+			;;
+			--pid)
+				pid=$2
+				shift 2
+			;;
+			--restore_file)
+				restore_file=${restore_file}${separ}$2
+				separ=" "
+				shift 2
+			;;
+			--rtc)
+				rtc=$2
+				shift 2
+			;;
+			--sysname)
+				sysname=$2
+				shift 2
+			;;
+			--top_dir)
+				top_dir=$2
+				shift 2
+			;;
+			--usage)
+				cle_usage $0
+			;;
+			--h)
+				cle_usage $0
+			;;
+			--)
+				break;
+			;;
+			*)
+				echo "option not found ${1}"
+				cle_usage $0
+			;;
+		esac
+	done
+	if [[ $UTILS_DIR == "" ]]; then
+		UTILS_DIR=`echo $0 | rev | cut -d'/' -f2- | rev`
+	fi
+
 	if [[ $pid != "" ]]; then
 		$UTILS_DIR/cleanup_install_lock $pid
 	fi
@@ -81,106 +182,9 @@ cleanup_and_exit()
 			mv $from $to
 		done
 	fi
+	exit $rtc
 }
 
-usage()
-{
-	echo "Usage: $0"
-	echo "--cli_supplied_options <file>, file containing cli options to be removed."
-	echo "--fail_report <file>: File to report failures in. Default: failed_test."
-	echo "--msg_string <string>: Message to output."
-	echo "--pid <pid>: Pid of the process that holds any locks."
-	echo "--restore_file <copy,original>: Restores a file from a copy.  You may"
-	echo "  designate multile --restor_file"
-	echo "--rtc <rtc>: Return code. Default is 0"
-	echo "--sysname <sysname>: Name of system."
-	echo "--top_dir <dir>: Execution top level directory.  Default is current directory"
-	echo "--usage: this usage message"
-	echo "-h: this usage message"
-	exit 0
-}
-
-ARGUMENT_LIST=(
-	"cli_supplied_options"
-	"fail_report"
-	"msg_string"
-	"pid"
-	"restore_file"
-	"rtc"
-	"sysname"
-	"top_dir"
-)
-
-NO_ARGUMENTS=(
-	"usage"
-)
-
-# read arguments
-opts=$(getopt \
-	--longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")" \
-	--longoptions "$(printf "%s," "${NO_ARGUMENTS[@]}")" \
-	--name "$(basename "$0")" \
-	--options "h" \
-	-- "$@"
-)
-
-
-eval set --$opts
-if [[ $? -ne 0 ]]; then
-	usage $0
+if [ $# -ne 0 ]; then
+	cleanup_and_exit_out "$@"
 fi
-
-
-while [[ $# -gt 0 ]]; do
-	case "$1" in
-		--cli_supplied_options)
-			cli_supplied_options=$2
-			shift 2
-		;;
-		--fail_report)
-			fail_report=$2
-			shift 2
-		;;
-		--msg_string)
-			msg_string=$2
-			shift 2
-		;;
-		--pid)
-			pid=$2
-			shift 2
-		;;
-		--restore_file)
-			restore_file=${restore_file}${separ}$2
-			separ=" "
-			shift 2
-		;;
-		--rtc)
-			rtc=$2
-			shift 2
-		;;
-		--sysname)
-			sysname=$2
-			shift 2
-		;;
-		--top_dir)
-			top_dir=$2
-			shift 2
-		;;
-		--usage)
-			usage $0
-		;;
-		--h)
-			usage $0
-		;;
-		--)
-			break;
-		;;
-		*)
-			echo "option not found ${1}"
-			usage $0
-		;;
-	esac
-done
-
-cleanup_and_exit
-exit $rtc
