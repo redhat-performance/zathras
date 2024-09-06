@@ -207,6 +207,18 @@ gl_no_pbench_install=0
 gl_pbench_stats="medium"
 gl_cpu_type_request="none"
 gl_run_file=""
+gl_failed_test_rpt="failed_tests"
+
+#
+# We get the number of failed test reports at the start of the test.  When we exit we will
+# check the original number of reported failed tests to what we currently have.  If they
+# are different then we will report failed for the run.  This is done because burden calls
+# back onto itself
+if [[ -f $gl_failed_test_rpt ]]; then
+	gl_failed_test_rpt_start_lines=`wc -l $gl_failed_test_rpt | awk '{print $1}'`
+else
+	gl_failed_test_rpt_start_lines=0
+fi
 
 UTILS_DIR=`echo $BASH_SOURCE | rev | cut -d/ -f2- | rev`
 echo $UTILS_DIR | grep -q "^/"
@@ -239,56 +251,35 @@ process_results()
 }
 
 #
-# The lock_file is created in tools_bin/update_system.  If we created the lock
-# file, then remove it.
-#
-cleanup_install_lock()
-{
-	if [[ -f "lock_file" ]]; then
-		while IFS= read -r line
-		do
-			if [[ $line == $BASHPID ]]; then
-				rm lock_file
-			fi
-		done < "lock_file"
-	fi
-}
-
-#
 # We call in here for cleanup purpose, then exit out
-# Arg1: If null, simple exit out, else text string of error
+# Arg1: Message string
 # Arg2: The exit code
 # Arg3: If present instance name
 #
 
 cleanup_and_exit()
 {
-	cleanup_install_lock
-	if [[ $gl_cli_supplied_options != "" ]]; then
-		rm $gl_cli_supplied_options 2> /dev/null
-	fi
-	if [[ $1 != "" ]]; then
-		if [[ $3 != "" ]]; then
-			sysname=${3}
-		else
-			sysname=${gl_host_config}
-		fi
-		timestamp=`date`
-		if [[ ${sysname} != "" ]]; then
-			error_string="${timestamp} ${sysname}, $1"
-		else
-			error_string="${timestamp} $1"
-		fi
-		echo -e "${error_string}"
-		if [[ $2 -eq 1 ]]; then
-			flock -x $gl_top_dir/failed_runs echo -e "${error_string}" >> $gl_top_dir/failed_runs
-		fi
-	fi
+	scenario_restore=""
+	sysname=""
+	rtc=$2
 	if [[ $gl_scenario_to_restore != "" ]]; then
-		rm $gl_scenario_to_run
-		mv $gl_scenario_to_restore $gl_scenario_to_run
+		scenario_restore="--restore_file $gl_scenario_to_restore,$gl_scenario_to_run"
 	fi
-	exit $2
+	if [[ $3 != "" ]]; then
+		sysname="--sysname $3"
+	fi
+	cd $gl_top_dir
+	#
+	# We only check the failed report file if this is the burden process that
+	# started it all.
+	#
+	if [ $gl_first_invocation -eq 1 ] && [[ -f $gl_failed_test_rpt ]]; then
+		new_lines=`wc -l $gl_failed_test_rpt | awk '{print $1}'`
+		if  [ $new_lines -ne $gl_failed_test_rpt_start_lines ]; then
+			rtc=1
+		fi
+	fi
+	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
 }
 
 make_dir_report_errors()
@@ -2769,7 +2760,7 @@ run_scenario()
 		wait $pid
 	done
 	if [[ $gl_update_target != $value_not_set ]]; then
-		cleanup_install_lock
+		$UTILS_DIR/cleanup_install_lock $BASHPID
 	fi
 }
 
