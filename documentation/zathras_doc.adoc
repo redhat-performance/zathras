@@ -266,6 +266,8 @@ General options
   --test_iter &lt;iterations&gt;: how many iterations of the test to run (includes linpack).
      For cloud instances, this will terminate the cloud image and start
      a new one for each iteration
+  --test_user &ltuser&gt:  Name of the user to log into the system with.  The setting of this
+    option will override the defaults based on cloud or local system.
   --test_versions &lt;test&gt;,&lt;test&gt;....: Shows the versions of the test the are available
     and brief description of the version.  This only applies to git repos
   --test_version_check: Checks to see if we are running the latest versions of the tests and
