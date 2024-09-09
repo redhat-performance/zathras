@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# The lock_file is created in tools_bin/update_system.  If we created the lock
+# file, then remove it.
+# Argument passed in is the pid to delete.  If nothing is passed in, we simply
+# return.
+#
+
+if  [[ $1 != "" ]] && [[ -f "lock_file" ]]; then
+	while IFS= read -r line
+	do
+		if [[ $line == $1 ]]; then
+			rm lock_file
+			break
+		fi
+	done < "lock_file"
+fi
