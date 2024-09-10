@@ -1855,10 +1855,10 @@ create_ansible_options()
 		#
 		# Start the test in the background, record the pid and bump the index.
 		#
-		if [[ $gl_no_clean_up -eq 0 ]]; then
-			rm_dirs="-r"
+		if [[ $gl_no_clean_up -eq 0 ]] && [ $gl_cloud_terminate_instance -eq 1 ]; then
+			rm_tf_dirs="-r"
 		else 
-			rm_dirs=""
+			rm_tf_dirs=""
 		fi
 		#
 		# Update repos to use if required.
@@ -1889,7 +1889,7 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [ $gl_preflight -eq 0 ]; then
-			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs "
+			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_tf_dirs "
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
