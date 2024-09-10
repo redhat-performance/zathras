@@ -1,0 +1,165 @@
+#!/bin/bash
+#                         License
+#
+# Copyright (C) 2024  David Valin dvalin@redhat.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+
+#
+# Terminate the designated terraform.  If "all" is passed in we will delete all
+# terraform instances.
+#
+
+tf_terminate()
+{
+	tf_term_list=$1
+
+	if [[ $tf_term_list == "all" ]]; then
+		dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
+	else
+		dirs=`echo $tf_term_list | sed "s/,/ /g"`
+		echo $tf_term_list
+		echo $dirs
+	fi
+	for tf_del in $dirs; do
+		pushd $tf_del > /dev/null
+		terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
+		if [ $? -eq 0 ]; then
+			terraform apply "destroy.tfplan"
+		else
+			echo Warning: Unable to create the plan for $tf_del
+		fi
+		#
+		# Get arid of the tf directory
+		#
+		cd ..
+		rm -rf tf
+		popd > /dev/null
+	done
+	exit
+}
+
+#
+# List the active systems created by tf
+#
+tf_list_func()
+{
+	dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
+	for tf_show in $dirs; do
+		pushd $tf_show > /dev/null
+		terraform show > tf_list_info
+		grep subnet tf_list_info >& /dev/null
+		if [ $? -eq 0 ]; then
+			work_dir=`pwd | rev | cut -d'/' -f 2 | rev`
+			grep  azure tf_list_info >& /dev/null
+			if [ $? -eq 0 ]; then
+				vm_size=`grep size tf_list_info | grep -v disk | cut -d'"' -f2`
+				public_ip=`grep public_ip_address tf_list_info | head -1 | cut -d'"' -f2 | sort -u`
+				name_tag=`grep environment tf_list_info | cut -d'"' -f4 | sort -u`
+				printf "work_dir: %s\n" $work_dir
+				printf "\tfull_path: %s\n" $tf_show
+				printf "\tvm_size: %s\n" $vm_size
+				printf "\tpublic_ip: %s\n" $public_ip
+				printf "\tname_tag: %s\n" $name_tag
+			fi
+			grep  aws tf_list_info >& /dev/null
+			if [ $? -eq 0 ]; then
+				vm_size=`grep instance_type tf_list_info | cut -d'"' -f2`
+				inst_state=`grep instance_state tf_list_info | cut -d'"' -f2`
+				public_dns=`grep public_dns tf_list_info | cut -d'"' -f2 | sort -u`
+				name_tag=`grep Name tf_list_info | cut -d'"' -f4 | sort -u`
+				printf "work_dir: %s\n" $work_dir
+				printf "\tfull_path: %s\n" $tf_show
+				printf "\tvm_size: %s\n" $vm_size
+				printf "\tinstance_state: %s\n" $inst_state
+				printf "\tpublic_dns: %s\n" $public_dns
+				printf "\tname_tag: %s\n" $name_tag
+			fi
+		fi
+		rm tf_list_info
+		popd > /dev/null
+	done
+}
+
+usage()
+{
+	echo "Usage: $0"
+	echo "--tf_list: List all terraform instances seen from current directory"
+	echo "--terminate_list <tf1,tf2...>:  Terminates the given terraform instances, ie"
+	echo "  ./tf_break/rhel/aws/r8g.large_0/tf.  If \"all\" is specified, then every terraform"
+	echo "  instance from the current directory is terminated."
+	echo "--usage: this usage message"
+	echo "-h: this usage message"
+	exit 0
+}
+
+ARGUMENT_LIST=(
+	"terminate_list"
+)
+
+NO_ARGUMENTS=(
+	"tf_list"
+	"usage"
+)
+
+# read arguments
+opts=$(getopt \
+	--longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")" \
+	--longoptions "$(printf "%s," "${NO_ARGUMENTS[@]}")" \
+	--name "$(basename "$0")" \
+	--options "h" \
+	-- "$@"
+)
+
+tf_list=0
+if [[ $? -ne 0 ]]; then
+	usage $0
+fi
+
+eval set --$opts
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--tf_list)
+			tf_list=1
+			shift 1
+		;;
+		--terminate_list)
+			tf_term_list=$2
+			shift 2
+		;;
+		--usage)
+			usage $0
+		;;
+		--h)
+			usage $0
+		;;
+		--)
+			break;
+		;;
+		*)
+			echo "option not found ${1}"
+			usage $0
+		;;
+	esac
+done
+if [ $tf_list -eq 1 ]; then
+	tf_list_func
+fi
+if [[ $tf_term_list != "" ]]; then
+	tf_terminate $tf_term_list
+fi
+exit 0
