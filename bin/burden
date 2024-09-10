@@ -207,6 +207,28 @@ gl_no_pbench_install=0
 gl_pbench_stats="medium"
 gl_cpu_type_request="none"
 gl_run_file=""
+gl_failed_test_rpt="failed_tests"
+
+#
+# We get the number of failed test reports at the start of the test.  When we exit we will
+# check the original number of reported failed tests to what we currently have.  If they
+# are different then we will report failed for the run.  This is done because burden calls
+# back onto itself
+if [[ -f $gl_failed_test_rpt ]]; then
+	gl_failed_test_rpt_start_lines=`wc -l $gl_failed_test_rpt | awk '{print $1}'`
+else
+	gl_failed_test_rpt_start_lines=0
+fi
+gl_test_user=""
+
+UTILS_DIR=`echo $BASH_SOURCE | rev | cut -d/ -f2- | rev`
+echo $UTILS_DIR | grep -q "^/"
+if [ $? -ne 0 ]; then
+	curdir=`pwd`
+	UTILS_DIR=${curdir}/$UTILS_DIR/utils
+else
+	UTILS_DIR=$UTILS_DIR/utils
+fi
 
 #
 # Generate report of test status.
@@ -229,189 +251,36 @@ process_results()
 	fi
 }
 
-break_appened_to_file()
-{
-	if [[ -f $1 ]]; then
-		grep -q host_config $1
-		if [ $? -eq 0 ]; then
-			cat $1 >> ${gl_scenario_to_run}.new
-		fi
-		rm $1
-	fi
-}
-
-#
-# break up the large tests if need to.  If the tests get to be too large
-# it can cause problems later by running all the systems in the scenario
-# file at once.
-#
-break_sub_tests()
-{
-	work_file=`mktemp /tmp/zathras_add_in.XXXXX`
-	work_file_header=`mktemp /tmp/zathras_add_in.XXXXX`
-	in_test_section=0
-	test_data=0
-	index=1
-	host_out=0
-	add_in=0
-
-	rm ${gl_scenario_to_run}.new
-	while IFS= read -r line
-	do
-		if [ $in_test_section -ne 1 ]; then
-			if [[ $line == "systems"* ]]; then
-				in_test_section=1
-			fi
-			echo "$line" >> ${gl_scenario_to_run}.new
-			continue
-		fi
-		if [[ $line != "    "* ]]; then
-			if [ $test_data -eq 1 ]; then
-				break_appened_to_file $work_file
-				add_in=0
-			fi
-			if [[ $line == *"system"* ]]; then
-				echo "  system${index}:" >> ${gl_scenario_to_run}.new
-				let "index=$index+1"
-				host_out=1
-			fi
-			continue
-		fi
-		host_len=`echo $line | wc -c`
-		if [[ $line != *"host_config"* ]] || [ $host_len -lt 1024 ]; then
-			echo "$line" >> $work_file
-			test_data=1
-			add_in=1
-			continue
-		fi
-		#
-		# Break up and rebuild
-		#
-		all_hosts=`echo $line | sed "s/,/ /g" | sed "s/\"//g"`
-
-		cp $work_file $work_file_header
-		host_list=""
-		separ=""
-		for hosts in $all_hosts; do
-			if [[ $hosts == *"host_config"* ]]; then
-				continue;
-			fi
-			host_list=${host_list}${separ}${hosts}
-			separ=","
-			hl_len=`echo $host_list | wc -c`
-			if [ $hl_len -gt 1000 ]; then
-				if [[ $host_out -eq 0 ]]; then
-					echo "  system${index}:" >> $work_file
-					let "index=$index+1"
-				fi
-				host_out=1
-				if [ $add_in -eq 0 ]; then
-					cat $work_file_header >> $work_file
-				fi
-				add_in=1
-				echo "    host_config: \"${host_list}\"" >> $work_file
-				echo "  system${index}:" >> $work_file
-				add_in=0
-				let "index=$index+1"
-				echo "    host_config: \"SYS_BARRIER\"" >> $work_file
-				host_list=""
-				separ=""
-			fi
-		done
-		if [[ $host_list != "" ]]; then
-			echo "  system${index}:" >> $work_file
-			let "index=$index+1"
-			if [ $add_in -eq 0 ]; then
-				cat $work_file_header >> $work_file
-			fi
-			add_in=1
-			echo "    host_config: \"${host_list}\"" >> $work_file
-			host_list=""
-		fi
-		break_appened_to_file $work_file
-		add_in=0;
-		test_data=1
-	done < "${gl_scenario_to_run}"
-	break_appened_to_file $work_file
-	add_in=0;
-	if [[ -f ${gl_scenario_to_run}.new ]]; then
-		gl_scenario_to_run=${gl_scenario_to_run}.new
-	fi
-	rm $work_file_header
-}
-
-breakup_large_test()
-{
-#
-# Check to see if we have any large tests
-#
-	if [[ -f ${gl_scenario_to_run}.new ]]; then
-		rm ${gl_scenario_to_run}.new
-	fi
-	while IFS= read -r line
-	do
-		value=`echo $line | wc -c`
-		if [ $value -gt 1024 ]; then
-			break_sub_tests
-			#
-			# No need to check further, we have found a line 
-			# that is too long and have updated the entire file.
-			#
-			break
-		fi
-	done < "${gl_scenario_to_run}"
-}
-#
-# The lock_file is created in tools_bin/update_system.  If we created the lock
-# file, then remove it.
-#
-cleanup_install_lock()
-{
-	if [[ -f "lock_file" ]]; then
-		while IFS= read -r line
-		do
-			if [[ $line == $BASHPID ]]; then
-				rm lock_file
-			fi
-		done < "lock_file"
-	fi
-}
-
 #
 # We call in here for cleanup purpose, then exit out
-# Arg1: If null, simple exit out, else text string of error
+# Arg1: Message string
 # Arg2: The exit code
 # Arg3: If present instance name
 #
 
 cleanup_and_exit()
 {
-	cleanup_install_lock
-	if [[ $gl_cli_supplied_options != "" ]]; then
-		rm $gl_cli_supplied_options 2> /dev/null
-	fi
-	if [[ $1 != "" ]]; then
-		if [[ $3 != "" ]]; then
-			sysname=${3}
-		else
-			sysname=${gl_host_config}
-		fi
-		timestamp=`date`
-		if [[ ${sysname} != "" ]]; then
-			error_string="${timestamp} ${sysname}, $1"
-		else
-			error_string="${timestamp} $1"
-		fi
-		echo -e "${error_string}"
-		if [[ $2 -eq 1 ]]; then
-			flock -x $gl_top_dir/failed_runs echo -e "${error_string}" >> $gl_top_dir/failed_runs
-		fi
-	fi
+	scenario_restore=""
+	sysname=""
+	rtc=$2
 	if [[ $gl_scenario_to_restore != "" ]]; then
-		rm $gl_scenario_to_run
-		mv $gl_scenario_to_restore $gl_scenario_to_run
+		scenario_restore="--restore_file $gl_scenario_to_restore,$gl_scenario_to_run"
 	fi
-	exit $2
+	if [[ $3 != "" ]]; then
+		sysname="--sysname $3"
+	fi
+	cd $gl_top_dir
+	#
+	# We only check the failed report file if this is the burden process that
+	# started it all.
+	#
+	if [ $gl_first_invocation -eq 1 ] && [[ -f $gl_failed_test_rpt ]]; then
+		new_lines=`wc -l $gl_failed_test_rpt | awk '{print $1}'`
+		if  [ $new_lines -ne $gl_failed_test_rpt_start_lines ]; then
+			rtc=1
+		fi
+	fi
+	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
 }
 
 make_dir_report_errors()
@@ -1344,21 +1213,26 @@ set_cloud_region()
 #
 set_user_name()
 {
-	if [[ $gl_system_type == "aws" ]]; then
-		if [[ $gl_os_vendor == "ubuntu" ]]; then
-			echo "  test_user: ubuntu" >> ansible_vars_main.yml
+	if [[ $gl_test_user == "" ]]; then
+		if [[ $gl_system_type == "aws" ]]; then
+			if [[ $gl_os_vendor == "ubuntu" ]]; then
+				gl_test_user=ubuntu
+			else
+				gl_test_user=ec2-user
+			fi
+		elif [[ $gl_system_type == "azure" ]]; then
+			# Azure normally defaults to the running username
+			gl_test_user=${user_name}
+		elif [[ $gl_system_type == "gcp" ]]; then
+			gl_test_user=${user_name}
 		else
-			echo "  test_user: ec2-user" >> ansible_vars_main.yml
+			#
+			# Default to root
+			#
+			gl_test_user=root
 		fi
-	elif [[ $gl_system_type == "azure" ]]; then
-		# Azure normally defaults to the running username
-		echo "  test_user: ${user_name}" >> ansible_vars_main.yml
-	elif [[ $gl_system_type == "gcp" ]]; then
-		echo "  test_user: ${user_name}" >> ansible_vars_main.yml
 	fi
-	if [[ $gl_system_type == "local" ]]; then
-		echo "  test_user: root" >> ansible_vars_main.yml
-	fi
+	echo "  test_user: $gl_test_user" >> ansible_vars_main.yml
 }
 
 #
@@ -1981,10 +1855,10 @@ create_ansible_options()
 		#
 		# Start the test in the background, record the pid and bump the index.
 		#
-		if [[ $gl_no_clean_up -eq 0 ]]; then
-			rm_dirs="-r"
+		if [[ $gl_no_clean_up -eq 0 ]] && [ $gl_cloud_terminate_instance -eq 1 ]; then
+			rm_tf_dirs="-r"
 		else 
-			rm_dirs=""
+			rm_tf_dirs=""
 		fi
 		#
 		# Update repos to use if required.
@@ -2015,7 +1889,7 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [ $gl_preflight -eq 0 ]; then
-			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs "
+			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_tf_dirs "
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
@@ -2061,7 +1935,11 @@ create_ansible_options()
 		worker=`echo $gl_test_list_out | cut -d' ' -f2- | sed "s/,/ /g"`
 		if [ -d "tests_to_run" ]; then
 			echo "========================================" > results_info
-			test_sys=`grep host_or_cloud_ins ansible_vars.yml | cut -d':' -f 2 | sed "s/ //g"`
+			if [[ $gl_sys_type != "local" ]]; then
+				test_sys=`grep host_or_cloud_ins ansible_vars.yml | cut -d':' -f 2 | sed "s/ //g"`
+			else
+				test_sys=${gl_host_config}
+			fi
 			echo "system config: ${test_sys}" >> results_info
 			for i in `ls tests_to_run`
 			do
@@ -2888,7 +2766,7 @@ run_scenario()
 		wait $pid
 	done
 	if [[ $gl_update_target != $value_not_set ]]; then
-		cleanup_install_lock
+		$UTILS_DIR/cleanup_install_lock $BASHPID
 	fi
 }
 
@@ -3461,6 +3339,8 @@ usage()
 	echo "  --test_iter <iterations>: how many iterations of the test to run (includes linpack)."
 	echo "     For cloud instances, this will terminate the cloud image and start"
 	echo "     a new one for each iteration"
+	echo "  --test_user <user>:  Name of the user to log into the system with.  The setting of this"
+	echo "    option will override the defaults based on cloud or local system."
 	echo "  --test_versions <test>,<test>....: Shows the versions of the test the are available"
 	echo "    and brief description of the version.  This only applies to git repos"
 	echo "  --test_version_check: Checks to see if we are running the latest versions of the tests and"
@@ -3769,6 +3649,11 @@ set_general_value()
 		--test_version_check)
 			shift_by=1
 		;;
+		--test_user)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_test_user=$2
+			shift_by=2
+		;;
 		--test_versions)
 			#
 			# Does not return
@@ -3889,6 +3774,7 @@ grab_cli_data()
 		"test_def_dir"
 		"test_def_file"
 		"test_override"
+		"test_user"
 		"test_versions"
 		"tf_terminate_list"
 		"tuned_reboot"
@@ -4190,7 +4076,10 @@ first_invocation()
 		#
 		# Need to make sure the lines do not get to big.
 		#
-		breakup_large_test
+		gl_scenario_to_run=`$UTILS_DIR/brk_up_large_scn_host_configs --scenario $gl_scenario_to_run`
+		if [ $? -ne 0 ]; then
+			cleanup_and_exit "Break up of scenario file failed" 1
+		fi
 		fields=`grep "\[" ${gl_scenario_to_run}`
 		if [[ $fields != "" ]]; then
 			cleanup_and_exit "Error: following fields in ${gl_scenario_to_run} has no entry in ${gl_config_vars_file}:\n${fields}" 1
@@ -4253,8 +4142,6 @@ else
 
 fi
 
-verify_selinux
-
 #
 # Are we looking up the cloud images?
 #
@@ -4271,6 +4158,8 @@ if [[ $gl_show_os_versions -eq 1 ]]; then
 	cloud_image_lookup
 	cleanup_and_exit "" 0
 fi
+
+verify_selinux
 
 #
 # Retrieve the scenario file if need be.
@@ -4379,19 +4268,6 @@ general_setup $test_def_info
 # List of tests to run
 #
 gl_test_list_out=$gl_test_list
-
-
-#
-# At this time, local systems (systems designated via  an ip)
-# are expected to be running RHEL.
-#
-if [[ $gl_system_type == "local" ]]; then
-	#
-	# FIXME, we will need to allow for multiple
-	# types in the future. 
-	#
-	gl_os_vendor="rhel"
-fi
 
 #
 # Update the OS image if a target is designated.

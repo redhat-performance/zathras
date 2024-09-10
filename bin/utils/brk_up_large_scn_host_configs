@@ -1,0 +1,231 @@
+#!/bin/bash
+#                         License
+#
+# Copyright (C) 2024  David Valin dvalin@redhat.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+#
+# This script takes a Zathras scenario file that has large host lines in it and breaks
+# it down to be about 1024 characters without breaking the expected Zathras format.
+#
+gl_scenario_to_run=""
+
+exit_out()
+{
+	echo $1
+	exit $2
+}
+
+break_appened_to_file()
+{
+	if [[ -f $1 ]]; then
+		grep -q host_config $1
+		if [ $? -eq 0 ]; then
+			cat $1 >> ${gl_scenario_to_run}.new
+		fi
+		rm $1
+	fi
+}
+
+#
+# break up the large tests if need to.  If the tests get to be too large
+# it can cause problems later by running all the systems in the scenario
+# file at once.
+#
+break_sub_tests()
+{
+	work_file=`mktemp /tmp/zathras_add_in.XXXXX`
+	work_file_header=`mktemp /tmp/zathras_add_in.XXXXX`
+	in_test_section=0
+	test_data=0
+	index=1
+	host_out=0
+	add_in=0
+
+	if [ -f ${gl_scenario_to_run}.new ]; then
+		rm ${gl_scenario_to_run}.new
+	fi
+	while IFS= read -r line
+	do
+		if [ $in_test_section -ne 1 ]; then
+			if [[ $line == "systems"* ]]; then
+				in_test_section=1
+			fi
+			echo "$line" >> ${gl_scenario_to_run}.new
+			continue
+		fi
+		if [[ $line != "    "* ]]; then
+			if [ $test_data -eq 1 ]; then
+				break_appened_to_file $work_file
+				add_in=0
+			fi
+			if [[ $line == *"system"* ]]; then
+				echo "  system${index}:" >> ${gl_scenario_to_run}.new
+				let "index=$index+1"
+				host_out=1
+			fi
+			continue
+		fi
+		host_len=`echo $line | wc -c`
+		if [[ $line != *"host_config"* ]] || [ $host_len -lt 1024 ]; then
+			echo "$line" >> $work_file
+			test_data=1
+			add_in=1
+			continue
+		fi
+		#
+		# Break up and rebuild
+		#
+		all_hosts=`echo $line | sed "s/,/ /g" | sed "s/\"//g"`
+
+		cp $work_file $work_file_header
+		host_list=""
+		separ=""
+		for hosts in $all_hosts; do
+			if [[ $hosts == *"host_config"* ]]; then
+				continue;
+			fi
+			host_list=${host_list}${separ}${hosts}
+			separ=","
+			hl_len=`echo $host_list | wc -c`
+			if [ $hl_len -gt 1000 ]; then
+				if [[ $host_out -eq 0 ]]; then
+					echo "  system${index}:" >> $work_file
+					let "index=$index+1"
+				fi
+				host_out=1
+				if [ $add_in -eq 0 ]; then
+					cat $work_file_header >> $work_file
+				fi
+				add_in=1
+				echo "    host_config: \"${host_list}\"" >> $work_file
+				echo "  system${index}:" >> $work_file
+				add_in=0
+				let "index=$index+1"
+				echo "    host_config: \"SYS_BARRIER\"" >> $work_file
+				host_list=""
+				separ=""
+			fi
+		done
+		if [[ $host_list != "" ]]; then
+			echo "  system${index}:" >> $work_file
+			let "index=$index+1"
+			if [ $add_in -eq 0 ]; then
+				cat $work_file_header >> $work_file
+			fi
+			add_in=1
+			echo "    host_config: \"${host_list}\"" >> $work_file
+			host_list=""
+		fi
+		break_appened_to_file $work_file
+		add_in=0;
+		test_data=1
+	done < "${gl_scenario_to_run}"
+	break_appened_to_file $work_file
+	add_in=0;
+	if [[ -f ${gl_scenario_to_run}.new ]]; then
+		gl_scenario_to_run=${gl_scenario_to_run}.new
+	fi
+	rm $work_file_header
+}
+
+usage()
+{
+	echo "Look for hosts line in the scenario file and if over"
+	echo "1024 characters break the entire test into a series"
+	echo "of tests where the host line is less then 1024 characters."
+	echo "We do this so the run script that is created does not"
+	echo "run into issues of being to large and not executing properly"
+	echo "Usage: $0"
+	echo "--scenario <file>: scenario file to break up"
+	echo "--usage: this usage message"
+	echo "-h: this usage message"
+	exit 0
+}
+
+ARGUMENT_LIST=(
+	"scenario"
+)
+
+NO_ARGUMENTS=(
+	"usage"
+)
+
+# read arguments
+opts=$(getopt \
+	--longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")" \
+	--longoptions "$(printf "%s," "${NO_ARGUMENTS[@]}")" \
+	--name "$(basename "$0")" \
+	--options "h" \
+	-- "$@"
+)
+
+if [[ $? -ne 0 ]]; then
+	usage $0
+fi
+
+eval set --$opts
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--scenario)
+			gl_scenario_to_run=$2
+			shift 2
+		;;
+		--usage)
+			usage $0
+		;;
+		--h)
+			usage $0
+		;;
+		--)
+			break;
+		;;
+		*)
+			echo "option not found ${1}"
+			usage $0
+		;;
+	esac
+done
+
+if [[ $gl_scenario_to_run == "" ]]; then
+	exit_out "You must designate a scenario file to use" 1
+fi
+
+if [[ ! -f $gl_scenario_to_run ]]; then
+	exit_out "Scenario file $gl_scenario_to_run not found" 1
+fi
+
+#
+# Check to see if we have any large tests
+#
+if [[ -f ${gl_scenario_to_run}.new ]]; then
+	rm ${gl_scenario_to_run}.new
+fi
+while IFS= read -r line
+do
+	value=`echo $line | wc -c`
+	if [ $value -gt 1024 ]; then
+		break_sub_tests
+		#
+		# No need to check further, we have found a line 
+		# that is too long and have updated the entire file.
+		#
+		break
+	fi
+done < "${gl_scenario_to_run}"
+echo $gl_scenario_to_run
+exit 0
