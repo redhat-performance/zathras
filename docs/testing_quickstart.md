@@ -9,6 +9,11 @@
 
 ## Testing on cloud
 
+Currently supported public clouds:
+- AWS cloud
+- Azure cloud
+- GCP cloud
+
 ### Testing example using AWS:
 
 We could define a scenario file, "aws_example", as follows:
