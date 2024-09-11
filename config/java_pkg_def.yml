@@ -10,3 +10,13 @@ java_defs:
     amazon: java-1.8.0-openjdk
     rhel: java-1.8.0-openjdk-devel
     ubuntu: openjdk-8-jdk
+  java_config3:
+    java_version: java-17
+    amazon: java-17-corretto-headless
+    rhel: java-17-openjdk-headless
+    ubuntu: openjdk-17-jre-headless
+  java_config4:
+    java_version: java-21
+    amazon: java-21-corretto-headless
+    rhel: java-17-openjdk-headless
+    ubuntu: openjdk-21-jre-headless
