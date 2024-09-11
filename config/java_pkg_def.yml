@@ -18,5 +18,5 @@ java_defs:
   java_config4:
     java_version: java-21
     amazon: java-21-corretto-headless
-    rhel: java-17-openjdk-headless
+    rhel: java-21-openjdk-headless
     ubuntu: openjdk-21-jre-headless
