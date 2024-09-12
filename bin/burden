@@ -2209,7 +2209,7 @@ verify_os_vendor()
 }
 
 process_os_args() {
-	arg_file=$(mktemp)
+	arg_file=$(mktemp zath_os_args.XXXXX)
 	$UTILS_DIR/parse_optstring.sh "$1" > $arg_file
 	mode=$(yq -r .mode $arg_file)
 
