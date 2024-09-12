@@ -1,0 +1,5 @@
+location: https://github.com/redhat-performance/reboot_measurement/archive/refs/tags
+exec_dir: "reboot_measurement-1.5/reboot_measurement"
+repo_file: "v1.5.zip"
+os_supported: all
+test_script_to_run: run_reboot.sh
