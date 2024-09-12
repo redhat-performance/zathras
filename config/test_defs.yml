@@ -221,12 +221,6 @@ test_defs:
     pbench_local_results: "yes"
     test_specific: "--regression --pbench --pbench_user {{ config_info.user_running }} --run_label {{ config_info.run_label }}"
 
-  test31:
-    test_template: verify.yml
-    test_name: verify
-    test_description:  simple system creation verification
-    archive_results: "yes"
-
   test32:
     test_template: burst_io.yml
     test_name: burst_io
