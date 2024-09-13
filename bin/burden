@@ -60,7 +60,7 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   update_type: what is the update repository (example ftp, iso).
 #   gl_persistent_log: enable persistent logging
 #   gl_ssh_key_file: Points to the ssh config file we are to use.  If not set, we will not use one.
-#   gl_java_version: Version of Java to load:  eg: java-8 or java-11
+#   gl_java_version: Version of Java to load: currently java-8, java-11, java-17, or java-21
 #   gl_rhel_tuned_setting: tuned configuration to use
 #   gl_cloud_execute_tests: If set to 1, we will execute test on the cloud image, else
 #                        we will simply create the image.
@@ -3278,7 +3278,7 @@ usage()
 	echo "    when a repo error occurs."
 	echo "  --individ_vars: Contains various burden settings.  Takes precedence over the scenario file, but is overridden"
 	echo "    by the command line.  Default is config/zathras_specific_vals_def"
-	echo "  --java_version: java version to install, java-8, java-11"
+	echo "  --java_version: java version to install, java-8, java-11, java-17, or java-21"
 	echo "  --kit_upload_directory: Full path to directory uploading to.  If not present, Zathras will locate"
 	echo "    the filesystem with the most space on it and use that location."
 	echo "  --max_systems <n>:  Maximum number of burden subinstances that will be created from the parent.  Each subinstance"
