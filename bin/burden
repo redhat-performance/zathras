@@ -1633,7 +1633,9 @@ create_ansible_options()
 			fi
 			echo 0 >> instance_cost
 		fi
-		make_dir_report_errors tf
+		if [[ $gl_system_type != "local" ]]; then
+			make_dir_report_errors tf
+		fi
 		make_dir_report_errors tests_to_run
 		make_dir_report_errors tests_to_use
 		#
