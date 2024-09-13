@@ -40,7 +40,7 @@ tf_terminate()
 		if [ $? -eq 0 ]; then
 			terraform apply "destroy.tfplan"
 		else
-			echo Warning: Unable to create the plan for $tf_del
+			echo "Warning: Unable to create the plan for $tf_del"
 		fi
 		#
 		# Get arid of the tf directory
