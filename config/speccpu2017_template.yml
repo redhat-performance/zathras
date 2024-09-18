@@ -7,5 +7,5 @@ ubuntu_pkgs: gcc,bc,gfortran,g++,unzip,zip
 amazon_pkgs: bc,gcc,gcc-gfortran,git,zip,unzip
 storage_required: "yes"
 test_script_to_run: run_speccpu
-test_specific: "--test intrate"
+test_specific: "--test intrate,fprate"
 upload_extra: "/home/exports/cpu2017-1.1.8.iso"
