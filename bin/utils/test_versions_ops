@@ -130,7 +130,10 @@ test_version_ops()
 			fi
 			rm -rf $temp_dir 
 		else
-			echo $test_repo, Only github is supported.
+			#
+			# Does not return
+			#
+			source ${UTILS_DIR}/cleanup_and_exit_out --msg_string "Only github is supported." --rtc 1
 		fi
 	done
 	popd > /dev/null
