@@ -40,6 +40,11 @@ tf_terminate()
 		if [ $? -eq 0 ]; then
 			terraform apply "destroy.tfplan"
 		else
+			#
+			# We do not want to exit out on an error.  The instance could have been
+			# deleted via the web, and there are other instances to
+			# delete.
+			#
 			echo "Warning: Unable to create the plan for $tf_del"
 		fi
 		#
@@ -49,7 +54,7 @@ tf_terminate()
 		rm -rf tf
 		popd > /dev/null
 	done
-	exit
+	exit 0
 }
 
 #
