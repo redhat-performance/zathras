@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/io_burst-wrapper/archive/refs/tags
-exec_dir: "io_burst-wrapper-1.5/io_burst"
-repo_file: "v1.5.zip"
+exec_dir: "io_burst-wrapper-1.6/io_burst"
+repo_file: "v1.6.zip"
 test_grouping: iozone
 rhel_pkgs: gcc,bc,wget,git,unzip,perf
 ubuntu_pkgs: gcc
