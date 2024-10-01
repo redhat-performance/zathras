@@ -125,7 +125,7 @@ test_defs:
     test_template: speccpu2017_template.yml
     test_name: speccpu2017
     test_description: speccpu2017
-    test_specific: "--disks {{ dyn_data.storage }} --test intrate"
+    test_specific: "--disks {{ dyn_data.storage }} --test intrate,fprate"
 
   test19:
     test_template: fio_template.yml
