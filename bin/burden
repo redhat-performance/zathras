@@ -1254,10 +1254,17 @@ azure_specific_os_version()
 	# Azure wants to be difficult about this ... fine.
 	# This is gross, fix it to be pretty some day
 	#
-	azpublisher=`az vm image show --location eastus --urn ${gl_cloud_os_version} | grep publisher | cut -d: -f 2 | cut -d'"' -f 2`
+	azpublisher=$(echo $gl_cloud_os_version | cut -f 1 -d:)
 	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
 	azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
 	azversion=$(echo $gl_cloud_os_version | cut -f 4 -d:)
+	#
+	# Verify the urn is valid
+	#
+	az vm image show --urn  ${azpublisher}:${azoffer}:${azsku}:${azversion} > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		cleanup_and_exit "Error: Azure urn ${azpublisher}:${azoffer}:${azsku}:${azversion}  is not valid" 1
+	fi
 	echo "  cloud_offer: ${azoffer}" >> ansible_vars_main.yml
 	echo "  cloud_publisher: ${azpublisher}" >> ansible_vars_main.yml
 	echo "  cloud_os_version: ${azversion}" >> ansible_vars_main.yml
