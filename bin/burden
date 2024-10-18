@@ -1250,10 +1250,6 @@ azure_specific_os_version()
 	az_postfix=`echo ${run_dir_updated} | sed "s/\//-/g" | sed "s/_/-/g" | sed "s/,/-/g" | rev| cut -c1-${number_chars} | rev | sed "s/^-//g"`
 	az_cloud_resource_group=${user_name}-${az_postfix}
 	echo "  cloud_resource_group: ${az_cloud_resource_group}-00" >> ansible_vars_main.yml
-	#
-	# Azure wants to be difficult about this ... fine.
-	# This is gross, fix it to be pretty some day
-	#
 	azpublisher=$(echo $gl_cloud_os_version | cut -f 1 -d:)
 	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
 	azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
