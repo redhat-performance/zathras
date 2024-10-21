@@ -1629,7 +1629,7 @@ create_ansible_options()
 			rc=$?
 		done
 
-		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> ${gl_top_dir}/$gl_run_info
+		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> $gl_run_info
 		make_dir_report_errors $run_dir
 		dir_list=$dir_list$run_dir" "
 		cp ${gl_test_def_dir}/test_defs.yml $run_dir
