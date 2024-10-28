@@ -19,10 +19,6 @@ key_name = "{{ dyn_data.aws_uname }}"
 
 spot_price = "{{ spot_data.cur_spot_price }}"
 
-pb_disk_type = "gp2"
-pb_disk_count = 1
-pb_vol_size = 500
-
 avail_zone = "{{ config_info.cloud_region }}"
 # Check "cloud_numb_networks", default value is "1" for both vars
 {% if config_info.cloud_numb_networks >= 1 %}
