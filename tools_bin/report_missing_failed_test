@@ -2,6 +2,9 @@
 find . -name ansible_vars_main.yml -print > ans_files
 cut -d '/' -f 2 ans_files | rev | cut -d_  -f 2- | rev | sort -u > systems
 
+#
+# Save pasterrors for future reference.
+#
 if [[ -f test_errors ]]; then
 	cat test_errors >> past_errors
 fi
