@@ -32,7 +32,8 @@ do
 		grep -q Ran $file
 		if [ $? -ne 0 ]; then
 			fail_run=`echo $tball | cut -d'/' -f 1`
-			echo "Failed: $fail_run $expt_test" >> ${curdir}/failed_test
+			timestamp=`date`
+			echo "${timestamp}: Failed: $fail_run $expt_test" >> ${curdir}/failed_test
 		fi
 		rm -rf tar_check
 		cd ..
