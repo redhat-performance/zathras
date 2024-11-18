@@ -67,7 +67,7 @@ for package in "${packages[@]}"; do
         sudo dnf config-manager --add-repo $repo_url
 
         # install the package
-        sudo dnf install terraform -y
+        sudo dnf install terraform-1.9.8-1 -y
     else
         echo "package $package is not installed and not available."
     fi
