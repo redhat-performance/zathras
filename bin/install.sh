@@ -67,7 +67,7 @@ for package in "${packages[@]}"; do
         sudo dnf config-manager --add-repo $repo_url
 
         # install the package
-        sudo dnf install terraform -y
+        sudo dnf install terraform-1.9.8-1 -y
     else
         echo "package $package is not installed and not available."
     fi
@@ -78,6 +78,10 @@ done
 # pip install requirements
 pip3 install boto boto3 --user
 pip3 install 'yq==2.10.0' --user 
+
+
+# install AWS collection for ansible
+ansible-galaxy collection install amazon.aws
 
 
 echo "Before you can run Zathras:"
