@@ -80,6 +80,10 @@ pip3 install boto boto3 --user
 pip3 install 'yq==2.10.0' --user 
 
 
+# install AWS collection for ansible
+ansible-galaxy collection install amazon.aws
+
+
 echo "Before you can run Zathras:"
 echo "****Ensure ~/.local/bin is in your path"
 echo "****Set up a scenario file"
