@@ -80,7 +80,6 @@
   include_role:
     name:  set_up_tf_vars
   vars:
-    pbench_ns_tf: none
     cloud_change_to: azure
 
 #
@@ -94,13 +93,6 @@
 
 - name: Add tag info in to main info, must be in the front.
   shell: "cat {{ working_dir }}/add_main_vars.tf  {{ working_dir }}/main_back.tf > {{ working_dir }}/tf/main.tf"
-
-- name: Set up terraform variables
-  include_role:
-    name: set_up_tf_vars
-  vars:
-    pbench_ns_tf: tf/pbench_disks.tf
-    pbench_spot_tf: tf/pbench_spot_disks.tf
 
 - name: grab azure create start time
   command: "date -u +%s"
@@ -144,13 +136,6 @@
   vars:
     ip_list: "{{ public_ip_address }}"
   when: config_info.cloud_numb_networks|int >= 1
-
-- name: Azure set up pbench disk
-  include_role:
-    name: pbench_disk_set
-  vars:
-    tf_file: "{{ working_dir }}/tf/terraform.tfstate.d/{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}/terraform.tfstate"
-  when: config_info.pbench_disk_required == "yes"
 
 - name: create end time
   command: "date -u +%s"

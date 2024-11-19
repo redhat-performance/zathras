@@ -19,7 +19,6 @@ outfile_ns_wn.tf
 outfile_spot_wn.tf
 outfile_ns_nn.tf
 outfile_spot_nn.tf
-pbench_ns_disks.tf
 vars.tf
 
 Ansible modules
@@ -27,7 +26,6 @@ tasks
 ======
 aws_instance_create.yml
 aws_place_zone.yml
-aws_post_pbench.yml
 aws_record_info.yml
 aws_record_net_info.yml
 aws_save_net_info.yml

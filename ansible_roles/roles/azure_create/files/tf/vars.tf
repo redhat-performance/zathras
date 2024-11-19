@@ -82,26 +82,6 @@ variable "network_count" {
   default = 1
 }
 
-variable "pbench_device" {
-  type    = string
-  default =   "/dev/sdd"
-}
-
-variable "pb_disk_count" {
-  type    = number
-  default = 1
-}
-
-variable "pb_vol_size" {
-  type    = number
-  default = 512
-}
-
-variable "pb_disk_type" {
-  type    = string
-  default = "Premium_LRS"
-}
-
 variable "disk_type" {
   type    = string
   default = "Premium_LRS"

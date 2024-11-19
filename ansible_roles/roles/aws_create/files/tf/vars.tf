@@ -69,23 +69,6 @@ variable "spot_price" {
   type    = string
 }
 
-variable "pbench_device" {
-  type    = string
-  default =   "/dev/sdd"
-}
-
-variable "pb_disk_count" {
-  default = 1
-}
-
-variable "pb_vol_size" {
-  default = 512
-}
-
-variable "pb_disk_type" {
-  default = "gp2"
-}
-
 variable "ec2_device_names" {
   default = [
     "/dev/sde",

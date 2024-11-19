@@ -1,8 +1,6 @@
 reboot_system: "no"
 test_run_from: "remote"
 os_supported: all
-pbench_required: "no"
-pbench_local_results: "no"
 test_run_from: "remote"
 storage_required: "no"
 network_required: "no"

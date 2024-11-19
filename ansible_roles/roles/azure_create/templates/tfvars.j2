@@ -19,10 +19,6 @@ azversion = "{{ config_info.cloud_os_version }}"
 offer = "{{ config_info.cloud_offer }}"
 publisher = "{{ config_info.cloud_publisher }}"
 
-pb_disk_type = "Premium_LRS"
-pb_disk_count = 1
-pb_vol_size = 500
-
 # Check "cloud_numb_networks", default value is "1" for both vars
 {% if config_info.cloud_numb_networks >= 1 %}
 vm_count = 2

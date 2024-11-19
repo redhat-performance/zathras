@@ -118,8 +118,7 @@
           dest: "{{ working_dir }}/"
           flat: yes
         ignore_errors: yes
-      when: (test_data.archive_results == "yes") or
-            (test_data.pbench_local_results == "yes")
+      when: (test_data.archive_results == "yes")
 
     - name: Reboot the system after execution if required.
       block:
