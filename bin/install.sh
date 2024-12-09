@@ -79,7 +79,16 @@ done
 pip3 install boto boto3 --user
 pip3 install 'yq==2.10.0' --user 
 
-
+#
+# Install required galaxy packages.
+#
+ansible-galaxy collection list | grep -q amazon.aws
+if [ $? -ne 0 ]; then
+	ansible-galaxy collection install community.aws
+else
+	version=`ansible-galaxy collection list | grep amazon.aws`
+	echo Ansible galaxy colletion $version is already installed.
+fi
 echo "Before you can run Zathras:"
 echo "****Ensure ~/.local/bin is in your path"
 echo "****Set up a scenario file"
