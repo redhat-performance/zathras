@@ -4029,14 +4029,16 @@ fi
 # Does not return
 #
 if [ $gl_tf_terminate -eq 1 ]; then
-	source $UTILS_DIR/terraform_ops --terminate_list $gl_tf_term_list
+	$UTILS_DIR/terraform_ops --terminate_list $gl_tf_term_list
+	cleanup_and_exit "" 0
 fi
 
 #
 # Does not return
 #
 if [ $gl_tf_list -eq 1 ]; then
-	source $UTILS_DIR/terraform_ops --tf_list
+	$UTILS_DIR/terraform_ops --tf_list
+	cleanup_and_exit "" 0
 fi
 
 if [[ $gl_run_prefix == "" ]]; then
