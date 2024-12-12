@@ -70,6 +70,7 @@ for package in "${packages[@]}"; do
         sudo dnf install terraform-1.9.8-1 -y
     else
         echo "package $package is not installed and not available."
+        exit 1
     fi
 
 done
