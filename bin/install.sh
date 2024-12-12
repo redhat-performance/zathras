@@ -90,7 +90,12 @@ done
 
 
 # install AWS collection for ansible
-ansible-galaxy collection install amazon.aws
+ansible_collections=(amazon.aws)
+for collection in "${ansible_collections[@]}"; do
+        ansible-galaxy collection install "$collection" || {
+                exit 1
+        }
+done
 
 
 echo "Before you can run Zathras:"
