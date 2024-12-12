@@ -79,9 +79,14 @@ for package in "${packages[@]}"; do
 done
 
 
+
 # pip install requirements
-pip3 install boto boto3 --user
-pip3 install 'yq==2.10.0' --user 
+python_packages=(boto boto3 'yq==2.10.0')
+for package in "${python_packages[@]}"; do
+    pip3 install "$package" --user || {
+        exit 1
+    }
+done
 
 
 # install AWS collection for ansible
