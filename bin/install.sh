@@ -21,7 +21,7 @@ set -eu
 
 # Check if script is being run as root
 if (( $EUID == 0 )); then
-    read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N" yesno
+    read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N " yesno
 
     case $yesno in
         [Yy]* )
