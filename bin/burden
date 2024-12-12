@@ -214,7 +214,8 @@ gl_failed_test_rpt="failed_tests"
 #
 # Make sure the lock directory exists
 #
-mkdir -p ${gl_top_dir}/lock_dir
+lock_dir=${gl_top_dir}/lock_dir
+mkdir -p $lock_dir
 #
 # We get the number of failed test reports at the start of the test.  When we exit we will
 # check the original number of reported failed tests to what we currently have.  If they
@@ -287,6 +288,10 @@ cleanup_and_exit()
 		fi
 	fi
 	rm -f $gl_cli_supplied_options $gl_run_info ${gl_run_info}.sorted
+	#
+	# In case we have a lock
+	#
+	flock -u 0
 	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
 }
 
@@ -2009,7 +2014,7 @@ create_ansible_options()
 							fi
 						fi
 						rm $tfile
-					done 
+					done
 					cd ..
 					rm -rf junk
 					echo "    results_ptr: ${direct}/${results_file}" >> results_info
@@ -2584,7 +2589,10 @@ run_scenario()
 	# Convert the scenario file.  After this the scenario will point to the parsed
 	# file
 	convert_scenario_file $scenario
-	scenario=$gl_parse_file
+	#
+	# $gl_parse_file points to a temp file.
+	#
+	working_scenario=$gl_parse_file
 
 	#
 	# Verify all tests that are present are valid tests.
@@ -2629,7 +2637,7 @@ run_scenario()
 		globals[${gindex}]=$field_separ\"--$field_value\"
 		let "gindex=$gindex+1"
 		field_separ=" "
-	done < "$scenario"
+	done < "$working_scenario"
 	if [[ $update_target_uploaded -eq 1 ]]; then
 		update_the_image $gl_update_target
 	fi
@@ -2797,7 +2805,7 @@ run_scenario()
 		cli_value=`echo $setting | sed "s/://" | sed 's/,$//'`
 		test_values[${test_index}]=" --$cli_value"
 		let "test_index=$test_index+1"
-	done < "$scenario"
+	done < "$working_scenario"
 	#
 	# Wait for everyone to finish up.
 	#
@@ -2807,7 +2815,7 @@ run_scenario()
 	if [[ $gl_update_target != $value_not_set ]]; then
 		$UTILS_DIR/cleanup_install_lock $BASHPID
 	fi
-	rm $scenario
+	rm $working_scenario
 }
 
 #
@@ -4040,7 +4048,7 @@ first_invocation()
 	fi
 
 	flock -x 0
-	if [[ ! -f test_info ]]; then
+	if [[ ! -f test_info ]] || [[ $gl_test_version_check -eq 1 ]] || [[ $gl_update_test_versions -eq 1 ]]; then
 		integrate_templates ${gl_test_def_dir}/test_defs.yml
 		cat $gl_test_def_dir/full_test_defs.yml | yq . > test_info
 		cat $gl_test_def_dir/java_pkg_def.yml | yq . > java_info
