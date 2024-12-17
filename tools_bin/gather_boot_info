@@ -18,4 +18,5 @@ done
 
 systemd-analyze plot > $1_boot_info/bootup.svg
 systemd-analyze dot | dot -Tsvg > $1_boot_info/systemd.svg
+journalctl -a > $1_boot_info/journal_ctl
 tar cf $1_boot_info.tar $1_boot_info

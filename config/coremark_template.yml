@@ -1,0 +1,8 @@
+location: https://github.com/redhat-performance/coremark-wrapper/archive/refs/tags
+exec_dir: "coremark-wrapper-1.21/coremark"
+repo_file: "v1.21.zip"
+rhel_pkgs: bc,numactl,perf,git,unzip,perf
+ubuntu_pkgs: unzip,zip
+amazon_pkgs: bc,git,zip,unzip
+test_script_to_run: coremark_run
+test_specific: "--iterations 5"

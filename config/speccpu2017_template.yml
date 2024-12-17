@@ -1,0 +1,11 @@
+location: https://github.com/redhat-performance/speccpu2017-wrapper/archive/refs/tags
+exec_dir: "speccpu2017-wrapper-1.18/speccpu2017"
+repo_file: "v1.18.zip"
+rhel_pkgs_9: bc,libnsl,gcc-gfortran,nvme-cli,perf,libxcrypt-compat,git,unzip,perf,libxcrypt-compat
+rhel_pkgs: bc,libnsl,gcc-gfortran,perf,git,unzip,libxcrypt-compat
+ubuntu_pkgs: gcc,bc,gfortran,g++,unzip,zip
+amazon_pkgs: bc,gcc,gcc-gfortran,git,zip,unzip
+storage_required: "yes"
+test_script_to_run: run_speccpu
+test_specific: "--test intrate,fprate"
+upload_extra: "/home/exports/cpu2017-1.1.8.iso"

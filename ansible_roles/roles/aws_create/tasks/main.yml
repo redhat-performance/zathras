@@ -51,6 +51,9 @@
     when: config_info.spot_start_price != 0
   when: config_info.cloud_placement != "none"
 
+- name: Add networking info
+  shell: cat {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/networking.tf >> {{ working_dir }}/tf/main.tf
+
 - name: Update files for non placement groups vm
   block:
   - name: non spot vm
@@ -60,6 +63,20 @@
     shell: cat {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/vm_spot >> {{ working_dir }}/tf/main.tf
     when: config_info.spot_start_price != 0
   when: config_info.cloud_placement == "none"
+
+- name: Add private networking info
+  block:
+  - name: Non spot instances
+    shell: sed "s/REPLACE_INST/aws_instance/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/private_net.tf | sed "s/REPLACE_ID/id/g" >> {{ working_dir }}/tf/main.tf
+    when:
+      - config_info.spot_start_price == 0
+  - name: spot instances
+    shell: sed "s/REPLACE_INST/aws_spot_instance_request/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/private_net.tf | sed "s/REPLACE_ID/spot_instance_id/g" >> {{ working_dir }}/tf/main.tf
+    when:
+      - config_info.spot_start_price != 0
+  when:
+    - config_info.cloud_numb_networks != 0
+    - config_info.cloud_numb_network_type != "public"
 
 - name: copy non spot files
   block:
@@ -88,7 +105,7 @@
   - name: spot create the single system output file
     shell: sed "s/REPLACE_ID/spot_instance_id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile.tf | sed "s/REPLACE_INST/aws_spot_instance_request/g" >> {{ working_dir }}/tf/output.tf
   - name: Append for network
-    shell: sed "s/REPLACE_ID/spot_instance_id"/g < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE_INST/aws_spot_instance_request/g" >> {{ working_dir }}/tf/output.tf
+    shell: sed "s/REPLACE_ID/spot_instance_id/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/outfile_net.tf | sed "s/REPLACE_INST/aws_spot_instance_request/g" >> {{ working_dir }}/tf/output.tf
     when: config_info.cloud_numb_networks != 0
   - name: Handle disks, no network
     include_tasks: aws_disks.yml
@@ -146,39 +163,6 @@
     line: "aws_uname: {{ temp_uname.stdout }}"
 
 #
-# Get the AWS security group.
-# Same rules apply, if it is defined in config/setup use it, else
-# retrieve it.
-#
-
-- name: aws_get_sec_grp
-  shell: "grep AWS_SEC_GRP: config/setup 2> /dev/null"
-  ignore_errors: yes
-  register: temp_secinfo
-  no_log: true
-  failed_when:  "'IGNORE_IT' in temp_secinfo.stderr"
-
-- name: aws_need_to_get_id
-  block:
-#
-# security group not provided, go retrieve  it from AWS.
-#
-  - ec2_group_info:
-      filters:
-        group-name: "{{ temp_uname.stdout }}"
-    register: aws_sec_grp_out
-
-  - name: set sec grp
-    shell: "echo {{ aws_sec_grp_out.security_groups[0].group_id }} | cut -d'\"' -f2"
-    register: temp_secinfo
-  when: temp_secinfo.stdout == ""
-
-- name: record sec group
-  lineinfile:
-    path: "{{ working_dir }}/ansible_run_vars.yml"
-    line: "aws_sec_grp: {{ temp_secinfo.stdout }}"
-
-#
 # Needed to keep everything happy. We will change this value when we
 # are doing spot creation
 # 
@@ -230,7 +214,7 @@
     create: yes
 
 #
-# Record the vpc and zone for what we just did.
+# Record the vpc, security grp and zone for what we just did.
 # 
 - name: Save aws vpc
   include_tasks: aws_vpc.yml
@@ -238,6 +222,8 @@
 - name: Save aws placement zone
   include_tasks: aws_place_zone.yml
 
+- name: Save aws security group
+  include_tasks: aws_sec_grp.yml
 
 #
 # Load in the updated host names.
@@ -304,15 +290,7 @@
     content: "{{ ec2_metadata | to_nice_yaml( width=50, explicit_start=True, explicit_end=True) }}"
     dest: "{{ working_dir }}/meta_data_0.yml"
 
-- name: meta data for second system
-  block:
-  - ec2_instance_info:
-      instance_ids:
-        - "{{ aws_tf_info.aws_instance_id1 }}"
-    register: ec2_metadata
-
-  - local_action:
-      module: copy
-      content: "{{ ec2_metadata | to_nice_yaml( width=50, explicit_start=True, explicit_end=True) }}"
-      dest: "{{ working_dir }}/meta_data_1.yml"
+- name: handle setting up network
+  include_tasks: aws_net_setup.yml
   when: config_info.cloud_numb_networks != 0
+

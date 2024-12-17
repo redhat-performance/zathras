@@ -1,11 +1,17 @@
 # Defines a VM
+#
 resource "aws_instance" "ec2" {
   for_each                  = local.system
+  provider = aws.zathras_prov
   ami                       = var.cloud_os_version
   instance_type             = each.value.sys
-  security_groups           = [var.security_group]
   key_name                  = var.key_name
   availability_zone         = var.avail_zone
+  subnet_id = "${aws_subnet.zathras_sn.id}"
+# Uncomment when ipv6 is to be used.
+#  ipv6_address_count = 1
+  vpc_security_group_ids = ["${aws_security_group.zathras_aws_sg.id}"]
+  depends_on = [aws_internet_gateway.zathras_gw]
   tags = {
     Name = "${var.run_label}-${var.machine_type}"
   }

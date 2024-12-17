@@ -1,9 +1,9 @@
 Role Name
 =========
-Creates the requested AWS image.  Due to the nature of AWS NICs we uses a bash script to 
+Creates the requested AWS image.  Due to the nature of AWS NICs we use a bash script to 
 perform the network attachements.
 
-Note: Support for spot is present, but is currently not used.  There is currently is
+Note: Support for spot is present, but is currently not used.  There is currently 
 an issue with terraform aws spot creation, where we do not get the availability_zone
 returned to us by terraform.  This prevents the creation of storage at the same time we create 
 
