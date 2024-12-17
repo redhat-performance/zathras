@@ -368,6 +368,11 @@
         name: install_packages
       vars:
         results_file: "/tmp/install_status"
+    - name: retrieve install package status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "install_status"
     - name: Gather the rpm package facts
       package_facts:
         manager: auto
@@ -413,7 +418,6 @@
     when:
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
-      - config_info.system_type != "local"
       - config_info.do_not_install_packages == 0
 
 #
@@ -560,14 +564,15 @@
   vars_files: ansible_vars.yml
   gather_facts: no
   tasks:
-  - name: retrieve install status
-    include_role:
-      name: retrieve_status
-    vars:
-      status_file: "install_status"
-    when:
-      - config_info.system_type != "local"
-      - config_info.do_not_install_packages == 0
+  - name: Handle package install errors
+    block:
+    - name: retrieve install status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "install_status"
+      when:
+        - config_info.do_not_install_packages == 0
 
 - hosts: local
   vars_files: ansible_vars.yml
@@ -583,8 +588,6 @@
         exit_msg: "Package installation failure."
     when:
       - config_info.do_not_install_packages == 0
-      - config_info.system_type != "local"
-
 #
 # Reboot the system if we did an update.
 # 
@@ -833,31 +836,6 @@
       type: "workloads"
       real_dir: "{{ dyn_data.kit_upload_directory }}"
 
-- hosts: test_group
-  vars_files: ansible_vars.yml
-  gather_facts: no
-  tasks:
-  - name: retrieve install status
-    include_role:
-      name: retrieve_status
-    vars:
-      status_file: "install_status"
-    when:
-      - config_info.system_type != "local"
-
-- hosts: local
-  vars_files: ansible_vars.yml
-  gather_facts: no
-  tasks:
-  - name: Terminate on repo failure
-    include_role:
-      name: terminate_on_error
-    vars:
-      status_file: "install_status"
-      exit_msg: "Package installation failure."
-    when:
-      - config_info.do_not_install_packages == 0
-      - config_info.system_type != "local"
 #
 # retrieve the test
 #
