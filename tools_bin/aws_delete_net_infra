@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# Delete the AWS networking infrastructure for a given user.
+# The kit needs this due to ther is no way in terraform to tell  AWS
+# that if deleting the instance outside of the terraform environment
+# to delete the infrastructure.  If deleting from within the terraform
+# environment, we will delete the infrastructure..
+#
+user=$1
+if [[ $user == "" ]]; then
+	echo "Need to designate the user deleteing, will be what User tag is set to"
+	exit 1
+fi
+igw_delete=`aws ec2 describe-internet-gateways --filters Name=tag:User,Values=$user | grep igw | awk '{print $2}'`
+sn_delete=`aws ec2 describe-subnets --filters Name=tag:User,Values=$user | grep subnet | awk '{print  $15}'`
+#
+# We need both the Security group and associated vpc
+#
+sg_delete=`aws ec2 describe-security-groups --filters Name=tag:User,Values=$user | grep SECUR | awk '{print  $5}'`
+vpcs_delete=`aws ec2 describe-vpcs --filters Name=tag:User,Values=$user | grep vpc | grep -v CIDR | awk '{print  $8}'`
+
+for i in $igw_delete; do
+	vpc_igw=`aws ec2 describe-internet-gateways --internet-gateway-ids $i | grep vp | awk '{print $3}'`
+	for v  in $vpc_igw; do
+		echo aws ec2 detach-internet-gateway --internet-gateway-id $i --vpc-id $v
+		aws ec2 detach-internet-gateway --internet-gateway-id $i --vpc-id $v
+	done
+	aws ec2 delete-internet-gateway --internet-gateway-id $i
+	echo aws ec2 delete-internet-gateway --internet-gateway-id $i
+done
+
+for i in $sn_delete; do
+	echo aws ec2 delete-subnet --subnet-id  $i
+	aws ec2 delete-subnet --subnet-id  $i
+done
+
+for i in $sg_delete; do
+	echo aws ec2 delete-security-group --group-id $i
+	aws ec2 delete-security-group --group-id $i
+done 
+
+for i in $vpcs_delete; do
+	echo aws ec2 delete-vpc --vpc-id $i
+	aws ec2 delete-vpc --vpc-id $i
+done

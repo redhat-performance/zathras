@@ -55,3 +55,14 @@
   with_items:
     - "{{ ip_list }}"
 
+- name: Make sure we can ssh in to net1 from net2
+  delegate_to: "{{ ip_list[1] }}"
+  become: yes
+  shell: "ssh -oStrictHostKeyChecking=no  root@{{ ip_list[0] }} 'cat /etc/passwd'"
+  register: ignore
+
+- name: Make sure we can ssh in net2 from net1
+  delegate_to: "{{ ip_list[0] }}"
+  become: yes
+  shell: "ssh -oStrictHostKeyChecking=no  root@{{ ip_list[1] }} 'cat /etc/passwd'"
+  register: ignore

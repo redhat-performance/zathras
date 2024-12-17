@@ -14,6 +14,9 @@
     - output.tf
     - network.tf
 
+- name: copy general tf files
+  shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf//vars.tf"
+
 - name: Get project_id
   shell: gcloud config get-value project
   register: project_id
@@ -22,6 +25,9 @@
   copy:
     src: "../templates/tfvars.j2"
     dest: "{{ working_dir }}/tfvars.j2"
+
+- name: Add tag vars info in.
+  shell: "cat {{ working_dir }}/add_main_tf_vars >> {{ working_dir }}/tfvars.j2"
 
 - name: Substitute terraform vars
   template:

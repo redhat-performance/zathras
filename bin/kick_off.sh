@@ -64,7 +64,7 @@ report_usage()
 	# Get the instance price.
 	#
 	inst_price=`cat instance_cost`
-	if [[ $inst_price == "0" ]]; then
+	if [[ $inst_price == "0" ]] && [[ -f ansible_spot_price.yml ]]; then
 		inst_price=`grep cur_spot_price ansible_spot_price.yml | awk '{print $2}'`
 	fi
 	while IFS= read -r line
@@ -257,10 +257,4 @@ if [[ -f test_times ]]; then
         report_usage
 fi
 
-for i in `ls results*tar`; do
-	check_file=`tar tvf $i | grep "_tuned\.status"` 
-	echo ============ >> tuned_run_info
-	echo $i >> tuned_run_info
-	cat $check_file >> tuned_run_info
-done
 exit 0

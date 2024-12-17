@@ -224,7 +224,4 @@ systems:
     tests: linpack
     host_config: "m5.xlarge"
 
-
 # ./burden --scenario aws_sample --test_def_dir https://github.com/redhat-performance/zathras_test_configs
-
-https://github.com/redhat-performance/zathras_test_configs: where the test config files can be found.

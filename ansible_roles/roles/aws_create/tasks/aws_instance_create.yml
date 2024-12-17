@@ -18,22 +18,31 @@
 # Try and create the spot instance if required
 #
 - name: Create aws spot
-  include_tasks: aws_tf_spot.yml
-  when: config_info.spot_range != 0
-
-- name: include_rtc
-  include_vars:
-    file: "{{ working_dir}}/tf.rtc"
-    name: tf
+  block:
+  - name: attempt to create spot instance
+    include_tasks: aws_tf_spot.yml
+  - name: Retrieve the status
+    include_vars:
+      file: "{{ working_dir}}/tf.rtc"
+      name: tf
+  - name: Spot failed, tried regular
+    block:
+    - name: record failure
+      lineinfile:
+        path: "{{ working_dir }}/spot_failure"
+        line: "spot failure"
+        create: yes
+    - name: Bail error
+      fail:
+        msg: "spot failed, tried regular."
+    when: tf.rtc != 0
+  when:
+    - config_info.spot_range != 0
 
 #
 # Non spot operation, also fall back if we could not create the 
 # spot instance.
 #
-- name: Spot failed, tried regular
-  debug:
-    msg: spot failed, tried regular.
-  when: tf.rtc != 0
 
 - name: Create aws non spot
   block:
@@ -42,7 +51,7 @@
       name: tf_create
     vars:
       tf_var_file: "env.tfvars"
-  when: config_info.spot_range == 0 or tf.rtc != 0
+  when: config_info.spot_range == 0
 
 #
 # Wait for the dns name(s) to appear in the results file.

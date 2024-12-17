@@ -240,7 +240,6 @@
       - name: get codeready repo name
         shell:
           cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
-          warn: false
         register: repo_name
         ignore_errors: yes
       - name: Record status of yum config sucess
@@ -319,6 +318,19 @@
       exit_msg: "Code repo installation failure"
     when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
 
+ #
+ # Determine where to upload from, assumption is all test systems have the same
+ # disk space.
+ #
+- hosts: localhost
+  vars_files:
+    - ansible_vars.yml
+  gather_facts: no 
+  tasks:
+  - name: Determine disk space
+    include_role:
+      name: upload_disk_space
+ 
 #
 # Determine where to upload from, assumption is all test systems have the same
 # disk space.
@@ -436,6 +448,20 @@
     when:
       - config_info.pbench_install != 0
       - config_info.system_type != "local"
+
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files:
+    - ansible_vars.yml
+  gather_facts: yes
+  tasks:
+  - name: Upload and install any rpms.
+    include_role:
+      name: install_rpms
+    vars:
+      results_file: "/tmp/rpm_installs"
 
 #
 # Install the packages.
@@ -591,52 +617,31 @@
 
   gather_facts: no
   tasks:
-    - name: connect systems
+    - name: Record public ips
       block:
-      - name: network start time
-        command: "date -u +%s"
-        register: network_connect_start
-
-      - name: network setup
-        include_role:
-          name: connect_systems
-
-      - name: network end time
-        command: "date -u +%s"
-        register: network_connect_end
-
-      - name: Report client creation time
+      - name: include dynamic info
+        include_vars:
+          file: "{{ working_dir }}/ansible_run_vars.yml"
+          name: dyn_data
+      - name: set server ip
         lineinfile:
-          path: "{{ working_dir }}/cloud_timings"
-          line: "network setup time: {{ (network_connect_end.stdout) | int  - (network_connect_start.stdout) | int }}"
-          create: yes
+          path: "{{ working_dir }}/ansible_run_vars.yml"
+          line: "ct_uperf_server_ip: {{ dyn_data.test_hostname }}"
+      - name: set server ip
+        lineinfile:
+          path: "{{ working_dir }}/ansible_run_vars.yml"
+          line: "ct_uperf_client_list: {{ dyn_data.net_hostname }}"
+      - name: add net hostname
+        add_host:
+          name: "{{ dyn_data.net_hostname }}"
+          groups: test_group
+          ansible_user: "{{ config_info.test_user }}"
+          ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
       when:
+        - config_info.cloud_numb_network_type == "public"
         - config_info.system_type != "local"
         - config_info.cloud_numb_networks > 0
         - config_info.init_system == "yes"
-#
-# Reboot the system after doing the network connections
-# 
-- hosts: install_group
-  user: config_info.test_user
-  become_user: root
-  become: true
-  vars_files: ansible_vars.yml
-
-  gather_facts: no
-  tasks:
-  - name: reboot after network configs (aws only)
-    block:
-    - name: Reboot system so the private/nics can be seen.
-      reboot:
-        reboot_timeout: 1800
-    - name: Wait for 60 seconds.
-      command: sleep 60
-    when:
-      - config_info.system_type == "aws"
-      - config_info.cloud_numb_networks > 0
-      - config_info.cloud_numb_network_type != "public"
-      - config_info.init_system == "yes"
 
 #
 # set the install groups
@@ -705,8 +710,9 @@
       - config_info.os_vendor == "rhel"
       - config_info.update_os_version != "none"
       - config_info.init_system == "yes"
+
 #
-# Disable selinux if required, if we do, reboot the system
+# Perform selinux operations.
 # 
 - hosts: install_group
   user: root
@@ -714,15 +720,9 @@
   vars_files: ansible_vars.yml
   gather_facts: no
   tasks:
-  - name: disable selinux
-    block:
-    - name: disabling selinux
-      selinux:
-        state: disabled
-    - name: reboot the system now for disabled selinux to take effect
-      reboot:
-        reboot_timeout: 1800
-    when: (config_info.selinux_state == "disabled")
+  - name: selinux config
+    include_role:
+      name: selinux_config
 
 #
 # Set sys config values.
@@ -765,20 +765,6 @@
         src: "/tmp/system_config"
         dest: "{{ working_dir }}/boot_info/"
         flat: yes
-
- #
- # Determine where to upload from, assumption is all test systems have the same
- # disk space.
- #
-- hosts: localhost
-  vars_files:
-    - ansible_vars.yml
-  gather_facts: no 
-  tasks:
-  - name: Determine disk space
-    include_role:
-      name: upload_disk_space
- 
 
 - hosts: test_group
   vars_files:
