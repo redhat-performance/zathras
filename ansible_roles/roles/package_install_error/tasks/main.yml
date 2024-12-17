@@ -11,7 +11,7 @@
   - name: Report errors
     debug:
       msg: "Failed to install one of the packages {{ packages }}"
-  when: config_info.error_repo_errors == 1 and rtc_val != "0"
+  when: config_info.error_repo_errors == 1 and rtc_val == true
 - name: Failed but ignore
   block:
   - name: Record ignore
@@ -22,12 +22,11 @@
   - name: Report errors
     debug:
       msg: "Failed to install one of the packages {{ packages }}"
-  when: config_info.error_repo_errors == 0 and rtc_val != "0"
+  when: config_info.error_repo_errors == 0 and rtc_val == true
 
 - name: Record success
   lineinfile:
     path: "{{ results_file }}"
     line: "status: success"
     create: yes
-  when: rtc_val == "0"
-
+  when: rtc_val != true
