@@ -17,9 +17,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+set -eu
+
 # Check if script is being run as root
 if (( $EUID == 0 )); then
-    read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N" yesno
+    read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N " yesno
 
     case $yesno in
         [Yy]* )
@@ -39,9 +41,6 @@ packages=(ansible-core git jq python python3-pip terraform wget)
 for package in "${packages[@]}"; do 
     if dnf list installed "$package" &> /dev/null; then
         echo "$package is installed."
-    elif dnf list "$package" &> /dev/null; then
-        echo "$package is not installed but available. Installing..."
-        sudo dnf install -y "$package"
     elif [ $package == "terraform" ]; then
         # Add the terraform repository from HashiCorp
         # currently supported distros: fedora, RHEL
@@ -67,17 +66,36 @@ for package in "${packages[@]}"; do
         sudo dnf config-manager --add-repo $repo_url
 
         # install the package
-        sudo dnf install terraform -y
+        sudo dnf install terraform-1.9.8-1 -y || {
+            exit 1
+        }
     else
-        echo "package $package is not installed and not available."
+        echo "Installing $package..."
+        sudo dnf install -y "$package" || {
+            exit 1
+        }
     fi
 
 done
 
 
+
 # pip install requirements
-pip3 install boto boto3 --user
-pip3 install 'yq==2.10.0' --user 
+python_packages=(boto boto3 'yq==2.10.0')
+for package in "${python_packages[@]}"; do
+    pip3 install "$package" --user || {
+        exit 1
+    }
+done
+
+
+# install AWS collection for ansible
+ansible_collections=(amazon.aws)
+for collection in "${ansible_collections[@]}"; do
+        ansible-galaxy collection install "$collection" || {
+                exit 1
+        }
+done
 
 
 echo "Before you can run Zathras:"
