@@ -17,49 +17,91 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+set -eu
 
-# Add the terraform repository from HashiCorp
-# for reference: https://developer.hashicorp.com/terraform/cli/install/yum
-# Currently supported distros: fedora, RHEL
+# Check if script is being run as root
+if (( $EUID == 0 )); then
+    read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N " yesno
 
-# Get the operating system distribution
-os_release=$(grep "^ID=" /etc/os-release | awk -F'=' '{print $2}')
-
-# Sometimes $release contains quotes that need to be removed
-os_release_clean=$(echo $os_release | tr -d '"')
-
-# The HashiCorp repository urls are case-sensitive
-if [ $os_release_clean = 'rhel' ]; then
-    release='RHEL'
+    case $yesno in
+        [Yy]* )
+            echo "You answered yes, continuing install as root." ;;
+        [Nn]* )
+            echo "You answered no, exiting"; exit 1 ;; 
+        *) 
+            echo "Unknown input, exiting"; exit 1 ;;
+    esac
+else
+    echo "Not running as root, proceed."
 fi
 
-# fedora
-if [ $os_release_clean = 'fedora' ]; then
-    release='fedora'
-fi
+# check for and install system packages
+packages=(ansible-core git jq python python3-pip terraform wget)
 
-# repo URL for terraform
-repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
+for package in "${packages[@]}"; do 
+    if dnf list installed "$package" &> /dev/null; then
+        echo "$package is installed."
+    elif [ $package == "terraform" ]; then
+        # Add the terraform repository from HashiCorp
+        # currently supported distros: fedora, RHEL
+        # reference: https://developer.hashicorp.com/terraform/cli/install/yum
 
-# run dnf config-manager
-dnf config-manager --add-repo $repo_url
+        # Get operating system distribution
+        os_release=$(grep "^ID=" /etc/os-release | awk -F'=' '{print $2}')
 
+        # Sometimes the $release contains quotes that need to be removed
+        os_release_clean=$(echo $os_release | tr -d '"')
 
-# install other required packages
-dnf update -y
-dnf install ansible git jq python python3-pip terraform wget -y
+        # HashiCorp repo urls are case-sensitive
+        if [ $os_release_clean = 'rhel' ]; then
+            release='RHEL'
+        elif [ $os_release_clean = 'fedora' ]; then
+            release='fedora'
+        fi
+
+        # repo URL for terraform
+        repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
+
+        # run dnf config-manager
+        sudo dnf config-manager --add-repo $repo_url
+
+        # install the package
+        sudo dnf install terraform-1.9.8-1 -y || {
+            exit 1
+        }
+    else
+        echo "Installing $package..."
+        sudo dnf install -y "$package" || {
+            exit 1
+        }
+    fi
+
+done
+
 
 
 # pip install requirements
-pip3 install -U boto --user
-pip3 install yq --user
+python_packages=(boto boto3 'yq==2.10.0')
+for package in "${python_packages[@]}"; do
+    pip3 install "$package" --user || {
+        exit 1
+    }
+done
 
-# add yq install to path
-export PATH=/usr/local/bin:$PATH
+
+# install AWS collection for ansible
+ansible_collections=(amazon.aws)
+for collection in "${ansible_collections[@]}"; do
+        ansible-galaxy collection install "$collection" || {
+                exit 1
+        }
+done
+
 
 echo 'Before you can run Zathras:'
+echo '****Ensure ~/.local/bin is in your path'
 echo '****Set up a scenario file'
-echo '****If running a local system, create the local config file for the system under test (SUT).'
+echo '****If running a local system, create the local config file for the system under test (SUT)'
 echo '****If using an existing system, ssh-copy-id between the system Zathras is installed on and the SUT.'
-echo '****If working in a cloud environment do not perform the ssh-copy-id.'
-echo '****Update/create the test configuration files in /zathras/config/ to reflect your requirements.'
+echo '****If working in a cloud environment do not perform the ssh-copy-id.'  
+echo '****Update/create the test configuration files in /zathras/config/ to reflect your requirements.' 
