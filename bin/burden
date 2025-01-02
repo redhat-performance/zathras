@@ -2534,6 +2534,7 @@ convert_scenario_file()
 	gl_parse_file=$(mktemp /tmp/parse_file.XXXXXX)
 	cat $tmp_run_file | yq .  > $parse_file_tmp
 	if [ $? -ne 0 ]; then
+		rm -f $gl_parse_file $parse_file_tmp $tmp_run_file
 		cleanup_and_exit "Creation of the parse_file via yq failed" 1
 	fi
 	#
@@ -2542,7 +2543,7 @@ convert_scenario_file()
 	sed "s/----/;/g" $parse_file_tmp > $gl_parse_file
 	python -c 'import yaml, sys; print(yaml.safe_load(sys.stdin))' < $gl_parse_file
 	if [ $? -eq 1 ]; then
-		rm -f $parse_file $gl_parse_file_tmp
+		rm -f $gl_parse_file $parse_file_tmp $tmp_run_file
 		cleanup_and_exit "The file, parse_file does not meet yaml requirements." 1
 	fi
 	#
