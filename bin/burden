@@ -2094,7 +2094,10 @@ check_for_aws()
 {
 	aws_version=`dnf list installed | grep awscli.noarch`
 	if [[ $? -eq 1 ]]; then
-		cleanup_and_exit "aws requires the aws clis to be installed\ndnf install -y awscli" 1
+		aws_version=`pip3 list | grep awscl`
+		if [[ $? -eq 1 ]]; then
+			cleanup_and_exit "aws requires the aws clis to be installed\ndnf install -y awscli or pip3 install awscli" 1
+		fi
 	fi
 	report_util_version aws_version "${aws_version}"
 }
