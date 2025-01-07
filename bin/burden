@@ -2092,13 +2092,11 @@ check_for_python()
 
 check_for_aws()
 {
-	aws_version=`dnf list installed | grep awscli.noarch`
+	aws_version=`aws --version 2> /dev/null`
 	if [[ $? -eq 1 ]]; then
-		aws_version=`pip3 list | grep awscl`
-		if [[ $? -eq 1 ]]; then
-			cleanup_and_exit "aws requires the aws clis to be installed\ndnf install -y awscli or pip3 install awscli" 1
-		fi
+		cleanup_and_exit "aws requires the aws clis to be installed\ndnf install -y awscli or pip3 install awscli" 1
 	fi
+	aws_version=`echo $aws_version | cut -d'/' -f 2 | cut -d' ' -f 1`
 	report_util_version aws_version "${aws_version}"
 }
 
@@ -2136,16 +2134,25 @@ check_for_terraform()
 #
 package_check()
 {
-	check_for_pip3
-	check_for_boto
-	check_for_ansible
-	check_for_yq
-	check_for_jq
-	check_for_python
-	if [[ $gl_system_type == "aws" ]]; then
-		check_for_aws
+	if [[ $gl_first_invocation -eq 1 ]]; then
+		#
+		# check to make sure the packages that are required are installed.
+		#
+		rm utils_version run_info 2> /dev/null
+		check_for_pip3
+		check_for_boto
+		check_for_ansible
+		check_for_yq
+		check_for_jq
+		check_for_python
+	else
+		if [[ $gl_system_type == "aws" ]] || [[ $gl_system_type == "gcp" ]] || [[ $gl_system_type == "azure" ]]; then
+			if [[ $gl_system_type == "aws" ]]; then
+				check_for_aws
+			fi
+			check_for_terraform
+		fi
 	fi
-	check_for_terraform
 }
 
 #
@@ -3748,6 +3755,7 @@ grab_cli_data()
 		set_general_value $1 $2
 		shift $?
 	done
+	package_check
 }
 
 check_for_scen_value()
@@ -4037,14 +4045,6 @@ fi
 
 if [[ $gl_host_config != "" ]]; then
 	verify_data verify_host_config $gl_host_config
-fi
-
-#
-# check to make sure the packages that are required are installed.
-#
-if [[ $gl_first_invocation -eq 1 ]]; then
-	rm utils_version run_info 2> /dev/null
-	package_check
 fi
 
 #
