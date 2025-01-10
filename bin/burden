@@ -165,7 +165,7 @@ gl_run_prefix=""
 gl_scenario_to_run=""
 gl_scenario_to_restore=""
 gl_selinux_level="enforcing"
-gl_selinux_state="enabled"
+gl_selinux_state=$value_not_set
 gl_selinux_state_set=0
 gl_ssh_key_file=""
 gl_show_os_versions=0;
@@ -4071,6 +4071,14 @@ if [[ $gl_show_os_versions -eq 1 ]]; then
 	#
 	cloud_image_lookup
 	cleanup_and_exit "" 0
+fi
+
+if [[ $gl_selinux_state == $value_not_set ]]; then
+	if [[ $gl_os_vendor == 'rhel' ]]; then
+		gl_selinux_state='enabled'
+	else
+		gl_selinux_state='disabled'
+	fi	
 fi
 
 verify_selinux
