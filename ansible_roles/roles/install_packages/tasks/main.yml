@@ -17,7 +17,7 @@
   - name: Report Success
     lineinfile:
        path: "{{ results_file }}"
-       line: "status: sucess"
+       line: "status: success"
        create: yes
   rescue:
     - name: Report Error
