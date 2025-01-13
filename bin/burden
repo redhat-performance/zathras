@@ -2168,13 +2168,13 @@ package_check()
 	flock -x 0
 	if [[ ! -f utils_version ]]; then
 		check_for_pip3
-		check_for_boto
 		check_for_ansible
 		check_for_yq
 		check_for_jq
 		check_for_python
 		if [[ $gl_system_type == "aws" ]]; then
 			check_for_aws
+			check_for_boto
 		fi
 		check_for_terraform
 	fi
