@@ -135,7 +135,7 @@ gl_preflight=0
 #   gl_top_dir: Directory we are executing from
 #
 gl_tf_terminate=0
-gl_tf_term_list=""
+gl_tf_term_list="all"
 gl_tf_list=0
 gl_sys_file=$value_not_set
 gl_cloud_execute_tests=1
@@ -1271,8 +1271,8 @@ azure_specific_os_version()
 	az_cloud_resource_group=${user_name}-${az_postfix}
 	echo "  cloud_resource_group: ${az_cloud_resource_group}-00" >> ansible_vars_main.yml
 	#
-	# Azure wants to be difficult about this ... fine.
-	# This is gross, fix it to be pretty some day
+	# The publisher field in the urn may be different case (go figure) then expected..
+	# So we need to go and pull the publisher from az_vm image show.
 	#
 	azpublisher=`az vm image show --location eastus --urn ${gl_cloud_os_version} | grep publisher | cut -d: -f 2 | cut -d'"' -f 2`
 	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
@@ -3064,81 +3064,6 @@ integrate_templates()
 }
 
 #
-# List the active systems created by tf
-#
-tf_list()
-{
-	dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
-	for tf_show in $dirs; do
-		pushd $tf_show > /dev/null
-		terraform show > tf_list_info
-		grep subnet tf_list_info >& /dev/null
-		if [ $? -eq 0 ]; then
-			work_dir=`pwd | rev | cut -d'/' -f 2 | rev`
-			grep  azure tf_list_info >& /dev/null
-			if [ $? -eq 0 ]; then
-				vm_size=`grep size tf_list_info | grep -v disk | cut -d'"' -f2`
-				public_ip=`grep public_ip_address tf_list_info | head -1 | cut -d'"' -f2 | sort -u`
-				name_tag=`grep environment tf_list_info | cut -d'"' -f4 | sort -u`
-				printf "work_dir: %s\n" $work_dir
-				printf "\tfull_path: %s\n" $tf_show
-				printf "\tvm_size: %s\n" $vm_size
-				printf "\tpublic_ip: %s\n" $public_ip
-				printf "\tname_tag: %s\n" $name_tag
-			fi
-			grep  aws tf_list_info >& /dev/null
-			if [ $? -eq 0 ]; then
-				vm_size=`grep instance_type tf_list_info | cut -d'"' -f2`
-				inst_state=`grep instance_state tf_list_info | cut -d'"' -f2`
-				public_dns=`grep public_dns tf_list_info | cut -d'"' -f2 | sort -u`
-				name_tag=`grep Name tf_list_info | cut -d'"' -f4 | sort -u`
-				printf "work_dir: %s\n" $work_dir
-				printf "\tfull_path: %s\n" $tf_show
-				printf "\tvm_size: %s\n" $vm_size
-				printf "\tinstance_state: %s\n" $inst_state
-				printf "\tpublic_dns: %s\n" $public_dns
-				printf "\tname_tag: %s\n" $name_tag
-			fi
-		fi
-		rm tf_list_info
-		popd > /dev/null
-	done
-	exit
-}
-#
-# Walk all the tf directories and attempt to remove the instance.
-#
-tf_terminate()
-{
-
-	if [[ $gl_tf_term_list == "" ]]; then
-		dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
-	else
-		dirs=`echo $gl_tf_term_list | sed "s/,/ /g"`
-		echo $gl_tf_term_list
-		echo $dirs
-	fi
-	for tf_del in $dirs; do
-		pushd $tf_del > /dev/null
-		terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
-		if [ $? -eq 0 ]; then
-			terraform apply "destroy.tfplan"
-			#
-			# Now get arid of the tf directory.
-			#
-			if [ $gl_tf_terminate -eq 0 ]; then
-				cd ..
-				rm -rf tf
-			fi
-		else
-			echo Warning: Unable to create the plan for $tf_del
-		fi
-		popd > /dev/null
-	done
-	exit
-}
-
-#
 # If the test_def_dir has https or git in it, we will pull from
 # the git repo.  If not simply check that the file exists.
 #
@@ -4067,14 +3992,16 @@ fi
 # Does not return
 #
 if [ $gl_tf_terminate -eq 1 ]; then
-	tf_terminate
+	$UTILS_DIR/terraform_ops --terminate_list $gl_tf_term_list
+	cleanup_and_exit "" 0
 fi
 
 #
 # Does not return
 #
 if [ $gl_tf_list -eq 1 ]; then
-	tf_list
+	$UTILS_DIR/terraform_ops --tf_list
+	cleanup_and_exit "" 0
 fi
 
 if [[ $gl_run_prefix == "" ]]; then
