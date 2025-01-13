@@ -1,0 +1,25 @@
+name: Verify PR has JIRA ticket and issue number
+
+on:
+  pull_request:
+    branches: [ $default-branch ]
+
+permissions:
+  contents: read
+  pull-requests: write # Need write to make comments
+
+jobs:
+  pr_issue_jira:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: redhat-performance/pr-requirements
+          path: pr-requirements
+          ref: v1.0.0
+      - uses: ./pr-requirements
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          jira_ticket: true
+          jira_project: RPOPC
+          jira_url: https://issues.redhat.com
