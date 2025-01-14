@@ -45,9 +45,11 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   gl_host_config: m5.xlarge
 #   gl_host_config_info: m5.xlarge
 #   host_or_cloud_inst: m5.xlarge
-#   gl_selinux_state: state of selinux
+#   gl_selinux_level: state of selinux
 #     enforcing - SELinux security policy is enforced.
 #     permissive - SELinux prints warnings instead of enforcing.
+#   gl_selinux_state: state of selinux
+#     enabled - SELinux security policy is active.
 #     disabled - No SELinux policy is loaded.
 #   gl_cloud_os_version: Cloud specific, indicates what OS version we are to load.
 #   gl_test_repos: Where we will find the tests to use.
@@ -58,7 +60,7 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   update_type: what is the update repository (example ftp, iso).
 #   gl_persistent_log: enable persistent logging
 #   gl_ssh_key_file: Points to the ssh config file we are to use.  If not set, we will not use one.
-#   gl_java_version: Version of Java to load:  eg: java-8 or java-11
+#   gl_java_version: Version of Java to load: currently java-8, java-11, java-17, or java-21
 #   gl_rhel_tuned_setting: tuned configuration to use
 #   gl_cloud_execute_tests: If set to 1, we will execute test on the cloud image, else
 #                        we will simply create the image.
@@ -96,6 +98,7 @@ gl_cloud_net_type="default"
 #
 # We will default to eastus
 #
+gl_cloud_acct_id=""
 gl_cloud_region="eastus"
 gl_cloud_region_zone=""
 gl_system_type=""
@@ -108,7 +111,7 @@ gl_git_timeout=60
 gl_git_timeout_set=0
 gl_archive_location=$value_not_set
 gl_error_repo_errors=1
-gl_valid_os_vendors="rhel ubuntu amazon none"
+gl_valid_os_vendors="rhel ubuntu amazon private none"
 gl_valid_system_types="aws azure gcp local"
 gl_package_name=$value_not_set
 gl_show_tests=0
@@ -130,7 +133,7 @@ gl_preflight=0
 #   gl_top_dir: Directory we are executing from
 #
 gl_tf_terminate=0
-gl_tf_term_list=""
+gl_tf_term_list="all"
 gl_tf_list=0
 gl_sys_file=$value_not_set
 gl_cloud_execute_tests=1
@@ -161,6 +164,7 @@ gl_run_dir_index=0
 gl_run_prefix=""
 gl_scenario_to_run=""
 gl_scenario_to_restore=""
+gl_selinux_level="enforcing"
 gl_selinux_state="enabled"
 gl_selinux_state_set=0
 gl_ssh_key_file=""
@@ -200,8 +204,31 @@ gl_zathras_specific_vals="config/zathras_specific_vals_def"
 gl_zathras_specific_vals_set=0
 gl_no_packages=0
 gl_no_pbench_install=0
+gl_pbench_stats="medium"
 gl_cpu_type_request="none"
 gl_run_file=""
+gl_failed_test_rpt="failed_tests"
+
+#
+# We get the number of failed test reports at the start of the test.  When we exit we will
+# check the original number of reported failed tests to what we currently have.  If they
+# are different then we will report failed for the run.  This is done because burden calls
+# back onto itself
+if [[ -f $gl_failed_test_rpt ]]; then
+	gl_failed_test_rpt_start_lines=`wc -l $gl_failed_test_rpt | awk '{print $1}'`
+else
+	gl_failed_test_rpt_start_lines=0
+fi
+gl_test_user=""
+
+UTILS_DIR=`echo $BASH_SOURCE | rev | cut -d/ -f2- | rev`
+echo $UTILS_DIR | grep -q "^/"
+if [ $? -ne 0 ]; then
+	curdir=`pwd`
+	UTILS_DIR=${curdir}/$UTILS_DIR/utils
+else
+	UTILS_DIR=$UTILS_DIR/utils
+fi
 
 #
 # Generate report of test status.
@@ -224,189 +251,36 @@ process_results()
 	fi
 }
 
-break_appened_to_file()
-{
-	if [[ -f $1 ]]; then
-		grep -q host_config $1
-		if [ $? -eq 0 ]; then
-			cat $1 >> ${gl_scenario_to_run}.new
-		fi
-		rm $1
-	fi
-}
-
-#
-# break up the large tests if need to.  If the tests get to be too large
-# it can cause problems later by running all the systems in the scenario
-# file at once.
-#
-break_sub_tests()
-{
-	work_file=`mktemp /tmp/zathras_add_in.XXXXX`
-	work_file_header=`mktemp /tmp/zathras_add_in.XXXXX`
-	in_test_section=0
-	test_data=0
-	index=1
-	host_out=0
-	add_in=0
-
-	rm ${gl_scenario_to_run}.new
-	while IFS= read -r line
-	do
-		if [ $in_test_section -ne 1 ]; then
-			if [[ $line == "systems"* ]]; then
-				in_test_section=1
-			fi
-			echo "$line" >> ${gl_scenario_to_run}.new
-			continue
-		fi
-		if [[ $line != "    "* ]]; then
-			if [ $test_data -eq 1 ]; then
-				break_appened_to_file $work_file
-				add_in=0
-			fi
-			if [[ $line == *"system"* ]]; then
-				echo "  system${index}:" >> ${gl_scenario_to_run}.new
-				let "index=$index+1"
-				host_out=1
-			fi
-			continue
-		fi
-		host_len=`echo $line | wc -c`
-		if [[ $line != *"host_config"* ]] || [ $host_len -lt 1024 ]; then
-			echo "$line" >> $work_file
-			test_data=1
-			add_in=1
-			continue
-		fi
-		#
-		# Break up and rebuild
-		#
-		all_hosts=`echo $line | sed "s/,/ /g" | sed "s/\"//g"`
-
-		cp $work_file $work_file_header
-		host_list=""
-		separ=""
-		for hosts in $all_hosts; do
-			if [[ $hosts == *"host_config"* ]]; then
-				continue;
-			fi
-			host_list=${host_list}${separ}${hosts}
-			separ=","
-			hl_len=`echo $host_list | wc -c`
-			if [ $hl_len -gt 1000 ]; then
-				if [[ $host_out -eq 0 ]]; then
-					echo "  system${index}:" >> $work_file
-					let "index=$index+1"
-				fi
-				host_out=1
-				if [ $add_in -eq 0 ]; then
-					cat $work_file_header >> $work_file
-				fi
-				add_in=1
-				echo "    host_config: \"${host_list}\"" >> $work_file
-				echo "  system${index}:" >> $work_file
-				add_in=0
-				let "index=$index+1"
-				echo "    host_config: \"SYS_BARRIER\"" >> $work_file
-				host_list=""
-				separ=""
-			fi
-		done
-		if [[ $host_list != "" ]]; then
-			echo "  system${index}:" >> $work_file
-			let "index=$index+1"
-			if [ $add_in -eq 0 ]; then
-				cat $work_file_header >> $work_file
-			fi
-			add_in=1
-			echo "    host_config: \"${host_list}\"" >> $work_file
-			host_list=""
-		fi
-		break_appened_to_file $work_file
-		add_in=0;
-		test_data=1
-	done < "${gl_scenario_to_run}"
-	break_appened_to_file $work_file
-	add_in=0;
-	if [[ -f ${gl_scenario_to_run}.new ]]; then
-		gl_scenario_to_run=${gl_scenario_to_run}.new
-	fi
-	rm $work_file_header
-}
-
-breakup_large_test()
-{
-#
-# Check to see if we have any large tests
-#
-	if [[ -f ${gl_scenario_to_run}.new ]]; then
-		rm ${gl_scenario_to_run}.new
-	fi
-	while IFS= read -r line
-	do
-		value=`echo $line | wc -c`
-		if [ $value -gt 1024 ]; then
-			break_sub_tests
-			#
-			# No need to check further, we have found a line 
-			# that is too long and have updated the entire file.
-			#
-			break
-		fi
-	done < "${gl_scenario_to_run}"
-}
-#
-# The lock_file is created in tools_bin/update_system.  If we created the lock
-# file, then remove it.
-#
-cleanup_install_lock()
-{
-	if [[ -f "lock_file" ]]; then
-		while IFS= read -r line
-		do
-			if [[ $line == $BASHPID ]]; then
-				rm lock_file
-			fi
-		done < "lock_file"
-	fi
-}
-
 #
 # We call in here for cleanup purpose, then exit out
-# Arg1: If null, simple exit out, else text string of error
+# Arg1: Message string
 # Arg2: The exit code
 # Arg3: If present instance name
 #
 
 cleanup_and_exit()
 {
-	cleanup_install_lock
-	if [[ $gl_cli_supplied_options != "" ]]; then
-		rm $gl_cli_supplied_options 2> /dev/null
-	fi
-	if [[ $1 != "" ]]; then
-		if [[ $3 != "" ]]; then
-			sysname=${3}
-		else
-			sysname=${gl_host_config}
-		fi
-		timestamp=`date`
-		if [[ ${sysname} != "" ]]; then
-			error_string="${timestamp} ${sysname}, $1"
-		else
-			error_string="${timestamp} $1"
-		fi
-		echo -e "${error_string}"
-		if [[ $2 -eq 1 ]]; then
-			flock -x $gl_top_dir/failed_runs echo -e "${error_string}" >> $gl_top_dir/failed_runs
-		fi
-	fi
+	scenario_restore=""
+	sysname=""
+	rtc=$2
 	if [[ $gl_scenario_to_restore != "" ]]; then
-		rm $gl_scenario_to_run
-		mv $gl_scenario_to_restore $gl_scenario_to_run
+		scenario_restore="--restore_file $gl_scenario_to_restore,$gl_scenario_to_run"
 	fi
-	exit $2
+	if [[ $3 != "" ]]; then
+		sysname="--sysname $3"
+	fi
+	cd $gl_top_dir
+	#
+	# We only check the failed report file if this is the burden process that
+	# started it all.
+	#
+	if [ $gl_first_invocation -eq 1 ] && [[ -f $gl_failed_test_rpt ]]; then
+		new_lines=`wc -l $gl_failed_test_rpt | awk '{print $1}'`
+		if  [ $new_lines -ne $gl_failed_test_rpt_start_lines ]; then
+			rtc=1
+		fi
+	fi
+	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
 }
 
 make_dir_report_errors()
@@ -455,7 +329,16 @@ gcp_image_lookup()
 	cleanup_and_exit "" 0
 }
 
-
+get_cloud_acct_id()
+{
+	if [[ $gl_cloud_acct_id == "" ]]; then
+		if [[ $gl_system_type == "aws" ]]; then
+			gl_cloud_acct_id=`aws sts get-caller-identity | awk '{print $1}'`
+		else
+			cleanup_and_exit "$gl_system_type:  Do not support pulling account id at this time" 1
+		fi
+	fi
+}
 
 #
 # Show the OS versions available for AWS for a specific OS vendor.
@@ -468,14 +351,19 @@ show_aws_images()
 		filter="Name=name,Values=RHEL*"
 	elif [[ $gl_os_vendor == "amazon"  ]]; then
 		filter="Name=name,Values=amz*,al2023*"
-	else
-		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, amazon" 1 ${gl_system_type}
+	elif [[ $gl_os_vendor != "private"  ]]; then
+		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, amazon, private" 1 ${gl_system_type}
 	fi
 	end_date=`date +"%Y"`
 	let "start_date=$end_date-1"
 	if [[ $2 -eq 0 ]]; then
 		echo "Pulling requested AWS OS image information, may take a bit."
-		aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}"
+		if [[ $gl_os_vendor != "private" ]]; then
+			aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}"
+		else
+			get_cloud_acct_id
+			aws ec2 describe-images --owners $gl_cloud_acct_id --output table --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]'
+		fi
 		cleanup_and_exit "" 0
 	fi
 	#
@@ -491,8 +379,15 @@ show_aws_images()
 			ami_arch=""
 		fi
 		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}" | grep "${ami_check}"`
-		if [[ $ami_value == "" ]]; then
-			cleanup_and_exit  "Error: ${gl_cloud_os_version}: unknown ami" 1 ${gl_system_type}
+		if [[ $ami_value != "" ]]; then
+			#
+			# check_for_private_amis
+			#
+			get_cloud_acct_id
+			ami_value=`aws ec2 describe-images --owners $gl_cloud_acct_id --output table --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' | grep "${ami_check}"`
+			if [[ $ami_value != "" ]]; then
+				cleanup_and_exit  "Error: ${gl_cloud_os_version}: unknown ami" 1 ${gl_system_type}
+			fi
 		fi
 		#
 		# Check to make sure the architecture matches that of the ami
@@ -1318,21 +1213,26 @@ set_cloud_region()
 #
 set_user_name()
 {
-	if [[ $gl_system_type == "aws" ]]; then
-		if [[ $gl_os_vendor == "ubuntu" ]]; then
-			echo "  test_user: ubuntu" >> ansible_vars_main.yml
+	if [[ $gl_test_user == "" ]]; then
+		if [[ $gl_system_type == "aws" ]]; then
+			if [[ $gl_os_vendor == "ubuntu" ]]; then
+				gl_test_user=ubuntu
+			else
+				gl_test_user=ec2-user
+			fi
+		elif [[ $gl_system_type == "azure" ]]; then
+			# Azure normally defaults to the running username
+			gl_test_user=${user_name}
+		elif [[ $gl_system_type == "gcp" ]]; then
+			gl_test_user=${user_name}
 		else
-			echo "  test_user: ec2-user" >> ansible_vars_main.yml
+			#
+			# Default to root
+			#
+			gl_test_user=root
 		fi
-	elif [[ $gl_system_type == "azure" ]]; then
-		# Azure normally defaults to the running username
-		echo "  test_user: ${user_name}" >> ansible_vars_main.yml
-	elif [[ $gl_system_type == "gcp" ]]; then
-		echo "  test_user: ${user_name}" >> ansible_vars_main.yml
 	fi
-	if [[ $gl_system_type == "local" ]]; then
-		echo "  test_user: root" >> ansible_vars_main.yml
-	fi
+	echo "  test_user: $gl_test_user" >> ansible_vars_main.yml
 }
 
 #
@@ -1351,10 +1251,10 @@ azure_specific_os_version()
 	az_cloud_resource_group=${user_name}-${az_postfix}
 	echo "  cloud_resource_group: ${az_cloud_resource_group}-00" >> ansible_vars_main.yml
 	#
-	# Azure wants to be difficult about this ... fine.
-	# This is gross, fix it to be pretty some day
+	# The publisher field in the urn may be different case (go figure) then expected..
+	# So we need to go and pull the publisher from az_vm image show.
 	#
-	azpublisher=$(echo $gl_cloud_os_version | cut -f 1 -d:)
+	azpublisher=`az vm image show --location eastus --urn ${gl_cloud_os_version} | grep publisher | cut -d: -f 2 | cut -d'"' -f 2`
 	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
 	azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
 	azversion=$(echo $gl_cloud_os_version | cut -f 4 -d:)
@@ -1388,6 +1288,10 @@ aws_specific_os_version()
 			ami_check=$ami
 		fi
 		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}" | grep "${ami_check}"`
+		if [[ $ami_value == "" ]]; then
+			get_cloud_acct_id
+			ami_value=`aws ec2 describe-images --owners $gl_cloud_acct_id | grep IMAGES | grep $ami_check`
+		fi
 		if [[ $ami_value == *"${architecture}"* ]]; then
 			echo "  cloud_os_version: ${ami_check}" >> ansible_vars_main.yml
 			ami_found=1
@@ -1510,10 +1414,8 @@ generate_tags()
 		indent="      "
 	fi
 	if [[ $gl_system_type == "azure" ]]; then
-		echo "resource \"azurerm_resource_group\" \"resource_group\" {" >> add_main_vars.tf
-    		echo "    name     = var.resource_group"  >> add_main_vars.tf
-		echo "    location = var.location" >> add_main_vars.tf
-		echo "    tags = {" >> add_main_vars.tf
+		echo "locals {" >> add_main_vars.tf
+		echo "  tags = {" >> add_main_vars.tf
 		indent="        "
 	fi
 	if [[ $gl_system_type == "gcp" ]]; then
@@ -1559,9 +1461,6 @@ generate_tags()
 		echo "  }" >> add_main_vars.tf
 	fi
 	if [[ $gl_system_type == "azure" ]]; then
-		echo "    }" >> add_main_vars.tf
-		echo "    timeouts {" >> add_main_vars.tf
-		echo "        delete = \"15m\"" >> add_main_vars.tf
 		echo "    }" >> add_main_vars.tf
 	fi
 	if [[ $gl_system_type == "gcp" ]]; then
@@ -1734,7 +1633,9 @@ create_ansible_options()
 			fi
 			echo 0 >> instance_cost
 		fi
-		make_dir_report_errors tf
+		if [[ $gl_system_type != "local" ]]; then
+			make_dir_report_errors tf
+		fi
 		make_dir_report_errors tests_to_run
 		make_dir_report_errors tests_to_use
 		#
@@ -1815,6 +1716,7 @@ create_ansible_options()
 		echo "  spot_start_price: ${gl_spot_price}" >> ansible_vars_main.yml
 		echo "  spot_range: ${spot_pricing}" >> ansible_vars_main.yml
 		echo "  "selinux_state: $gl_selinux_state >> ansible_vars_main.yml
+		echo "  "selinux_level: $gl_selinux_level >> ansible_vars_main.yml
 		user_name=`id | cut -d'(' -f 2 | cut -d')' -f 1`
 		#
 		# Verify the cloud os version is valid
@@ -1935,6 +1837,7 @@ create_ansible_options()
 			fi
 			echo "  pbench_install: 0" >> ansible_vars_main.yml
 		fi
+		echo "  pbench_tool_level: ${gl_pbench_stats}" >> ansible_vars_main.yml
 		if [[ $gl_install_pbench -eq 1 ]]; then
 			if [[ "$gl_os_vendor" != "rhel" ]]; then
 				cleanup_and_exit "Pbench is only usable with RHEL at this time." 1
@@ -1954,10 +1857,10 @@ create_ansible_options()
 		#
 		# Start the test in the background, record the pid and bump the index.
 		#
-		if [[ $gl_no_clean_up -eq 0 ]]; then
-			rm_dirs="-r"
+		if [[ $gl_no_clean_up -eq 0 ]] && [ $gl_cloud_terminate_instance -eq 1 ]; then
+			rm_tf_dirs="-r"
 		else 
-			rm_dirs=""
+			rm_tf_dirs=""
 		fi
 		#
 		# Update repos to use if required.
@@ -1988,7 +1891,7 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [ $gl_preflight -eq 0 ]; then
-			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_dirs "
+			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_tf_dirs "
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
@@ -2034,7 +1937,11 @@ create_ansible_options()
 		worker=`echo $gl_test_list_out | cut -d' ' -f2- | sed "s/,/ /g"`
 		if [ -d "tests_to_run" ]; then
 			echo "========================================" > results_info
-			test_sys=`grep host_or_cloud_ins ansible_vars.yml | cut -d':' -f 2 | sed "s/ //g"`
+			if [[ $gl_sys_type != "local" ]]; then
+				test_sys=`grep host_or_cloud_ins ansible_vars.yml | cut -d':' -f 2 | sed "s/ //g"`
+			else
+				test_sys=${gl_host_config}
+			fi
 			echo "system config: ${test_sys}" >> results_info
 			for i in `ls tests_to_run`
 			do
@@ -2063,14 +1970,19 @@ create_ansible_options()
 				else
 					make_dir_report_errors junk
 					cd junk
-					results_report=`tar xvf ../${results_file} | grep test_results_report`
-					if [[ $results_report != "" ]]; then
-						grep -q Failed $results_report
-						if [ $? -ne 1 ]; then
-							echo "${timestamp} Error: System: ${test_sys}, Test, $i, reported failure" >> $gl_top_dir/failed_runs
-							echo "    Error: reported a failure" >> ../results_info
+					for i in $results_file; do
+						unzip -q ../${i}
+						tfile=`ls *tar`
+						results_report=`tar xvf ${tfile} | grep test_results_report`
+						if [[ $results_report != "" ]]; then
+							grep -q Failed $results_report
+							if [ $? -ne 1 ]; then
+								echo "${timestamp} Error: System: ${test_sys}, Test, $i, reported failure" >> $gl_top_dir/failed_runs
+								echo "    Error: reported a failure" >> ../results_info
+							fi
 						fi
-					fi
+						rm $tfile
+					done
 					cd ..
 					rm -rf junk
 					echo "    results_ptr: ${direct}/${results_file}" >> results_info
@@ -2222,12 +2134,12 @@ check_for_terraform()
 package_check()
 {
 	check_for_pip3
-	check_for_boto
 	check_for_ansible
 	check_for_yq
 	check_for_jq
 	check_for_python
 	if [[ $gl_system_type == "aws" ]]; then
+		check_for_boto
 		check_for_aws
 	fi
 	check_for_terraform
@@ -2318,10 +2230,31 @@ verify_force_upload_value()
 #
 # Verify that the value set for selinux is either enabled or disabled.
 #
-verify_selinux_value()
+verify_selinux_state()
 {
-	if [[ $1 -ne "enabled" ]] && [[ $1 -ne "disabled" ]] ; then
-		cleanup_and_exit "Error: $1, is an unrecognized selinux value.  Valid values are enabled/disabled" 1
+	if [[ $1 -ne "enabled" ]] && [[ $1 -ne "disabled" ]]; then
+		cleanup_and_exit "Error: $1, is an unrecognized selinux state value.  Valid values are enabled/disabled" 1
+	fi
+}
+
+#
+# Verify that the value set for selinux level  is either enforcing, permissive or disabled.
+#
+verify_selinux_level()
+{
+	if [[ $1 -ne "enforcing" ]] && [[ $1 -ne "disabled" ]] && [[ $1 -ne "permissive" ]]; then
+		cleanup_and_exit "Error: $1, is an unrecognized selinux level value.  Valid values are enforcing/permissive/disabled" 1
+	fi
+}
+
+#
+# Ubuntu we do not do enforcing.  Issue is Ubuntu does not have it on by default and to get everything to work properly
+# requires a lot of work, and long reboot times.
+#
+verify_selinux()
+{
+	if [[ $gl_os_vendor == "ubuntu" ]] && [[ $gl_selinux_state == "enabled" ]] && [[ $gl_selinux_level == "enforcing" ]]; then
+		cleanup_and_exit "Error: We do not support enforcing with selinux on ubuntu" 1
 	fi
 }
 
@@ -2575,8 +2508,8 @@ convert_scenario_file()
 	#
 	# Check to make sure we have the proper number of host configs
 	# 
-	sc_cnt=`grep host_config $tmp_run_file | grep -o ,|  wc -l`
-	ps_cnt=`grep host_config parse_file.tmp | grep -o ,| wc -l`
+	sc_cnt=`grep host_config $tmp_run_file |  wc -l`
+	ps_cnt=`grep host_config parse_file.tmp | wc -l`
 	if [ $ps_cnt != $sc_cnt ]; then
 		cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
 	fi
@@ -2835,7 +2768,7 @@ run_scenario()
 		wait $pid
 	done
 	if [[ $gl_update_target != $value_not_set ]]; then
-		cleanup_install_lock
+		$UTILS_DIR/cleanup_install_lock $BASHPID
 	fi
 }
 
@@ -2873,116 +2806,49 @@ verify_test_configuration()
 	# is the latest.
 	#
 	if [[ $gl_test_version_check -eq 1 ]] || [[ $gl_update_test_versions -eq 1 ]]; then
-		pushd config > /dev/null
-		if [[ $gl_test_version_check -eq 1 ]]; then
-			echo Git version check.
-			printf '%32s%10s%10s%6s\n' "Test" "Using" "latest" "Ok"
-		else
-			echo updating test versions
-		fi
-		for test_repo in `ls *yml`; do
-			if [[ $test_repo == "full_test_defs.yml" ]] ||
-			   [[ $test_repo == "java_pkg_def.yml" ]] ||
-			   [[ $test_repo == "default_template.yml" ]] ||
-			   [[ $test_repo = "test_defs.yml" ]] ||
-			   [[ $test_repo = "install_pbench_vars.yml" ]] ||
-			   [[ $test_repo = "verify.yml" ]]; then
-				continue;
-			fi
-			using_version=`grep repo_file $test_repo | cut -d':' -f2 | sed "s/.zip//g" |cut -d'"' -f2`
-			location=`grep location: ${test_repo} | cut -d: -f2- | sed "s/ //g"`
-			if [[ $location == "https://github.com"* ]]; then
-				repo=`echo $location | cut -d'/' -f 1-5`
-				git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags $repo | rev | cut -d'/' -f1 | rev >  git_vers
-				#
-				# Make sure the tag we want is present
-				#
-				version_fail=""
-				grep ${using_version} git_vers > /dev/null
-				if [ $? -ne 0 ]; then
-					version_fail="$repo, version $using_version is not defined."
-					bail_out=1
-				fi
-				latest=`tail -1 git_vers`
-				if [[ $using_version != $latest ]]; then
-					version_ok="no"
-				else
-					version_ok="yes"
-				fi
-				if [[ $gl_update_test_versions -eq 0 ]]; then
-					printf '%32s%10s%10s%6s\n' $test_repo $using_version $latest $version_ok
-					if [[ $version_fail != "" ]]; then
-						echo Failure: $version_fail
-					fi
-				else
-					if [[ $version_ok == "no" ]]; then
-						#
-						# We have to walk the file instead of using a series of sed pipes.
-						# The reasons for this are:
-						#  1) We can not simply update the version number through the whole
-						#     file, we might change something we should not.  For example,
-						#     if an option passed to the test happens to match the current
-						#     version number in the file.
-						#       Example:
-						#         exec_dir: "test-wrapper-1.0/test"
-						#         repo_file: "v1.0.zip"
-						#         test_specific: "--option burden_version_1.0
-						#  2) If we do a full sed replacement, if there are extra spaces
-						#     in the line, we will not change it.
-						#  3) We could pull the required string via grep, and build the new
-						#     one.  However that will require reading the file 3 times (2
-						#     greps, and then one update), versus the one read if we simply
-						#     walk the file, and look for the line to replace.
-						#
-						echo Updating version for $test_repo from $using_version to $latest
-						while IFS= read -r replace_line
-						do
-							if [[ $replace_line == "repo_file:"* ]]; then
-								echo $replace_line | sed "s/$using_version/$latest/g" >> ${test_repo}.new
-								continue
-							fi
-							if [[ $replace_line == "exec_dir:"* ]]; then
-								replace_with=`echo $latest | sed "s/^v/-/g"`
-								replacing=`echo $using_version | sed "s/^v/-/g"`
-								echo $replace_line | sed "s/$replacing/$replace_with/g" >> ${test_repo}.new
-								continue
-							fi
-							echo $replace_line >> ${test_repo}.new
-						done < "${test_repo}"
-						mv $test_repo ${test_repo}.orig
-						mv ${test_repo}.new ${test_repo}
-					fi
-				fi
-				rm -rf $temp_dir 
-			else
-				echo $test_repo, Only github is supported.
-			fi
-		done
-		popd > /dev/null
-		if [ $gl_update_test_versions -eq 1 ]; then
-			cleanup_and_exit "Update of test versions completed" 0
-		fi
+		source $UTILS_DIR/test_versions_ops --update_test_versions $gl_update_test_versions --test_version_check $gl_test_version_check --config_dir config
 	fi
 
 	#
 	# Verify any upload_extra files.  They are expected to be local on the system
 	#
-	grep "^    upload_extra:" $config_file | cut -d':' -f 2 | sed "s/^ //g" > $verify_tmp_file
+
 	while IFS= read -r fline
 	do
-		if [[ $fline == \""none\"" ]]; then
+		if [[ $fline == *" test_name:"* ]]; then
+			test_name=`echo $fline | awk '{print $2}'`
 			continue
 		fi
-		if [[ $fline == \""<replace with kit location>\"" ]]; then
+		if [[ $fline != *" upload_extra:"* ]]; then
 			continue
 		fi
-		file_check=`echo $fline | sed "s/\"//g" | sed "s/,/ /g"`
+		file=`echo $fline | awk '{print $2}'`
+		if [[ $file == \""none\"" ]] || [[ $file == \""<replace with kit location>\"" ]]; then
+			continue
+		fi
+		file_check=`echo $file | sed "s/\"//g" | sed "s/,/ /g"`
 		for file in $file_check; do
 			if [[ ! -f "$file" ]]; then
-				cleanup_and_exit "Error: Upload extra file $file not found." 1
+				if [[ $gl_scenario_to_run != "" ]]; then
+					grep -q $test_name $gl_scenario_to_run
+					rtc=$?
+				else
+					 echo $gl_test_list_out | grep -q
+					 rtc=$?
+				fi
+				#
+				# Bail only if we are suppose to run the associated test.  Else
+				# simply issue a warning.
+				#
+				echo test: $test_name
+				if [ $rtc -eq 0 ]; then
+					cleanup_and_exit "Error: Upload extra file $file not found." 1
+				else
+					echo Warning: Upload extra file $file not found.
+				fi
 			fi
 		done
-	done < "${verify_tmp_file}"
+	done < "${config_file}"
 	#
 	# Verify test_run_from field.  Valid values is local and remote
 	#
@@ -3151,81 +3017,6 @@ integrate_templates()
 }
 
 #
-# List the active systems created by tf
-#
-tf_list()
-{
-	dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
-	for tf_show in $dirs; do
-		pushd $tf_show > /dev/null
-		terraform show > tf_list_info
-		grep subnet tf_list_info >& /dev/null
-		if [ $? -eq 0 ]; then
-			work_dir=`pwd | rev | cut -d'/' -f 2 | rev`
-			grep  azure tf_list_info >& /dev/null
-			if [ $? -eq 0 ]; then
-				vm_size=`grep size tf_list_info | grep -v disk | cut -d'"' -f2`
-				public_ip=`grep public_ip_address tf_list_info | head -1 | cut -d'"' -f2 | sort -u`
-				name_tag=`grep environment tf_list_info | cut -d'"' -f4 | sort -u`
-				printf "work_dir: %s\n" $work_dir
-				printf "\tfull_path: %s\n" $tf_show
-				printf "\tvm_size: %s\n" $vm_size
-				printf "\tpublic_ip: %s\n" $public_ip
-				printf "\tname_tag: %s\n" $name_tag
-			fi
-			grep  aws tf_list_info >& /dev/null
-			if [ $? -eq 0 ]; then
-				vm_size=`grep instance_type tf_list_info | cut -d'"' -f2`
-				inst_state=`grep instance_state tf_list_info | cut -d'"' -f2`
-				public_dns=`grep public_dns tf_list_info | cut -d'"' -f2 | sort -u`
-				name_tag=`grep Name tf_list_info | cut -d'"' -f4 | sort -u`
-				printf "work_dir: %s\n" $work_dir
-				printf "\tfull_path: %s\n" $tf_show
-				printf "\tvm_size: %s\n" $vm_size
-				printf "\tinstance_state: %s\n" $inst_state
-				printf "\tpublic_dns: %s\n" $public_dns
-				printf "\tname_tag: %s\n" $name_tag
-			fi
-		fi
-		rm tf_list_info
-		popd > /dev/null
-	done
-	exit
-}
-#
-# Walk all the tf directories and attempt to remove the instance.
-#
-tf_terminate()
-{
-
-	if [[ $gl_tf_term_list == "" ]]; then
-		dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
-	else
-		dirs=`echo $gl_tf_term_list | sed "s/,/ /g"`
-		echo $gl_tf_term_list
-		echo $dirs
-	fi
-	for tf_del in $dirs; do
-		pushd $tf_del > /dev/null
-		terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
-		if [ $? -eq 0 ]; then
-			terraform apply "destroy.tfplan"
-			#
-			# Now get arid of the tf directory.
-			#
-			if [ $gl_tf_terminate -eq 0 ]; then
-				cd ..
-				rm -rf tf
-			fi
-		else
-			echo Warning: Unable to create the plan for $tf_del
-		fi
-		popd > /dev/null
-	done
-	exit
-}
-
-#
 # If the test_def_dir has https or git in it, we will pull from
 # the git repo.  If not simply check that the file exists.
 #
@@ -3326,7 +3117,7 @@ usage()
 	echo "    when a repo error occurs."
 	echo "  --individ_vars: Contains various burden settings.  Takes precedence over the scenario file, but is overridden"
 	echo "    by the command line.  Default is config/zathras_specific_vals_def"
-	echo "  --java_version: java version to install, java-8, java-11"
+	echo "  --java_version: java version to install, java-8, java-11, java-17, or java-21"
 	echo "  --kit_upload_directory: Full path to directory uploading to.  If not present, Zathras will locate"
 	echo "    the filesystem with the most space on it and use that location."
 	echo "  --max_systems <n>:  Maximum number of burden subinstances that will be created from the parent.  Each subinstance"
@@ -3337,6 +3128,11 @@ usage()
 	echo "  --no_spot_recover: Do not recover from a spot system going away."
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
+	echo "  --pbench_install_stats: level of pbench stats to insall: light, medium, legacy, heavy.  Default is medium."
+	echo "        light = vmstat"
+	echo "	      medium = vmstat,iostat,sar"
+        echo "        heavy = vmstat,iostat,sar,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,turbostat"
+	echo "        legacy = iostat,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,sar turbostat"
 	echo "  --persistent_log: enable persistent logging"
 	echo "  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits"
 	echo "  --results_prefix <prefix>: Run directory prefix"
@@ -3347,6 +3143,7 @@ usage()
 	echo "    , then that line is a comment.  If the line starts with a %, it indicates to replace the string."
 	echo "    Format to replace a string  % <current string>=<new string>"
 	echo "  --scenario_vars <file>: file that contains the variables for the scenario file. The default is config/zathras_scenario_vars_def."
+	echo "  --selinux_level: enforcing/permissive/disabled"
 	echo "  --selinux_state: disabled/enabled"
 	echo "  --ssh_key_file: Designates the ssh key file we are to use."
 	echo "  --show_os_versions: given the cloud type, and OS vendor, show the available os versions"
@@ -3381,6 +3178,8 @@ usage()
 	echo "  --test_iter <iterations>: how many iterations of the test to run (includes linpack)."
 	echo "     For cloud instances, this will terminate the cloud image and start"
 	echo "     a new one for each iteration"
+	echo "  --test_user <user>:  Name of the user to log into the system with.  The setting of this"
+	echo "    option will override the defaults based on cloud or local system."
 	echo "  --test_versions <test>,<test>....: Shows the versions of the test the are available"
 	echo "    and brief description of the version.  This only applies to git repos"
 	echo "  --test_version_check: Checks to see if we are running the latest versions of the tests and"
@@ -3555,6 +3354,11 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--pbench_install_stats)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_pbench_stats=$2
+			shift_by=2
+		;;
 		--persistent_log)
 			if [[ $gl_persistent_log -eq 0 ]]; then
 				echo "$1" >> $gl_cli_supplied_options
@@ -3606,13 +3410,17 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--selinux_level)
+			gl_selinux_level=$2
+			echo "$1 $gl_selinux_level" >> $gl_cli_supplied_options
+			verify_data verify_selinux_level $gl_selinux_level
+			shift_by=2
+		;;
 		--selinux_state)
-			if [[ $gl_selinux_state_set -eq 0 ]]; then
-				gl_selinux_state_set=1
-				echo "$1 $2" >> $gl_cli_supplied_options
-				gl_selinux_state=$2
-				verify_data verify_selinux_value $gl_selinux_state
-			fi
+			gl_selinux_state_set=1
+			gl_selinux_state=$2
+			echo "$1 $gl_selinux_state" >> $gl_cli_supplied_options
+			verify_data verify_selinux_state $gl_selinux_state
 			shift_by=2
 		;;
 		--show_os_versions)
@@ -3679,6 +3487,11 @@ set_general_value()
 		;;
 		--test_version_check)
 			shift_by=1
+		;;
+		--test_user)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_test_user=$2
+			shift_by=2
 		;;
 		--test_versions)
 			#
@@ -3783,6 +3596,7 @@ grab_cli_data()
 		"os_vendor"
 		"package_name"
 		"no_pbench_install"
+		"pbench_install_stats"
 		"results_prefix"
 		"retry_failed_tests"
 		"run_file"
@@ -3790,6 +3604,7 @@ grab_cli_data()
 		"ssh_key_file"
 		"tuned_profiles"
 		"scenario_vars"
+		"selinux_level"
 		"selinux_state"
 		"system_type"
 		"terminate_cloud"
@@ -3798,6 +3613,7 @@ grab_cli_data()
 		"test_def_dir"
 		"test_def_file"
 		"test_override"
+		"test_user"
 		"test_versions"
 		"tf_terminate_list"
 		"tuned_reboot"
@@ -4099,7 +3915,10 @@ first_invocation()
 		#
 		# Need to make sure the lines do not get to big.
 		#
-		breakup_large_test
+		gl_scenario_to_run=`$UTILS_DIR/brk_up_large_scn_host_configs --scenario $gl_scenario_to_run`
+		if [ $? -ne 0 ]; then
+			cleanup_and_exit "Break up of scenario file failed" 1
+		fi
 		fields=`grep "\[" ${gl_scenario_to_run}`
 		if [[ $fields != "" ]]; then
 			cleanup_and_exit "Error: following fields in ${gl_scenario_to_run} has no entry in ${gl_config_vars_file}:\n${fields}" 1
@@ -4124,14 +3943,16 @@ fi
 # Does not return
 #
 if [ $gl_tf_terminate -eq 1 ]; then
-	tf_terminate
+	$UTILS_DIR/terraform_ops --terminate_list $gl_tf_term_list
+	cleanup_and_exit "" 0
 fi
 
 #
 # Does not return
 #
 if [ $gl_tf_list -eq 1 ]; then
-	tf_list
+	$UTILS_DIR/terraform_ops --tf_list
+	cleanup_and_exit "" 0
 fi
 
 if [[ $gl_run_prefix == "" ]]; then
@@ -4178,6 +3999,8 @@ if [[ $gl_show_os_versions -eq 1 ]]; then
 	cloud_image_lookup
 	cleanup_and_exit "" 0
 fi
+
+verify_selinux
 
 #
 # Retrieve the scenario file if need be.
@@ -4286,19 +4109,6 @@ general_setup $test_def_info
 # List of tests to run
 #
 gl_test_list_out=$gl_test_list
-
-
-#
-# At this time, local systems (systems designated via  an ip)
-# are expected to be running RHEL.
-#
-if [[ $gl_system_type == "local" ]]; then
-	#
-	# FIXME, we will need to allow for multiple
-	# types in the future. 
-	#
-	gl_os_vendor="rhel"
-fi
 
 #
 # Update the OS image if a target is designated.

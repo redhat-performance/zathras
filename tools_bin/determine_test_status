@@ -1,8 +1,7 @@
 #!/bin/bash
 
-rm initial_summary
-rm all_sys
-rm test_summary
+rm  -f initial_summary all_sys test_summary;
+
 curdir=`pwd`
 
 determine_tests()
@@ -15,12 +14,15 @@ determine_tests()
 		#
 		# First check to see if we have a results file.
 		#
-		ls results_${check}_tuned_*tar >>/dev/null 2>&1
+		ls results_${check}*zip >>/dev/null 2>&1
 		if [[ $? -ne 0 ]]; then
 			echo ${instance}:${check} no results >> ${curdir}/initial_summary
 			continue
 		fi
-		file=`ls results_${check}_tuned_*tar`
+		file=`unzip -l results_${check}.zip | grep tar | awk '{print $4}'`
+		if [ ! -f $file ]; then
+			unzip -q results_${check}.zip
+		fi
 		for tball in $file; do
 			top_dir=`tar --list --file=${tball} | head -1 | cut -d'/' -f 1`
 			tar xf $tball
@@ -46,7 +48,9 @@ find . -name "ansible_vars_main.yml" | cut -d/ -f2 > results_dirs
 for rdir in `cat results_dirs`
 do
 	pushd $rdir > /dev/null
-	determine_tests
+	if [[ -f ansible_vars.yml ]]; then
+		determine_tests
+	fi
 	popd > /dev/null
 done < "results_dirs"
 #
