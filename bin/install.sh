@@ -147,10 +147,10 @@ for collection in "${ansible_collections[@]}"; do
 done
 
 
-echo 'Before you can run Zathras:'
-echo '****Ensure ~/.local/bin is in your path'
-echo '****Set up a scenario file'
-echo '****If running a local system, create the local config file for the system under test (SUT)'
-echo '****If using an existing system, ssh-copy-id between the system Zathras is installed on and the SUT.'
-echo '****If working in a cloud environment do not perform the ssh-copy-id.'  
-echo '****Update/create the test configuration files in /zathras/config/ to reflect your requirements.' 
+echo "Before you can run Zathras:"
+echo "****Ensure ~/.local/bin is in your path"
+echo "****Set up a scenario file"
+echo "****If running a local system, create the local config file for the system under test (SUT)"
+echo "****If using an existing system, ssh-copy-id between the system Zathras is installed on and the SUT."
+echo "****If working in a cloud environment do not perform the ssh-copy-id."  
+echo "****Update/create the test configuration files in /zathras/config/ to reflect your requirements." 
