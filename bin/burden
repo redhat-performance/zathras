@@ -2094,7 +2094,7 @@ check_for_aws()
 {
 	aws_version=`aws --version 2> /dev/null`
 	if [[ $? -eq 1 ]]; then
-		cleanup_and_exit "aws requires the aws clis to be installed\ndnf install -y awscli or pip3 install awscli" 1
+		cleanup_and_exit "aws requires the aws CLIs to be installed\ndnf install -y awscli or pip3 install awscli" 1
 	fi
 	aws_version=`echo $aws_version | cut -d'/' -f 2 | cut -d' ' -f 1`
 	report_util_version aws_version "${aws_version}"
