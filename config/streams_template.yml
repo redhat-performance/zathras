@@ -1,0 +1,8 @@
+location: https://github.com/redhat-performance/streams-wrapper/archive/refs/tags
+exec_dir: "streams-wrapper-1.22/streams"
+repo_file: "v1.22.zip"
+os_supported: all
+rhel_pkgs: gcc,bc,perf,git,unzip,perl,perl-Types-UUID.noarch,perf,numactl
+ubuntu_pkgs: gcc,build-essential,libnuma-dev,zip,unzip
+amazon_pkgs: gcc,bc,git,unzip,zip
+test_script_to_run: streams_run

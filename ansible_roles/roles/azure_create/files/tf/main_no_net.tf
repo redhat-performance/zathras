@@ -10,12 +10,19 @@ provider "azurerm" {
   features {}
 }
 
+resource "azurerm_resource_group" "resource_group" {
+    name     = var.resource_group
+    location = var.location
+    tags     = local.tags
+}
+
 
 # Create virtual network
 resource "azurerm_virtual_network" "virtual_network" {
     name                = "${var.run_label}-vnet"
     address_space       = ["10.0.0.0/16"]
     location            = var.location
+    tags		= local.tags
     resource_group_name = azurerm_resource_group.resource_group.name
 }
 
@@ -53,6 +60,7 @@ resource "azurerm_network_security_group" "nsg" {
         source_address_prefix      = "*"
         destination_address_prefix = "*"
     }
+    tags		= local.tags
 }
 
 # Create network interface
@@ -68,6 +76,7 @@ resource "azurerm_network_interface" "publicnic" {
         private_ip_address_allocation = "Dynamic"
         public_ip_address_id          = element(azurerm_public_ip.publicip.*.id,count.index)
     }
+    tags		= local.tags
 }
 
 # Connect the security group to the network interface

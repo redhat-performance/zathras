@@ -215,6 +215,11 @@ General options
   --no_spot_recover: Do not recover from a spot system going away.
   --package_name &lt;name&gt;: Use this set of packages to override the default in the test config
     file instead of the default. Default format  package name &lt;os&gt;_pkg, new name &lt;os&gt;_pkg_&lt;ver&gt;.
+  --pbench_install_stats: level of pbench stats to insall: light, medium, legacy, heavy.  Default is medium.
+       light = vmstat
+       medium = vmstat,iostat,sar
+       heavy = vmstat,iostat,sar,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,turbostat
+       legacy = iostat,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,sar turbostat
   --persistent_log: enable persistent logging
   --preflight_check: Performs various checks on the scenario file, and Zathras and then exits
   --results_prefix &lt;prefix&gt;: Run directory prefix
@@ -225,7 +230,10 @@ General options
     , then that line is a comment.  If the line starts with a %, it indicates to replace the string.
     Format to replace a string  % &lt;current string&gt;=&lt;new string&gt;
   --scenario_vars &lt;file&gt;: file that contains the variables for the scenario file, default is config/zathras_scenario_vars_def
-  --selinux_state: disabled/enabled
+  --selinux_level: ennforcing/permissive/disabled.  The setting to have in /etc/selinux/config file.  Note: Ubuntu we do not support
+    enforcing at this time.
+  --selinux_state: disabled/enabled.  If disabled is selected, selinux will be disabled via grubby (Amazon and RHEL). For Ubuntu,
+    enabled will install the require packages, update the config file and reboot.
   --ssh_key_file: Designates the ssh key file we are to use.
   --show_os_versions: given the cloud type, and OS vendor, show the available os versions
   --show_tests:  list the available test as defined in config/test_defs.yml
@@ -258,6 +266,8 @@ General options
   --test_iter &lt;iterations&gt;: how many iterations of the test to run (includes linpack).
      For cloud instances, this will terminate the cloud image and start
      a new one for each iteration
+  --test_user &ltuser&gt:  Name of the user to log into the system with.  The setting of this
+    option will override the defaults based on cloud or local system.
   --test_versions &lt;test&gt;,&lt;test&gt;....: Shows the versions of the test the are available
     and brief description of the version.  This only applies to git repos
   --test_version_check: Checks to see if we are running the latest versions of the tests and

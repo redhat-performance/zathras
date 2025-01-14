@@ -48,7 +48,7 @@
 # Note the when check for pbench_volume.  Ansible is ignoring the check in
 # pbench_disk_set/tasks/main.yml, which is a common code path.  AWS does not see this issue.
 # Ansible is saying the check there,  when: "'pbench_volume' in resource_info.name is true
-# evem when pbench_volume is not in the string.
+# even when pbench_volume is not in the string.
 #
 - name: Find pbench disk on Azure
   block:

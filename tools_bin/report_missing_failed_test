@@ -1,21 +1,28 @@
 #!/bin/bash
 find . -name ansible_vars_main.yml -print > ans_files
 cut -d '/' -f 2 ans_files | rev | cut -d_  -f 2- | rev | sort -u > systems
-rm -rf failed_test tar_check missing_test test_errors 2> /dev/null
+
+#
+# Save past errors for future reference.
+#
+if [[ -f test_errors ]]; then
+	cat test_errors >> past_errors
+fi
+rm -rf initial_summary all_sys test_summary test_errors tar_check failed_test
+
 curdir=`pwd`
 while IFS= read -r sys
 do
-	grep test_to_run ${sys}*/ansible_vars_main.yml | cut -d'[' -f 2 | cut -d ']' -f 1 | sed "s/,/\n/g" | sort -u > expected_test
+	grep test_to_run ${sys}*/ansible_vars_main.yml | cut -d'[' -f 2 | cut -d ']' -f 1 | sed "s/,/\n/g" | sed "s/pbench_//g" | sort -u > expected_test
 	while IFS= read -r expt_test
         do
 		rm -rf tar_check 2> /dev/null
 		mkdir tar_check
-		tball=`ls ${sys}*/results*${expt_test}_t*tar 2> /dev/null`
+		tball=`ls -rt ${sys}*/results*${expt_test}_*tar | tail -1 2> /dev/null`
 		if [ $? -ne 0 ]; then
 			echo "Missing: $sys $expt_test" >> ${curdir}/missing_test
 			continue
 		fi
-		tball=`echo $tball | tail -1`
 		#
 		# Untar test results, verify worked.
 		#
@@ -24,7 +31,9 @@ do
 		tar xf ../$tball $file 2> /dev/null
 		grep -q Ran $file
 		if [ $? -ne 0 ]; then
-			echo "Failed: $sys $expt_test" >> ${curdir}/failed_test
+			fail_run=`echo $tball | cut -d'/' -f 1`
+			timestamp=`date`
+			echo "${timestamp}: Failed: $fail_run $expt_test" >> ${curdir}/failed_test
 		fi
 		rm -rf tar_check
 		cd ..
@@ -48,8 +57,10 @@ if [ -f ${curdir}/failed_test ]; then
 		do
 			list=`grep $sys failed_test | grep $expt_test`
 			if [[ $list != "" ]]; then
-				failed_test=`echo $list | sed "s/Failed: $sys //g"`
-				echo failed:$sys:$failed_test >> test_errors
+				grep -q "$list" past_errors
+				if [ $? -ne 0 ]; then
+					echo $list >> test_errors
+				fi
 			fi
 		done < expected_test
 	done < ${curdir}/systems

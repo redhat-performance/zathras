@@ -28,7 +28,7 @@
 # install pbench tools
 #
   - name: install pbench tools
-    command: sudo -i /opt/pbench-agent/util-scripts/pbench-register-tool-set
+    command: sudo -i /opt/pbench-agent/util-scripts/pbench-register-tool-set {{ config_info.pbench_tool_level }}
     ignore_errors: yes
     register: pbench_register
   - name: record pbench register status
