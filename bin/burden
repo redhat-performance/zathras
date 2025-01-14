@@ -4074,7 +4074,7 @@ if [[ $gl_show_os_versions -eq 1 ]]; then
 fi
 
 if [[ "$gl_selinux_state" == "$value_not_set" ]]; then
-	if [[ "$gl_os_vendor" == "rhel" ]]; then
+	if [[ "$gl_os_vendor" == "rhel" ]] || [[ "$gl_os_vendor" == "amazon" ]]; then
 		gl_selinux_state="enabled"
 	else
 		gl_selinux_state="disabled"
