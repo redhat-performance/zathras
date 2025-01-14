@@ -99,7 +99,7 @@ for package in "${packages[@]}"; do
                 repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
 
                 # run dnf config-manager
-        sudo         sudo dnf config-manager --add-repo $repo_url
+                sudo dnf config-manager --add-repo $repo_url
 
         # install the package
         sudo dnf install terraform-1.9.8-1 -y || {
