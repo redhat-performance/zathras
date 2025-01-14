@@ -94,12 +94,11 @@ for package in "${packages[@]}"; do
         elif [ $os_release_clean = 'fedora' ]; then
             release='fedora'
         fi
+            # repo URL for terraform
+            repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
 
-                # repo URL for terraform
-                repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
-
-                # run dnf config-manager
-                sudo dnf config-manager --add-repo $repo_url
+            # run dnf config-manager
+            sudo dnf config-manager --add-repo $repo_url
 
         # install the package
         sudo dnf install terraform-1.9.8-1 -y || {
