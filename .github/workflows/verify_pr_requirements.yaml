@@ -2,7 +2,11 @@ name: Verify PR has JIRA ticket and issue number
 
 on:
   pull_request:
-    branches: [ $default-branch ]
+    types:
+      - opened
+      - edited
+    branches:
+      - main
 
 permissions:
   contents: read
