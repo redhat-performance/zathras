@@ -1900,12 +1900,18 @@ create_ansible_options()
 				base_string=${base_string}" -l $gl_ansible_verboisty"
 			fi
 			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
+			test_info_str=`grep test_to_run: $run_dir/ansible_vars_main.yml | sed "s/\[//g" | sed "s/\]//g" | cut -d: -f 2 | sed "s/ //g"`
+			echo "Starting ${test_info_str} on ${host_or_cloud_inst}"
 			kick_off.sh $base_string &
-			pids[${pindex}]=$!
+			index=$!
+			pids[${pindex}]="${index}:${test_info_str} on ${host_or_cloud_inst}"
 			let "pindex=$pindex+1"
 			if [[ $pindex -eq $gl_max_systems ]]; then
-				for pid in ${pids[*]}; do
-					wait $pid
+				for pid in "${pids[*]}"; do
+					wait_for=`echo $pid | cut -d ':' -f 1`
+					wait $wait_for
+					out_string=`echo $pid | cut -d ':' -f 2-`
+					echo Finsihed $out_string
 				done
 				pindex=0
 			fi
@@ -1919,8 +1925,11 @@ create_ansible_options()
 	#
 	# Wait for everyone to finish up.
 	#
-	for pid in ${pids[*]}; do
-		wait $pid
+	for pid in "${pids[*]}"; do
+		wait_for=`echo $pid | cut -d ':' -f 1`
+		wait $wait_for
+		out_string=`echo $pid | cut -d ':' -f 2-`
+		echo Finsihed $out_string
 	done
 
 	#
