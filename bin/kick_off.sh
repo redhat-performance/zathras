@@ -89,7 +89,8 @@ spot_recover=1
 create_attempts=5
 remove_dirs=0
 ssh_key_file=""
-while getopts "a:c:d:f:s:rS:t:" o; do
+ansible_noise_level="normal"
+while getopts "a:c:d:f:s:rS:t:l:" o; do
         case "${o}" in
 		a)
 			create_attempts=${OPTARG}
@@ -102,6 +103,9 @@ while getopts "a:c:d:f:s:rS:t:" o; do
 		;;
 		f)
 			tune_file=${OPTARG}
+		;;
+		l)
+			ansible_noise_level=${OPTARG}
 		;;
 		r)
 			remove_dirs=1
@@ -167,6 +171,10 @@ done
 export ANSIBLE_HOST_KEY_CHECKING=False
 echo "[defaults]" >> ansible.cfg
 echo "roles_path = ~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:~/.ansible/collections/ansible_collections/pbench/agent/roles" >> ansible.cfg
+echo "log_path=${curdir}/ansible_log" >> ansible.cfg
+if [[ $ansible_noise_level != "normal" ]]; then
+	echo "stdout_callback = $ansible_noise_level" >> ansible.cfg
+fi
 current_test=0
 for sys_config in ${individual};
 do

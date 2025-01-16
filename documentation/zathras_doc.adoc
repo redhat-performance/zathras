@@ -132,6 +132,10 @@ $ ./burden --verbose
 Usage: ./bin/burden
 Version: 3.0
 General options
+  --ansible_noise_level: &lt;level&gt;: How much information ansible is to output.
+    normal: standard ansible output
+    dense: just report the task executed
+    null: nothing reported
   --archive &lt;dir&gt;/&lt;results&gt;: location to save the archive information to
   --child: tells burden it is a child of another burden process and not to
     perform the initial setup work
