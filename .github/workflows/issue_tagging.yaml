@@ -33,7 +33,7 @@ jobs:
       - name: Get parent issues
         shell: bash
         run: >
-          echo PARENT_ISSUE=$(
+          echo PARENT_ISSUES=$(
           ./ci/get_parent_issue.sh
           $PR_NUMBER
           ) >> $GITHUB_ENV
@@ -42,16 +42,18 @@ jobs:
         if: env.PARENT_ISSUE == ''
         run: echo "Could not find a parent issue" && exit 1
 
-      - name: Get PR state
+      - name: Get PR states
         run: >
           echo PR_STATUS=pr_$(
             gh pr view $PR_NUMBER --json reviewRequests,latestReviews | 
             python ./ci/determine_status.py
           ) >> $GITHUB_ENV
     
-      - name: Set parent issue state
+      - name: Set parent issues state
         run: > 
-          echo "Updating $PARENT_ISSUE to $PR_STATUS" &&
-          gh issue edit $PARENT_ISSUE $REMOVE_ISSUES && 
-          gh issue edit $PARENT_ISSUE --add-label=$PR_STATUS
+          for issue in $PARENT_ISSUES; do
+            echo "Updating $issue to $PR_STATUS" &&
+            gh issue edit $issue $REMOVE_ISSUES && 
+            gh issue edit $issue --add-label=$PR_STATUS
+          done
         
