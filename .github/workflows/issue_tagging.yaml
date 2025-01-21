@@ -1,0 +1,59 @@
+name: Update parent issue
+
+permissions:
+  issues: write
+
+env:
+  ISSUE_STATE: pr_inprogress
+  REMOVE_ISSUES: --remove-label pr_approved --remove-label pr_review --remove-label pr_inprogress
+  GH_TOKEN: ${{ github.token }}
+
+on:
+  issue_comment:
+  pull_request_target:
+    types:
+      - review_requested
+  pull_request_review:
+    types:
+      - submitted
+jobs:
+  update_parent_issue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get PR number on issue type
+        if: github.event_name == 'pull_request_review'
+        run: echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> "$GITHUB_ENV"
+
+      - name: Get PR number on PR event
+        if: github.event_name == 'pull_request_target'
+        run: echo "PR_NUMBER=${{ github.event.number }}" >> "$GITHUB_ENV"
+
+      - name: Get parent issues
+        shell: bash
+        run: >
+          echo PARENT_ISSUES=$(
+          ./ci/get_parent_issue.sh
+          $PR_NUMBER
+          ) >> $GITHUB_ENV
+
+      - name: Fail when unable to find a parent issue
+        if: env.PARENT_ISSUE == ''
+        run: echo "Could not find a parent issue" && exit 1
+
+      - name: Get PR states
+        run: >
+          echo PR_STATUS=pr_$(
+            gh pr view $PR_NUMBER --json reviewRequests,latestReviews | 
+            python ./ci/determine_status.py
+          ) >> $GITHUB_ENV
+    
+      - name: Set parent issues state
+        run: > 
+          for issue in $PARENT_ISSUES; do
+            echo "Updating $issue to $PR_STATUS" &&
+            gh issue edit $issue $REMOVE_ISSUES && 
+            gh issue edit $issue --add-label=$PR_STATUS
+          done
+        
