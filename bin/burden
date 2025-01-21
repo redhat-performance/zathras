@@ -190,7 +190,7 @@ gl_max_systems_set=0
 # should provide a usage.  The --test_version_check option is present
 # so we can only check the versions via an option
 #
-gl_ansible_verboisty="normal"
+gl_ansible_verbosity="normal"
 gl_test_version_check=1
 gl_update_test_versions=0
 gl_disk_iops=0
@@ -1896,8 +1896,8 @@ create_ansible_options()
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
-			if [[ $gl_ansible_verboisty != "normal" ]]; then
-				base_string=${base_string}" -l $gl_ansible_verboisty"
+			if [[ $gl_ansible_verbosity != "normal" ]]; then
+				base_string=${base_string}" -l $gl_ansible_verbosity"
 			fi
 			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
 			test_info_str=`grep test_to_run: $run_dir/ansible_vars_main.yml | sed "s/\[//g" | sed "s/\]//g" | cut -d: -f 2 | sed "s/ //g"`
@@ -3058,7 +3058,7 @@ usage()
 	echo "  --ansible_noise_level <level>: How much information ansible is to output."
 	echo "    normal: standard ansible output"
 	echo "    dense: just report the task executed"
-	echo "    null: nothing reported"
+	echo "    silence: nothing reported"
 	echo "  --archive <dir>/<results>:  location to save the archive information to"
 	echo "  --child: tells burden it is a child of another burden process and not to"
 	echo "    perform the initial setup work"
@@ -3237,10 +3237,10 @@ set_general_value()
 	case "$1" in
 		--ansible_noise_level)
 			echo "$1 $2" >> $gl_cli_supplied_options
-			if [[ $2 != "normal" ]] && [[ $2 != "dense" ]] && [[ $2 != "null" ]]; then
-				cleanup_and_exit "$2 not valid value for --ansible_noise_level.  Valid values are normal, dense or null" 1
+			if [[ $2 != "normal" ]] && [[ $2 != "dense" ]] && [[ $2 != "silence" ]]; then
+				cleanup_and_exit "$2 not valid value for --ansible_noise_level.  Valid values are normal, dense or silence" 1
 			fi
-			gl_ansible_verboisty=$2
+			gl_ansible_verbosity=$2
 			shift_by=2
 		;;
 		--archive)
