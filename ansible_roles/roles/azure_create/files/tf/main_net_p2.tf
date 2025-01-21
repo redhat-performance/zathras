@@ -21,12 +21,6 @@ resource "azurerm_linux_virtual_machine" "virtualmachine" {
         storage_account_type = "Premium_LRS"
     }
 
-   plan {
-        name = var.sku
-        product = var.offer
-        publisher = var.publisher
-    }
-
     source_image_reference {
         publisher = var.publisher
         offer     = var.offer
