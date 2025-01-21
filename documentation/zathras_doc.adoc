@@ -295,6 +295,10 @@ Cloud options only
     Burden will select the right ami for the designated host."
   --create_only: Only do the VM creation and OS install action.
   --os_vendor &lt;os vendor&gt;: currently rhel, ubuntu, amazon
+    After the base OS name, options can be passed using &lt;os vendor&gt;:&lt;options&gt;
+      Supported options:
+        mode=&lt;mode&gt;
+          Sets Zathras to use Image mode (sets default kit location to /root, and enables no_packages) or package mode (default)
   --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running.
       Default is to terminate
   --use_spot: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not
