@@ -1254,13 +1254,15 @@ azure_specific_os_version()
 	# The publisher field in the urn may be different case (go figure) then expected..
 	# So we need to go and pull the publisher from az_vm image show.
 	#
-	azpublisher=`az vm image show --location eastus --urn ${gl_cloud_os_version} | grep publisher | cut -d: -f 2 | cut -d'"' -f 2`
+	az_subscription=`az account show | grep id | cut -d'"' -f 4`
+	azpublisher=$(echo $gl_cloud_os_version | cut -f1 -d:)
 	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
 	azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
 	azversion=$(echo $gl_cloud_os_version | cut -f 4 -d:)
 	echo "  cloud_offer: ${azoffer}" >> ansible_vars_main.yml
 	echo "  cloud_publisher: ${azpublisher}" >> ansible_vars_main.yml
 	echo "  cloud_os_version: ${azversion}" >> ansible_vars_main.yml
+	echo "  az_subscription: ${az_subscription}" >> ansible_vars_main.yml
 	#
 	# Because the sku may contain an _, and ansible when it replaces the 
 	# variables in the tfvars.j2 file later will unquote _.
