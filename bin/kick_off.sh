@@ -173,7 +173,14 @@ echo "[defaults]" >> ansible.cfg
 echo "roles_path = ~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:~/.ansible/collections/ansible_collections/pbench/agent/roles" >> ansible.cfg
 echo "log_path=${curdir}/ansible_log" >> ansible.cfg
 if [[ $ansible_noise_level != "normal" ]]; then
-	echo "stdout_callback = $ansible_noise_level" >> ansible.cfg
+	if [[ $ansible_noise_level == "silence" ]]; then
+		#
+		# Ansible option for no output is null.
+		#
+		echo "stdout_callback = null" >> ansible.cfg
+	else
+		echo "stdout_callback = $ansible_noise_level" >> ansible.cfg
+	fi
 fi
 current_test=0
 for sys_config in ${individual};
