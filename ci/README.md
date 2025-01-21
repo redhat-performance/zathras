@@ -3,6 +3,9 @@
 ## Verify group review
 This workflow requires PRs to have an additional label before they can be merged into the main branch.  Currently the label is `group_review_lgtm`, which is intended to be issued once the PR has been through a group review.
 
+This can be done via the GitHub CLI by using the command
+`gh pr edit <PR NUMBER> --add-label group_review_lgtm`.
+
 
 ## Verify PR has JIRA ticket and issue number
 This workflow is designed to enforce requirements for PR descriptions.  At bare minimum it requires the PR to mention a related issue and mention the Jira Ticket number.  Both of these are required since Sync2Jira does not know how to associate a PR with a Jira Ticket from the originating GitHub issue.
