@@ -165,7 +165,7 @@ gl_run_prefix=""
 gl_scenario_to_run=""
 gl_scenario_to_restore=""
 gl_selinux_level="enforcing"
-gl_selinux_state="enabled"
+gl_selinux_state=$value_not_set
 gl_selinux_state_set=0
 gl_ssh_key_file=""
 gl_show_os_versions=0;
@@ -1254,13 +1254,15 @@ azure_specific_os_version()
 	# The publisher field in the urn may be different case (go figure) then expected..
 	# So we need to go and pull the publisher from az_vm image show.
 	#
-	azpublisher=`az vm image show --location eastus --urn ${gl_cloud_os_version} | grep publisher | cut -d: -f 2 | cut -d'"' -f 2`
+	az_subscription=`az account show | grep id | cut -d'"' -f 4`
+	azpublisher=$(echo $gl_cloud_os_version | cut -f1 -d:)
 	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
 	azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
 	azversion=$(echo $gl_cloud_os_version | cut -f 4 -d:)
 	echo "  cloud_offer: ${azoffer}" >> ansible_vars_main.yml
 	echo "  cloud_publisher: ${azpublisher}" >> ansible_vars_main.yml
 	echo "  cloud_os_version: ${azversion}" >> ansible_vars_main.yml
+	echo "  az_subscription: ${az_subscription}" >> ansible_vars_main.yml
 	#
 	# Because the sku may contain an _, and ansible when it replaces the 
 	# variables in the tfvars.j2 file later will unquote _.
@@ -2092,10 +2094,11 @@ check_for_python()
 
 check_for_aws()
 {
-	aws_version=`dnf list installed | grep awscli.noarch`
+	aws_version=`aws --version 2> /dev/null`
 	if [[ $? -eq 1 ]]; then
-		cleanup_and_exit "aws requires the aws clis to be installed\ndnf install -y awscli" 1
+		cleanup_and_exit "aws requires the aws CLIs to be installed\ndnf install -y awscli or pip3 install awscli" 1
 	fi
+	aws_version=`echo $aws_version | cut -d'/' -f 2 | cut -d' ' -f 1`
 	report_util_version aws_version "${aws_version}"
 }
 
@@ -3998,6 +4001,14 @@ if [[ $gl_show_os_versions -eq 1 ]]; then
 	#
 	cloud_image_lookup
 	cleanup_and_exit "" 0
+fi
+
+if [[ "$gl_selinux_state" == "$value_not_set" ]]; then
+	if [[ "$gl_os_vendor" == "rhel" ]] || [[ "$gl_os_vendor" == "amazon" ]]; then
+		gl_selinux_state="enabled"
+	else
+		gl_selinux_state="disabled"
+	fi	
 fi
 
 verify_selinux
