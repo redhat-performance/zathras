@@ -1,5 +1,9 @@
 # Workflows in this repository
 
+## Verify PR has JIRA ticket and issue number
+This workflow is designed to enforce requirements for PR descriptions.  At bare minimum it requires the PR to mention a related issue and mention the Jira Ticket number.  Both of these are required since Sync2Jira does not know how to associate a PR with a Jira Ticket from the originating GitHub issue.
+
+
 ## Update parent issue
 The idea behind this workflow is to keep Jira tickets in sync with the current status of their GitHub issue.  A flowchart for how this works can be seen below.
 
