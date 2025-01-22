@@ -22,6 +22,7 @@
     name: rpm_upload_and_install
   vars:
     rpm: "{{ rpm_file }}"
+    results_file: "{{ results_file }}"
   when: rpm_file != "none"
   loop:  "{{ rpms.rpm }}"
   loop_control:
