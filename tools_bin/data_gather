@@ -31,7 +31,7 @@ grep "^NUMA node" /tmp/lscpu.tmp
 echo ==============================================
 echo Memory information
 echo ==============================================
-cat /proc/meminfo | egrep "MemTotal:|Hugepagesize:|HardwareCorrupted:"
+cat /proc/meminfo | grep -E "MemTotal:|Hugepagesize:|HardwareCorrupted:"
 echo Numa memory per node
 numactl --hardware | grep size
 #
