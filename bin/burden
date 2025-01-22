@@ -306,7 +306,7 @@ azure_image_lookup()
 	echo "Pulling requested Azure OS image information, may take a bit."
 	end_date=`date +"%Y"`
 	let "start_date=$end_date-1"
-	az vm image list --all --publisher $publisher --output tsv | egrep ".$start_date|.$end_date"
+	az vm image list --all --publisher $publisher --output tsv | grep -E ".$start_date|.$end_date"
 	cleanup_and_exit "" 0
 }
 
@@ -325,7 +325,7 @@ gcp_image_lookup()
 	echo "Pulling requested GCP OS image information, may take a bit."
 	end_date=`date +"%Y"`
 	let "start_date=$end_date-1"
-	gcloud compute images list --format="table(NAME,PROJECT,creationTimestamp.date(tz=LOCAL))" | grep "$project" | egrep ".$start_date|.$end_date"
+	gcloud compute images list --format="table(NAME,PROJECT,creationTimestamp.date(tz=LOCAL))" | grep "$project" | grep -E ".$start_date|.$end_date"
 	cleanup_and_exit "" 0
 }
 
@@ -359,7 +359,7 @@ show_aws_images()
 	if [[ $2 -eq 0 ]]; then
 		echo "Pulling requested AWS OS image information, may take a bit."
 		if [[ $gl_os_vendor != "private" ]]; then
-			aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}"
+			aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}"
 		else
 			get_cloud_acct_id
 			aws ec2 describe-images --owners $gl_cloud_acct_id --output table --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]'
@@ -378,7 +378,7 @@ show_aws_images()
 			ami_check=$ami
 			ami_arch=""
 		fi
-		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}" | grep "${ami_check}"`
+		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}" | grep "${ami_check}"`
 		if [[ $ami_value != "" ]]; then
 			#
 			# check_for_private_amis
@@ -1289,7 +1289,7 @@ aws_specific_os_version()
 		else
 			ami_check=$ami
 		fi
-		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}" | grep "${ami_check}"`
+		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}" | grep "${ami_check}"`
 		if [[ $ami_value == "" ]]; then
 			get_cloud_acct_id
 			ami_value=`aws ec2 describe-images --owners $gl_cloud_acct_id | grep IMAGES | grep $ami_check`
