@@ -9,7 +9,6 @@ env:
   GH_TOKEN: ${{ github.token }}
 
 on:
-  issue_comment:
   pull_request_target:
     types:
       - review_requested
@@ -39,7 +38,7 @@ jobs:
           ) >> $GITHUB_ENV
 
       - name: Fail when unable to find a parent issue
-        if: env.PARENT_ISSUE == ''
+        if: env.PARENT_ISSUES == ''
         run: echo "Could not find a parent issue" && exit 1
 
       - name: Get PR states
