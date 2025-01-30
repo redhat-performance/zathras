@@ -35,6 +35,22 @@
     state: present
     key: "{{ lookup('file','buffer/{{ ip_list[0] }}-id_rsa.pub')}}"
 
+- name: Copy the key add to authorized_keys using Ansible module
+  delegate_to: "{{ ip_list[0] }}"
+  become: yes
+  authorized_key:
+    user: root
+    state: present
+    key: "{{ lookup('file','buffer/{{ ip_list[0] }}-id_rsa.pub')}}"
+
+- name: Copy the key add to authorized_keys using Ansible module
+  delegate_to: "{{ ip_list[1] }}"
+  become: yes
+  authorized_key:
+    user: root
+    state: present
+    key: "{{ lookup('file','buffer/{{ ip_list[1] }}-id_rsa.pub')}}"
+
 - name: Permit root login
   delegate_to: "{{ item }}"
   become: yes
