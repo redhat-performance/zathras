@@ -190,6 +190,7 @@ gl_max_systems_set=0
 # should provide a usage.  The --test_version_check option is present
 # so we can only check the versions via an option
 #
+gl_ansible_verbosity="normal"
 gl_test_version_check=1
 gl_update_test_versions=0
 gl_disk_iops=0
@@ -1897,13 +1898,22 @@ create_ansible_options()
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
+			if [[ $gl_ansible_verbosity != "normal" ]]; then
+				base_string=${base_string}" -l $gl_ansible_verbosity"
+			fi
 			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
-			kick_off.sh $base_string | tee ${run_dir}/ansible_log &
-			pids[${pindex}]=$!
+			test_info_str=`grep test_to_run: $run_dir/ansible_vars_main.yml | sed "s/\[//g" | sed "s/\]//g" | cut -d: -f 2 | sed "s/ //g"`
+			echo "Starting ${test_info_str} on ${host_or_cloud_inst}"
+			kick_off.sh $base_string &
+			index=$!
+			pids[${pindex}]="${index}:${test_info_str} on ${host_or_cloud_inst}"
 			let "pindex=$pindex+1"
 			if [[ $pindex -eq $gl_max_systems ]]; then
-				for pid in ${pids[*]}; do
-					wait $pid
+				for pid in "${pids[*]}"; do
+					wait_for=`echo $pid | cut -d ':' -f 1`
+					wait $wait_for
+					out_string=`echo $pid | cut -d ':' -f 2-`
+					echo Finsihed $out_string
 				done
 				pindex=0
 			fi
@@ -1917,8 +1927,11 @@ create_ansible_options()
 	#
 	# Wait for everyone to finish up.
 	#
-	for pid in ${pids[*]}; do
-		wait $pid
+	for pid in "${pids[*]}"; do
+		wait_for=`echo $pid | cut -d ':' -f 1`
+		wait $wait_for
+		out_string=`echo $pid | cut -d ':' -f 2-`
+		echo Finsihed $out_string
 	done
 
 	#
@@ -3044,6 +3057,10 @@ usage()
 	echo "Usage: $0"
 	echo "Version: "$version
 	echo "General options"
+	echo "  --ansible_noise_level <level>: How much information ansible is to output."
+	echo "    normal: standard ansible output"
+	echo "    dense: just report the task executed"
+	echo "    silence: nothing reported"
 	echo "  --archive <dir>/<results>:  location to save the archive information to"
 	echo "  --child: tells burden it is a child of another burden process and not to"
 	echo "    perform the initial setup work"
@@ -3220,6 +3237,14 @@ set_general_value()
 {
 	shift_by=0
 	case "$1" in
+		--ansible_noise_level)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			if [[ $2 != "normal" ]] && [[ $2 != "dense" ]] && [[ $2 != "silence" ]]; then
+				cleanup_and_exit "$2 not valid value for --ansible_noise_level.  Valid values are normal, dense or silence" 1
+			fi
+			gl_ansible_verbosity=$2
+			shift_by=2
+		;;
 		--archive)
 			if [[ $gl_archive_location == $value_not_set ]]; then
 				gl_archive_location=$2
@@ -3586,6 +3611,7 @@ grab_cli_data()
 	# Define user options
 	#
 	ARGUMENT_LIST=(
+		"ansible_noise_level"
 		"archive"
 		"cloud_os_id"
 		"create_attempts"
