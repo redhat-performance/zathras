@@ -1,7 +1,0 @@
-User = "{{ config_info.User }}"
-Owner = "{{ config_info.Owner }}"
-Manager = "{{ config_info.Manager }}"
-Project = "{{ config_info.Project }}"
-Environment = "{{ config_info.Environment }}"
-Jirald = "{{ config_info.Jirald }}"
-TicketID = "{{ config_info.TicketID }}"

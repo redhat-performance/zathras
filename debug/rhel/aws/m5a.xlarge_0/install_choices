@@ -1,8 +1,0 @@
-  - numactl
-  - time
-  - bc
-  - numactl
-  - perf
-  - git
-  - unzip
-  - perf

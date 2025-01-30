@@ -1,1 +1,0 @@
-./burden --test_def_file /home/dvalin/fix_error_handling/config/full_test_defs.yml --run_file run_burden_0 --child --dir_index 1 --host_config "m5a.xlarge" --tests coremark --cloud_os_id ami-090295859abce72e8 --system_type aws --results_prefix debug --os_vendor rhel --terminate_cloud 1 --ssh_key_file /home/dvalin/permissions/aws_region_2_ssh_key
