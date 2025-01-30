@@ -1,0 +1,426 @@
+# aws_default_route_table.zathras_df_rt_tbl:
+resource "aws_default_route_table" "zathras_df_rt_tbl" {
+    arn                    = "arn:aws:ec2:us-east-2:452958939641:route-table/rtb-0861da88efb0eefed"
+    default_route_table_id = "rtb-0861da88efb0eefed"
+    id                     = "rtb-0861da88efb0eefed"
+    owner_id               = "452958939641"
+    route                  = [
+        {
+            cidr_block                 = "0.0.0.0/0"
+            core_network_arn           = [90mnull[0m[0m
+            destination_prefix_list_id = [90mnull[0m[0m
+            egress_only_gateway_id     = [90mnull[0m[0m
+            gateway_id                 = "igw-0084cf1cb64f39162"
+            instance_id                = [90mnull[0m[0m
+            ipv6_cidr_block            = [90mnull[0m[0m
+            nat_gateway_id             = [90mnull[0m[0m
+            network_interface_id       = [90mnull[0m[0m
+            transit_gateway_id         = [90mnull[0m[0m
+            vpc_endpoint_id            = [90mnull[0m[0m
+            vpc_peering_connection_id  = [90mnull[0m[0m
+        },
+    ]
+    tags_all               = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+    vpc_id                 = "vpc-0af2aed153bf0de7b"
+}
+
+# aws_instance.ec2["0"]:
+resource "aws_instance" "ec2" {
+    ami                                  = "ami-090295859abce72e8"
+    arn                                  = "arn:aws:ec2:us-east-2:452958939641:instance/i-0c41f579d4ea0856b"
+    associate_public_ip_address          = true
+    availability_zone                    = "us-east-2a"
+    cpu_core_count                       = 2
+    cpu_threads_per_core                 = 2
+    disable_api_stop                     = false
+    disable_api_termination              = false
+    ebs_optimized                        = false
+    get_password_data                    = false
+    hibernation                          = false
+    host_id                              = [90mnull[0m[0m
+    iam_instance_profile                 = [90mnull[0m[0m
+    id                                   = "i-0c41f579d4ea0856b"
+    instance_initiated_shutdown_behavior = "stop"
+    instance_lifecycle                   = [90mnull[0m[0m
+    instance_state                       = "running"
+    instance_type                        = "m5a.xlarge"
+    ipv6_address_count                   = 0
+    ipv6_addresses                       = []
+    key_name                             = "DValin"
+    monitoring                           = false
+    outpost_arn                          = [90mnull[0m[0m
+    password_data                        = [90mnull[0m[0m
+    placement_group                      = [90mnull[0m[0m
+    placement_partition_number           = 0
+    primary_network_interface_id         = "eni-0e6ff92cafc673c2b"
+    private_dns                          = "ip-170-0-16-53.us-east-2.compute.internal"
+    private_ip                           = "170.0.16.53"
+    public_dns                           = "ec2-52-14-118-191.us-east-2.compute.amazonaws.com"
+    public_ip                            = "52.14.118.191"
+    secondary_private_ips                = []
+    security_groups                      = []
+    source_dest_check                    = true
+    spot_instance_request_id             = [90mnull[0m[0m
+    subnet_id                            = "subnet-0d42aa087d71e30e4"
+    tags                                 = {
+        "Name" = "dvalin_debug-rhel-m5a.xlarge"
+    }
+    tags_all                             = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Name"        = "dvalin_debug-rhel-m5a.xlarge"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+    tenancy                              = "default"
+    user_data_replace_on_change          = false
+    vpc_security_group_ids               = [
+        "sg-075f7cbbdab50dd8b",
+    ]
+
+    capacity_reservation_specification {
+        capacity_reservation_preference = "open"
+    }
+
+    cpu_options {
+        amd_sev_snp      = [90mnull[0m[0m
+        core_count       = 2
+        threads_per_core = 2
+    }
+
+    enclave_options {
+        enabled = false
+    }
+
+    maintenance_options {
+        auto_recovery = "default"
+    }
+
+    metadata_options {
+        http_endpoint               = "enabled"
+        http_protocol_ipv6          = "disabled"
+        http_put_response_hop_limit = 1
+        http_tokens                 = "optional"
+        instance_metadata_tags      = "disabled"
+    }
+
+    private_dns_name_options {
+        enable_resource_name_dns_a_record    = false
+        enable_resource_name_dns_aaaa_record = false
+        hostname_type                        = "ip-name"
+    }
+
+    root_block_device {
+        delete_on_termination = true
+        device_name           = "/dev/sda1"
+        encrypted             = false
+        iops                  = 3000
+        kms_key_id            = [90mnull[0m[0m
+        tags                  = {
+            "Environment" = "Test"
+            "Jirald"      = "dvalin"
+            "Manager"     = "Managers Name"
+            "Owner"       = "dvalin"
+            "Project"     = "Rhel_regression"
+            "TicketID"    = [90mnull[0m[0m
+            "User"        = "dvalin"
+        }
+        tags_all              = {
+            "Environment" = "Test"
+            "Jirald"      = "dvalin"
+            "Manager"     = "Managers Name"
+            "Owner"       = "dvalin"
+            "Project"     = "Rhel_regression"
+            "TicketID"    = [90mnull[0m[0m
+            "User"        = "dvalin"
+        }
+        throughput            = 125
+        volume_id             = "vol-09c55963b732000da"
+        volume_size           = 10
+        volume_type           = "gp3"
+    }
+}
+
+# aws_internet_gateway.zathras_gw:
+resource "aws_internet_gateway" "zathras_gw" {
+    arn      = "arn:aws:ec2:us-east-2:452958939641:internet-gateway/igw-0084cf1cb64f39162"
+    id       = "igw-0084cf1cb64f39162"
+    owner_id = "452958939641"
+    tags_all = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+    vpc_id   = "vpc-0af2aed153bf0de7b"
+}
+
+# aws_route_table_association.zathras_aws_rta:
+resource "aws_route_table_association" "zathras_aws_rta" {
+    gateway_id     = [90mnull[0m[0m
+    id             = "rtbassoc-02eca3b5babe4c160"
+    route_table_id = "rtb-0861da88efb0eefed"
+    subnet_id      = "subnet-0d42aa087d71e30e4"
+}
+
+# aws_security_group.zathras_aws_prvt_sg:
+resource "aws_security_group" "zathras_aws_prvt_sg" {
+    arn                    = "arn:aws:ec2:us-east-2:452958939641:security-group/sg-0e022a8f304fd345f"
+    description            = "Managed by Terraform"
+    egress                 = [
+        {
+            cidr_blocks      = [
+                "0.0.0.0/0",
+            ]
+            description      = [90mnull[0m[0m
+            from_port        = 0
+            ipv6_cidr_blocks = []
+            prefix_list_ids  = []
+            protocol         = "-1"
+            security_groups  = []
+            self             = false
+            to_port          = 0
+        },
+    ]
+    id                     = "sg-0e022a8f304fd345f"
+    ingress                = [
+        {
+            cidr_blocks      = [
+                "0.0.0.0/0",
+            ]
+            description      = [90mnull[0m[0m
+            from_port        = 0
+            ipv6_cidr_blocks = []
+            prefix_list_ids  = []
+            protocol         = "tcp"
+            security_groups  = []
+            self             = false
+            to_port          = 65535
+        },
+    ]
+    name                   = "zathras_sg"
+    name_prefix            = [90mnull[0m[0m
+    owner_id               = "452958939641"
+    revoke_rules_on_delete = false
+    tags_all               = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+    vpc_id                 = "vpc-0686a27fb4618677e"
+}
+
+# aws_security_group.zathras_aws_sg:
+resource "aws_security_group" "zathras_aws_sg" {
+    arn                    = "arn:aws:ec2:us-east-2:452958939641:security-group/sg-075f7cbbdab50dd8b"
+    description            = "Managed by Terraform"
+    egress                 = [
+        {
+            cidr_blocks      = [
+                "0.0.0.0/0",
+            ]
+            description      = [90mnull[0m[0m
+            from_port        = 0
+            ipv6_cidr_blocks = []
+            prefix_list_ids  = []
+            protocol         = "-1"
+            security_groups  = []
+            self             = false
+            to_port          = 0
+        },
+    ]
+    id                     = "sg-075f7cbbdab50dd8b"
+    ingress                = [
+        {
+            cidr_blocks      = [
+                "0.0.0.0/0",
+            ]
+            description      = [90mnull[0m[0m
+            from_port        = 22
+            ipv6_cidr_blocks = []
+            prefix_list_ids  = []
+            protocol         = "tcp"
+            security_groups  = []
+            self             = false
+            to_port          = 22
+        },
+    ]
+    name                   = "zathras_sg"
+    name_prefix            = [90mnull[0m[0m
+    owner_id               = "452958939641"
+    revoke_rules_on_delete = false
+    tags_all               = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+    vpc_id                 = "vpc-0af2aed153bf0de7b"
+}
+
+# aws_subnet.zathras_prvt_sn:
+resource "aws_subnet" "zathras_prvt_sn" {
+    arn                                            = "arn:aws:ec2:us-east-2:452958939641:subnet/subnet-038b748a57c72acd7"
+    assign_ipv6_address_on_creation                = false
+    availability_zone                              = "us-east-2a"
+    availability_zone_id                           = "use2-az1"
+    cidr_block                                     = "10.0.16.0/20"
+    customer_owned_ipv4_pool                       = [90mnull[0m[0m
+    enable_dns64                                   = false
+    enable_lni_at_device_index                     = 0
+    enable_resource_name_dns_a_record_on_launch    = false
+    enable_resource_name_dns_aaaa_record_on_launch = false
+    id                                             = "subnet-038b748a57c72acd7"
+    ipv6_cidr_block                                = [90mnull[0m[0m
+    ipv6_cidr_block_association_id                 = [90mnull[0m[0m
+    ipv6_native                                    = false
+    map_customer_owned_ip_on_launch                = false
+    map_public_ip_on_launch                        = false
+    outpost_arn                                    = [90mnull[0m[0m
+    owner_id                                       = "452958939641"
+    private_dns_hostname_type_on_launch            = "ip-name"
+    tags_all                                       = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+    vpc_id                                         = "vpc-0686a27fb4618677e"
+}
+
+# aws_subnet.zathras_sn:
+resource "aws_subnet" "zathras_sn" {
+    arn                                            = "arn:aws:ec2:us-east-2:452958939641:subnet/subnet-0d42aa087d71e30e4"
+    assign_ipv6_address_on_creation                = false
+    availability_zone                              = "us-east-2a"
+    availability_zone_id                           = "use2-az1"
+    cidr_block                                     = "170.0.16.0/20"
+    customer_owned_ipv4_pool                       = [90mnull[0m[0m
+    enable_dns64                                   = false
+    enable_lni_at_device_index                     = 0
+    enable_resource_name_dns_a_record_on_launch    = false
+    enable_resource_name_dns_aaaa_record_on_launch = false
+    id                                             = "subnet-0d42aa087d71e30e4"
+    ipv6_cidr_block                                = [90mnull[0m[0m
+    ipv6_cidr_block_association_id                 = [90mnull[0m[0m
+    ipv6_native                                    = false
+    map_customer_owned_ip_on_launch                = false
+    map_public_ip_on_launch                        = true
+    outpost_arn                                    = [90mnull[0m[0m
+    owner_id                                       = "452958939641"
+    private_dns_hostname_type_on_launch            = "ip-name"
+    tags_all                                       = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+    vpc_id                                         = "vpc-0af2aed153bf0de7b"
+}
+
+# aws_vpc.zathras_prvt_vpc:
+resource "aws_vpc" "zathras_prvt_vpc" {
+    arn                                  = "arn:aws:ec2:us-east-2:452958939641:vpc/vpc-0686a27fb4618677e"
+    assign_generated_ipv6_cidr_block     = false
+    cidr_block                           = "10.0.0.0/16"
+    default_network_acl_id               = "acl-08903f4b8fef01aa1"
+    default_route_table_id               = "rtb-0abe97f09250a7e86"
+    default_security_group_id            = "sg-06fb4c35298d041a6"
+    dhcp_options_id                      = "dopt-9ef600f5"
+    enable_dns_hostnames                 = false
+    enable_dns_support                   = false
+    enable_network_address_usage_metrics = false
+    id                                   = "vpc-0686a27fb4618677e"
+    instance_tenancy                     = "default"
+    ipv6_association_id                  = [90mnull[0m[0m
+    ipv6_cidr_block                      = [90mnull[0m[0m
+    ipv6_cidr_block_network_border_group = [90mnull[0m[0m
+    ipv6_ipam_pool_id                    = [90mnull[0m[0m
+    ipv6_netmask_length                  = 0
+    main_route_table_id                  = "rtb-0abe97f09250a7e86"
+    owner_id                             = "452958939641"
+    tags_all                             = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+}
+
+# aws_vpc.zathras_vpc:
+resource "aws_vpc" "zathras_vpc" {
+    arn                                  = "arn:aws:ec2:us-east-2:452958939641:vpc/vpc-0af2aed153bf0de7b"
+    assign_generated_ipv6_cidr_block     = false
+    cidr_block                           = "170.0.0.0/16"
+    default_network_acl_id               = "acl-03a82b3144ae3ab22"
+    default_route_table_id               = "rtb-0861da88efb0eefed"
+    default_security_group_id            = "sg-0124b6cb6ce1f97bb"
+    dhcp_options_id                      = "dopt-9ef600f5"
+    enable_dns_hostnames                 = true
+    enable_dns_support                   = true
+    enable_network_address_usage_metrics = false
+    id                                   = "vpc-0af2aed153bf0de7b"
+    instance_tenancy                     = "default"
+    ipv6_association_id                  = [90mnull[0m[0m
+    ipv6_cidr_block                      = [90mnull[0m[0m
+    ipv6_cidr_block_network_border_group = [90mnull[0m[0m
+    ipv6_ipam_pool_id                    = [90mnull[0m[0m
+    ipv6_netmask_length                  = 0
+    main_route_table_id                  = "rtb-0861da88efb0eefed"
+    owner_id                             = "452958939641"
+    tags                                 = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+    tags_all                             = {
+        "Environment" = "Test"
+        "Jirald"      = "dvalin"
+        "Manager"     = "Managers Name"
+        "Owner"       = "dvalin"
+        "Project"     = "Rhel_regression"
+        "TicketID"    = [90mnull[0m[0m
+        "User"        = "dvalin"
+    }
+}
+
+
+Outputs:
+
+aws_instance_id0 = "i-0c41f579d4ea0856b"
+aws_zoneid0 = "us-east-2a"
+public_dns_host0 = "ec2-52-14-118-191.us-east-2.compute.amazonaws.com"

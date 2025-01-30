@@ -8,6 +8,7 @@ terraform {
 }
 provider "azurerm" {
   features {}
+  subscription_id = var.az_subscription
 }
 
 resource "azurerm_resource_group" "resource_group" {
@@ -41,6 +42,7 @@ resource "azurerm_public_ip" "publicip" {
     location             = var.location
     resource_group_name  = azurerm_resource_group.resource_group.name
     allocation_method    = "Dynamic"
+    sku                  = "Basic"
 }
 
 # Create Network Security Group and rule

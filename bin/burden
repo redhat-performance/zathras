@@ -133,7 +133,7 @@ gl_preflight=0
 #   gl_top_dir: Directory we are executing from
 #
 gl_tf_terminate=0
-gl_tf_term_list=""
+gl_tf_term_list="all"
 gl_tf_list=0
 gl_sys_file=$value_not_set
 gl_cloud_execute_tests=1
@@ -165,7 +165,7 @@ gl_run_prefix=""
 gl_scenario_to_run=""
 gl_scenario_to_restore=""
 gl_selinux_level="enforcing"
-gl_selinux_state="enabled"
+gl_selinux_state=$value_not_set
 gl_selinux_state_set=0
 gl_ssh_key_file=""
 gl_show_os_versions=0;
@@ -190,6 +190,7 @@ gl_max_systems_set=0
 # should provide a usage.  The --test_version_check option is present
 # so we can only check the versions via an option
 #
+gl_ansible_verbosity="normal"
 gl_test_version_check=1
 gl_update_test_versions=0
 gl_disk_iops=0
@@ -306,7 +307,7 @@ azure_image_lookup()
 	echo "Pulling requested Azure OS image information, may take a bit."
 	end_date=`date +"%Y"`
 	let "start_date=$end_date-1"
-	az vm image list --all --publisher $publisher --output tsv | egrep ".$start_date|.$end_date"
+	az vm image list --all --publisher $publisher --output tsv | grep -E ".$start_date|.$end_date"
 	cleanup_and_exit "" 0
 }
 
@@ -325,7 +326,7 @@ gcp_image_lookup()
 	echo "Pulling requested GCP OS image information, may take a bit."
 	end_date=`date +"%Y"`
 	let "start_date=$end_date-1"
-	gcloud compute images list --format="table(NAME,PROJECT,creationTimestamp.date(tz=LOCAL))" | grep "$project" | egrep ".$start_date|.$end_date"
+	gcloud compute images list --format="table(NAME,PROJECT,creationTimestamp.date(tz=LOCAL))" | grep "$project" | grep -E ".$start_date|.$end_date"
 	cleanup_and_exit "" 0
 }
 
@@ -359,7 +360,7 @@ show_aws_images()
 	if [[ $2 -eq 0 ]]; then
 		echo "Pulling requested AWS OS image information, may take a bit."
 		if [[ $gl_os_vendor != "private" ]]; then
-			aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}"
+			aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}"
 		else
 			get_cloud_acct_id
 			aws ec2 describe-images --owners $gl_cloud_acct_id --output table --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]'
@@ -378,7 +379,7 @@ show_aws_images()
 			ami_check=$ami
 			ami_arch=""
 		fi
-		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}" | grep "${ami_check}"`
+		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}" | grep "${ami_check}"`
 		if [[ $ami_value != "" ]]; then
 			#
 			# check_for_private_amis
@@ -1254,13 +1255,15 @@ azure_specific_os_version()
 	# The publisher field in the urn may be different case (go figure) then expected..
 	# So we need to go and pull the publisher from az_vm image show.
 	#
-	azpublisher=`az vm image show --location eastus --urn ${gl_cloud_os_version} | grep publisher | cut -d: -f 2 | cut -d'"' -f 2`
+	az_subscription=`az account show | grep id | cut -d'"' -f 4`
+	azpublisher=$(echo $gl_cloud_os_version | cut -f1 -d:)
 	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
 	azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
 	azversion=$(echo $gl_cloud_os_version | cut -f 4 -d:)
 	echo "  cloud_offer: ${azoffer}" >> ansible_vars_main.yml
 	echo "  cloud_publisher: ${azpublisher}" >> ansible_vars_main.yml
 	echo "  cloud_os_version: ${azversion}" >> ansible_vars_main.yml
+	echo "  az_subscription: ${az_subscription}" >> ansible_vars_main.yml
 	#
 	# Because the sku may contain an _, and ansible when it replaces the 
 	# variables in the tfvars.j2 file later will unquote _.
@@ -1287,7 +1290,7 @@ aws_specific_os_version()
 		else
 			ami_check=$ami
 		fi
-		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}" | grep "${ami_check}"`
+		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}" | grep "${ami_check}"`
 		if [[ $ami_value == "" ]]; then
 			get_cloud_acct_id
 			ami_value=`aws ec2 describe-images --owners $gl_cloud_acct_id | grep IMAGES | grep $ami_check`
@@ -1895,13 +1898,22 @@ create_ansible_options()
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
+			if [[ $gl_ansible_verbosity != "normal" ]]; then
+				base_string=${base_string}" -l $gl_ansible_verbosity"
+			fi
 			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
-			kick_off.sh $base_string | tee ${run_dir}/ansible_log &
-			pids[${pindex}]=$!
+			test_info_str=`grep test_to_run: $run_dir/ansible_vars_main.yml | sed "s/\[//g" | sed "s/\]//g" | cut -d: -f 2 | sed "s/ //g"`
+			echo "Starting ${test_info_str} on ${host_or_cloud_inst}"
+			kick_off.sh $base_string &
+			index=$!
+			pids[${pindex}]="${index}:${test_info_str} on ${host_or_cloud_inst}"
 			let "pindex=$pindex+1"
 			if [[ $pindex -eq $gl_max_systems ]]; then
-				for pid in ${pids[*]}; do
-					wait $pid
+				for pid in "${pids[*]}"; do
+					wait_for=`echo $pid | cut -d ':' -f 1`
+					wait $wait_for
+					out_string=`echo $pid | cut -d ':' -f 2-`
+					echo Finsihed $out_string
 				done
 				pindex=0
 			fi
@@ -1915,8 +1927,11 @@ create_ansible_options()
 	#
 	# Wait for everyone to finish up.
 	#
-	for pid in ${pids[*]}; do
-		wait $pid
+	for pid in "${pids[*]}"; do
+		wait_for=`echo $pid | cut -d ':' -f 1`
+		wait $wait_for
+		out_string=`echo $pid | cut -d ':' -f 2-`
+		echo Finsihed $out_string
 	done
 
 	#
@@ -2092,10 +2107,11 @@ check_for_python()
 
 check_for_aws()
 {
-	aws_version=`dnf list installed | grep awscli.noarch`
+	aws_version=`aws --version 2> /dev/null`
 	if [[ $? -eq 1 ]]; then
-		cleanup_and_exit "aws requires the aws clis to be installed\ndnf install -y awscli" 1
+		cleanup_and_exit "aws requires the aws CLIs to be installed\ndnf install -y awscli or pip3 install awscli" 1
 	fi
+	aws_version=`echo $aws_version | cut -d'/' -f 2 | cut -d' ' -f 1`
 	report_util_version aws_version "${aws_version}"
 }
 
@@ -2134,12 +2150,12 @@ check_for_terraform()
 package_check()
 {
 	check_for_pip3
-	check_for_boto
 	check_for_ansible
 	check_for_yq
 	check_for_jq
 	check_for_python
 	if [[ $gl_system_type == "aws" ]]; then
+		check_for_boto
 		check_for_aws
 	fi
 	check_for_terraform
@@ -3017,81 +3033,6 @@ integrate_templates()
 }
 
 #
-# List the active systems created by tf
-#
-tf_list()
-{
-	dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
-	for tf_show in $dirs; do
-		pushd $tf_show > /dev/null
-		terraform show > tf_list_info
-		grep subnet tf_list_info >& /dev/null
-		if [ $? -eq 0 ]; then
-			work_dir=`pwd | rev | cut -d'/' -f 2 | rev`
-			grep  azure tf_list_info >& /dev/null
-			if [ $? -eq 0 ]; then
-				vm_size=`grep size tf_list_info | grep -v disk | cut -d'"' -f2`
-				public_ip=`grep public_ip_address tf_list_info | head -1 | cut -d'"' -f2 | sort -u`
-				name_tag=`grep environment tf_list_info | cut -d'"' -f4 | sort -u`
-				printf "work_dir: %s\n" $work_dir
-				printf "\tfull_path: %s\n" $tf_show
-				printf "\tvm_size: %s\n" $vm_size
-				printf "\tpublic_ip: %s\n" $public_ip
-				printf "\tname_tag: %s\n" $name_tag
-			fi
-			grep  aws tf_list_info >& /dev/null
-			if [ $? -eq 0 ]; then
-				vm_size=`grep instance_type tf_list_info | cut -d'"' -f2`
-				inst_state=`grep instance_state tf_list_info | cut -d'"' -f2`
-				public_dns=`grep public_dns tf_list_info | cut -d'"' -f2 | sort -u`
-				name_tag=`grep Name tf_list_info | cut -d'"' -f4 | sort -u`
-				printf "work_dir: %s\n" $work_dir
-				printf "\tfull_path: %s\n" $tf_show
-				printf "\tvm_size: %s\n" $vm_size
-				printf "\tinstance_state: %s\n" $inst_state
-				printf "\tpublic_dns: %s\n" $public_dns
-				printf "\tname_tag: %s\n" $name_tag
-			fi
-		fi
-		rm tf_list_info
-		popd > /dev/null
-	done
-	exit
-}
-#
-# Walk all the tf directories and attempt to remove the instance.
-#
-tf_terminate()
-{
-
-	if [[ $gl_tf_term_list == "" ]]; then
-		dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
-	else
-		dirs=`echo $gl_tf_term_list | sed "s/,/ /g"`
-		echo $gl_tf_term_list
-		echo $dirs
-	fi
-	for tf_del in $dirs; do
-		pushd $tf_del > /dev/null
-		terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
-		if [ $? -eq 0 ]; then
-			terraform apply "destroy.tfplan"
-			#
-			# Now get arid of the tf directory.
-			#
-			if [ $gl_tf_terminate -eq 0 ]; then
-				cd ..
-				rm -rf tf
-			fi
-		else
-			echo Warning: Unable to create the plan for $tf_del
-		fi
-		popd > /dev/null
-	done
-	exit
-}
-
-#
 # If the test_def_dir has https or git in it, we will pull from
 # the git repo.  If not simply check that the file exists.
 #
@@ -3116,6 +3057,10 @@ usage()
 	echo "Usage: $0"
 	echo "Version: "$version
 	echo "General options"
+	echo "  --ansible_noise_level <level>: How much information ansible is to output."
+	echo "    normal: standard ansible output"
+	echo "    dense: just report the task executed"
+	echo "    silence: nothing reported"
 	echo "  --archive <dir>/<results>:  location to save the archive information to"
 	echo "  --child: tells burden it is a child of another burden process and not to"
 	echo "    perform the initial setup work"
@@ -3292,6 +3237,14 @@ set_general_value()
 {
 	shift_by=0
 	case "$1" in
+		--ansible_noise_level)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			if [[ $2 != "normal" ]] && [[ $2 != "dense" ]] && [[ $2 != "silence" ]]; then
+				cleanup_and_exit "$2 not valid value for --ansible_noise_level.  Valid values are normal, dense or silence" 1
+			fi
+			gl_ansible_verbosity=$2
+			shift_by=2
+		;;
 		--archive)
 			if [[ $gl_archive_location == $value_not_set ]]; then
 				gl_archive_location=$2
@@ -3658,6 +3611,7 @@ grab_cli_data()
 	# Define user options
 	#
 	ARGUMENT_LIST=(
+		"ansible_noise_level"
 		"archive"
 		"cloud_os_id"
 		"create_attempts"
@@ -4018,14 +3972,16 @@ fi
 # Does not return
 #
 if [ $gl_tf_terminate -eq 1 ]; then
-	tf_terminate
+	$UTILS_DIR/terraform_ops --terminate_list $gl_tf_term_list
+	cleanup_and_exit "" 0
 fi
 
 #
 # Does not return
 #
 if [ $gl_tf_list -eq 1 ]; then
-	tf_list
+	$UTILS_DIR/terraform_ops --tf_list
+	cleanup_and_exit "" 0
 fi
 
 if [[ $gl_run_prefix == "" ]]; then
@@ -4071,6 +4027,14 @@ if [[ $gl_show_os_versions -eq 1 ]]; then
 	#
 	cloud_image_lookup
 	cleanup_and_exit "" 0
+fi
+
+if [[ "$gl_selinux_state" == "$value_not_set" ]]; then
+	if [[ "$gl_os_vendor" == "rhel" ]] || [[ "$gl_os_vendor" == "amazon" ]]; then
+		gl_selinux_state="enabled"
+	else
+		gl_selinux_state="disabled"
+	fi	
 fi
 
 verify_selinux

@@ -1,0 +1,13 @@
+storage: grab_disks
+ssh_i_option: "-i /home/dvalin/permissions/aws_region_2_ssh_key"
+aws_uname: DValin
+test_hostname: ec2-52-14-118-191.us-east-2.compute.amazonaws.com
+aws_instance_id: i-0c41f579d4ea0856b
+net_hostname: none
+aws_net_instance_id: none
+aws_vpc_id: vpc-0af2aed153bf0de7b
+aws_prvt_vpc_id: vpc-0686a27fb4618677e
+cloud_zone: us-east-2a
+aws_sec_grp: sg-075f7cbbdab50dd8b
+aws_sec_prvt_grp: sg-0e022a8f304fd345f
+kit_upload_directory: /

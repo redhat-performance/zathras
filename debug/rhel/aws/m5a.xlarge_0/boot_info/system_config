@@ -1,0 +1,68 @@
+Thu Jan 30 01:27:31 PM UTC 2025
+==============================================
+General information
+==============================================
+system name: ip-170-0-16-53.us-east-2.compute.internal
+release: Red Hat Enterprise Linux 9.5 (Plow)a 5.14.0-503.11.1.el9_5.x86_64
+==============================================
+Hardware information
+==============================================
+Architecture: x86_64
+Product: m5a.xlarge
+BIOS information: Amazon EC2 1.0
+processor information: AMD EPYC 7571
+CPUS present: CPU(s): 4
+CPUS on line: 0-3
+Numa CPU allocation:
+NUMA node(s):                         1
+NUMA node0 CPU(s):                    0-3
+==============================================
+Memory information
+==============================================
+MemTotal:       15819240 kB
+HardwareCorrupted:     0 kB
+Hugepagesize:       2048 kB
+Numa memory per node
+node 0 size: 15448 MB
+==============================================
+Boot options
+BOOT_IMAGE=(hd0,gpt3)/vmlinuz-5.14.0-503.11.1.el9_5.x86_64 root=UUID=e3546f7c-480c-4614-be14-f365b0e8cddf console=tty0 console=ttyS0,115200n8 net.ifnames=0 nvme_core.io_timeout=4294967295 crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M
+==============================================
+Tuned Current active profile: virtual-guest
+==============================================
+SELinux status:                 enabled
+==============================================
+Disk information
+/dev/nvme0n1 ID_MODEL=Amazon Elastic Block Store
+==============================================
+Checking for mount overlays
+All single mount points
+==============================================
+mounted filesystems
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+sysfs on /sys type sysfs (rw,nosuid,nodev,noexec,relatime,seclabel)
+devtmpfs on /dev type devtmpfs (rw,nosuid,seclabel,size=4096k,nr_inodes=1967103,mode=755,inode64)
+securityfs on /sys/kernel/security type securityfs (rw,nosuid,nodev,noexec,relatime)
+tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev,seclabel,inode64)
+devpts on /dev/pts type devpts (rw,nosuid,noexec,relatime,seclabel,gid=5,mode=620,ptmxmode=000)
+tmpfs on /run type tmpfs (rw,nosuid,nodev,seclabel,size=3163848k,nr_inodes=819200,mode=755,inode64)
+cgroup2 on /sys/fs/cgroup type cgroup2 (rw,nosuid,nodev,noexec,relatime,seclabel,nsdelegate,memory_recursiveprot)
+pstore on /sys/fs/pstore type pstore (rw,nosuid,nodev,noexec,relatime,seclabel)
+efivarfs on /sys/firmware/efi/efivars type efivarfs (rw,nosuid,nodev,noexec,relatime)
+bpf on /sys/fs/bpf type bpf (rw,nosuid,nodev,noexec,relatime,mode=700)
+/dev/nvme0n1p4 on / type xfs (rw,relatime,seclabel,attr2,inode64,logbufs=8,logbsize=32k,noquota)
+selinuxfs on /sys/fs/selinux type selinuxfs (rw,nosuid,noexec,relatime)
+systemd-1 on /proc/sys/fs/binfmt_misc type autofs (rw,relatime,fd=29,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=16572)
+debugfs on /sys/kernel/debug type debugfs (rw,nosuid,nodev,noexec,relatime,seclabel)
+mqueue on /dev/mqueue type mqueue (rw,nosuid,nodev,noexec,relatime,seclabel)
+hugetlbfs on /dev/hugepages type hugetlbfs (rw,relatime,seclabel,pagesize=2M)
+tracefs on /sys/kernel/tracing type tracefs (rw,nosuid,nodev,noexec,relatime,seclabel)
+configfs on /sys/kernel/config type configfs (rw,nosuid,nodev,noexec,relatime)
+none on /run/credentials/systemd-sysctl.service type ramfs (ro,nosuid,nodev,noexec,relatime,seclabel,mode=700)
+none on /run/credentials/systemd-sysusers.service type ramfs (ro,nosuid,nodev,noexec,relatime,seclabel,mode=700)
+fusectl on /sys/fs/fuse/connections type fusectl (rw,nosuid,nodev,noexec,relatime)
+none on /run/credentials/systemd-tmpfiles-setup-dev.service type ramfs (ro,nosuid,nodev,noexec,relatime,seclabel,mode=700)
+/dev/nvme0n1p3 on /boot type xfs (rw,relatime,seclabel,attr2,inode64,logbufs=8,logbsize=32k,noquota)
+/dev/nvme0n1p2 on /boot/efi type vfat (rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro)
+none on /run/credentials/systemd-tmpfiles-setup.service type ramfs (ro,nosuid,nodev,noexec,relatime,seclabel,mode=700)
+tmpfs on /run/user/1000 type tmpfs (rw,nosuid,nodev,relatime,seclabel,size=1581924k,nr_inodes=395481,mode=700,uid=1000,gid=1000,inode64)

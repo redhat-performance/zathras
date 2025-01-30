@@ -1,0 +1,8 @@
+---
+pkg_install:
+  - bc
+  - git
+  - numactl
+  - perf
+  - time
+  - unzip

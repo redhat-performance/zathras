@@ -23,3 +23,9 @@
     fail:
       msg: "{{ exit_msg }}"
   when: '"fail" in status.stdout'
+- name: Log failure
+  include_role:
+    name: log_and_terminate
+  vars:
+    exit_msg: "{{ exit_msg }}"
+  when: status.rc == 1
