@@ -7,10 +7,6 @@
   shell: cat {{ working_dir }}/{{ status_file }} 2> /dev/null
   register: status
   ignore_errors: yes
-  no_log: true
-  failed_when: >
-    ("'IGNORE_IT' in status.stderr") or
-    ("'fail' in status.stdout")
 
 - name: terminate
   block:
@@ -19,11 +15,17 @@
       name: tf_delete
     vars:
       tf_dir: "tf"
-    when: config_info.cloud_terminate_instance == 1 and config_info.term_system == "yes"
-  - name: Log failure
-    include_role:
-      name: log_and_terminate
-    vars:
-      exit_msg: "{{ exit_msg }}"
+    when:
+      - config_info.cloud_terminate_instance == 1
+      - config_info.term_system == "yes"
+      - config_info.system_type != "local"
+  - name: Aborting test
+    fail:
+      msg: "{{ exit_msg }}"
+  when: '"fail" in status.stdout'
+- name: Log failure
+  include_role:
+    name: log_and_terminate
+  vars:
+    exit_msg: "{{ exit_msg }}"
   when: status.rc == 1
- 

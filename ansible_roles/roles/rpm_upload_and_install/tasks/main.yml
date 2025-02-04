@@ -20,15 +20,10 @@
     var: rpm_out
 
 - name: install the rpm file
-  shell: sudo yum install -y {{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ rpm_out.stdout }}
-  ignore_errors: yes
-  register: install_results
-
-- name: Error check
   include_role:
-    name: package_install_error
+    name: install_packages
   vars:
-    rtc_val: "{{ install_results.rc }}"
-    packages: "{{ rpm_out.stdout }}"
+    results_file:  "{{ results_file }}_latest"
 
-
+- name: Append results
+  shell: "cat {{ results_file }}_latest >> {{ results_file }}"
