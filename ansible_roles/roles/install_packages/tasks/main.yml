@@ -7,18 +7,25 @@
 #
 - name: install rhel packages
   block:
+  - name: Remove any existing status file.
+    shell: "rm -f {{ results_file }}"
   - name: install yum packages
     yum:
       name: "{{ pkg_install }}"
       state: latest
-    ignore_errors: yes
     register: install_results
-  - name: Error check
-    include_role:
-      name: package_install_error
-    vars:
-      rtc_val: "{{ install_results.rc }}"
-      packages: "{{ pkg_install }}"
+  - name: Report Success
+    lineinfile:
+       path: "{{ results_file }}"
+       line: "status: success"
+       create: yes
+  rescue:
+    - name: Report Error
+      lineinfile:
+         path: "{{ results_file }}"
+         line: "status: failed"
+         create: yes
+  any_errors_fatal: true
   when: config_info.os_vendor == "rhel"
 
 - name: install amazon packages
