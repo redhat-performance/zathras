@@ -20,8 +20,10 @@
     vars:
       tf_dir: "tf"
     when: config_info.cloud_terminate_instance == 1 and config_info.term_system == "yes"
-  - name: Aborting test
-    fail:
-      msg: "{{ exit_msg }}"
+  - name: Log failure
+    include_role:
+      name: log_and_terminate
+    vars:
+      exit_msg: "{{ exit_msg }}"
   when: status.rc == 1
  

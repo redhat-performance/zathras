@@ -25,6 +25,26 @@
 #          the test.
 #
 
+#
+#  Locking overview
+#
+# To allow the user to run multiple copies of Zathras in the same directory the following must
+# happen.
+# 1) Unique file names for files that are specific to the Zathras instance
+# 2) For files that are common between instance, they must be locked if there is potential for 
+#    being updated by multiple Zathras instance.
+#
+# Unique file names are accomplished via mktemp
+#
+# For locking for blocks of shell code, we use
+#    Exclusive general lock
+#	To lock: gl_lock_exclusive <locking from, debug only>
+#	To unlock: gl_unlock_exclusive <unlocking from, debug only>
+#
+# For locking on a command, we use
+#   flock -x <file name> <command>
+#
+
 # Burdens version number.
 
 cli=${0}
@@ -167,7 +187,7 @@ gl_run_prefix=""
 gl_scenario_to_run=""
 gl_scenario_to_restore=""
 gl_selinux_level="enforcing"
-gl_selinux_state="enabled"
+gl_selinux_state=$value_not_set
 gl_selinux_state_set=0
 gl_ssh_key_file=""
 gl_show_os_versions=0;
@@ -192,6 +212,7 @@ gl_max_systems_set=0
 # should provide a usage.  The --test_version_check option is present
 # so we can only check the versions via an option
 #
+gl_ansible_verbosity="normal"
 gl_test_version_check=1
 gl_update_test_versions=0
 gl_disk_iops=0
@@ -236,6 +257,53 @@ if [ $? -ne 0 ]; then
 else
 	UTILS_DIR=$UTILS_DIR/utils
 fi
+
+#
+# Exclusive locking routines
+#
+# Given bash does not have a locking mechism built in, for code blocks
+# we need to have our own.
+#
+# To do this:
+#  Locking exclusive: Attempt to make the directory $gl_lock.  If the mkdir
+#     fails, then sleep for 4 seconds, and repeat.  If mkdir passes, then set 
+#     $gl_have_locked to be 0, and break from the loop.
+# Unlocking exclusive: Simply remove the dir $gl_lock and set $gl_have_locked
+#     to be 0.
+#
+# $gl_have_locked is to make sure we do not attempt to remove the lock if we do not
+#     own it.  The cleanup_and_exit routine simply attempts to unlock it everytime,
+#     this prevents that from happening if we do not own the lock.
+#
+gl_lock=${gl_top_dir}/gl_lock
+gl_have_locked=0
+gl_debug_lock=0
+
+gl_lock_exclusive()
+{
+	if [[ $gl_debug_lock -eq 1 ]]; then
+		echo lock $1
+	fi
+	while true
+	do
+		mkdir $gl_lock 2> /dev/null
+		if [[ $? -eq 0 ]]; then
+			gl_have_locked=1
+			break
+		else
+			sleep 4
+		fi
+	done
+}
+
+gl_unlock_exclusive()
+{
+	if [[ $gl_debug_lock -eq 1 ]]; then
+		echo unlock $1
+	fi
+	rmdir $gl_lock
+	gl_have_locked=0
+}
 
 #
 # Generate report of test status.
@@ -291,7 +359,9 @@ cleanup_and_exit()
 	#
 	# In case we have a lock
 	#
-	flock -u 0
+	if [[ $gl_have_locked -eq 1 ]]; then
+		gl_unlock_exclusive 7
+	fi
 	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
 }
 
@@ -318,7 +388,7 @@ azure_image_lookup()
 	echo "Pulling requested Azure OS image information, may take a bit."
 	end_date=`date +"%Y"`
 	let "start_date=$end_date-1"
-	az vm image list --all --publisher $publisher --output tsv | egrep ".$start_date|.$end_date"
+	az vm image list --all --publisher $publisher --output tsv | grep -E ".$start_date|.$end_date"
 	cleanup_and_exit "" 0
 }
 
@@ -337,7 +407,7 @@ gcp_image_lookup()
 	echo "Pulling requested GCP OS image information, may take a bit."
 	end_date=`date +"%Y"`
 	let "start_date=$end_date-1"
-	gcloud compute images list --format="table(NAME,PROJECT,creationTimestamp.date(tz=LOCAL))" | grep "$project" | egrep ".$start_date|.$end_date"
+	gcloud compute images list --format="table(NAME,PROJECT,creationTimestamp.date(tz=LOCAL))" | grep "$project" | grep -E ".$start_date|.$end_date"
 	cleanup_and_exit "" 0
 }
 
@@ -371,7 +441,7 @@ show_aws_images()
 	if [[ $2 -eq 0 ]]; then
 		echo "Pulling requested AWS OS image information, may take a bit."
 		if [[ $gl_os_vendor != "private" ]]; then
-			aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}"
+			aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}"
 		else
 			get_cloud_acct_id
 			aws ec2 describe-images --owners $gl_cloud_acct_id --output table --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]'
@@ -390,7 +460,7 @@ show_aws_images()
 			ami_check=$ami
 			ami_arch=""
 		fi
-		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}" | grep "${ami_check}"`
+		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}" | grep "${ami_check}"`
 		if [[ $ami_value != "" ]]; then
 			#
 			# check_for_private_amis
@@ -756,13 +826,13 @@ general_setup()
 	# Only build the tar files once.  Also make sure to only allow one process
 	# operating here.
 	#
-	flock -x 0
+	gl_lock_exclusive 1
 	if [[ ! -f "bin.tar" ]]; then
 		tar cf bin.tar bin
 		tar cf tools_bin.tar tools_bin
 		tar cf sysctl_settings.tar sysctl_settings
 	fi
-	flock -u 0
+	gl_unlock_exclusive 1
 }
 
 #
@@ -1274,13 +1344,15 @@ azure_specific_os_version()
 	# The publisher field in the urn may be different case (go figure) then expected..
 	# So we need to go and pull the publisher from az_vm image show.
 	#
-	azpublisher=`az vm image show --location eastus --urn ${gl_cloud_os_version} | grep publisher | cut -d: -f 2 | cut -d'"' -f 2`
+	az_subscription=`az account show | grep id | cut -d'"' -f 4`
+	azpublisher=$(echo $gl_cloud_os_version | cut -f1 -d:)
 	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
 	azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
 	azversion=$(echo $gl_cloud_os_version | cut -f 4 -d:)
 	echo "  cloud_offer: ${azoffer}" >> ansible_vars_main.yml
 	echo "  cloud_publisher: ${azpublisher}" >> ansible_vars_main.yml
 	echo "  cloud_os_version: ${azversion}" >> ansible_vars_main.yml
+	echo "  az_subscription: ${az_subscription}" >> ansible_vars_main.yml
 	#
 	# Because the sku may contain an _, and ansible when it replaces the 
 	# variables in the tfvars.j2 file later will unquote _.
@@ -1307,7 +1379,7 @@ aws_specific_os_version()
 		else
 			ami_check=$ami
 		fi
-		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | egrep "${start_date}|${end_date}" | grep "${ami_check}"`
+		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}" | grep "${ami_check}"`
 		if [[ $ami_value == "" ]]; then
 			get_cloud_acct_id
 			ami_value=`aws ec2 describe-images --owners $gl_cloud_acct_id | grep IMAGES | grep $ami_check`
@@ -1611,6 +1683,7 @@ create_ansible_options()
 		#
 		# Azure, we have a limit on resource group name, need the test_index.
 		#
+		gl_lock_exclusive 2
 		if [[ $gl_sys_type == "azure" ]]; then
 			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${host_or_cloud_inst}
 		else
@@ -1636,6 +1709,7 @@ create_ansible_options()
 
 		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> $gl_run_info
 		make_dir_report_errors $run_dir
+		gl_unlock_exclusive 2
 		dir_list=$dir_list$run_dir" "
 		cp ${gl_test_def_dir}/test_defs.yml $run_dir
 		cp ${gl_test_def_dir}/full_test_defs.yml $run_dir
@@ -1915,7 +1989,13 @@ create_ansible_options()
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
+			if [[ $gl_ansible_verbosity != "normal" ]]; then
+				base_string=${base_string}" -l $gl_ansible_verbosity"
+			fi
+			echo $run_dir >> /tmp/dave
 			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
+			test_info_str=`grep test_to_run: $run_dir/ansible_vars_main.yml | sed "s/\[//g" | sed "s/\]//g" | cut -d: -f 2 | sed "s/ //g"`
+			echo "Starting ${test_info_str} on ${host_or_cloud_inst}"
 			if [[ $gl_system_type == "local" ]]; then
 				#
 				# Do not allow simulatenous runs to the same local host.
@@ -1930,10 +2010,15 @@ create_ansible_options()
 				kick_off.sh $base_string | tee ${run_dir}/ansible_log &
 			fi
 			pids[${pindex}]=$!
+			index=$!
+			pids[${pindex}]="${index}:${test_info_str} on ${host_or_cloud_inst}"
 			let "pindex=$pindex+1"
 			if [[ $pindex -eq $gl_max_systems ]]; then
-				for pid in ${pids[*]}; do
-					wait $pid
+				for pid in "${pids[*]}"; do
+					wait_for=`echo $pid | cut -d ':' -f 1`
+					wait $wait_for
+					out_string=`echo $pid | cut -d ':' -f 2-`
+					echo Finsihed $out_string
 				done
 				pindex=0
 			fi
@@ -1947,8 +2032,11 @@ create_ansible_options()
 	#
 	# Wait for everyone to finish up.
 	#
-	for pid in ${pids[*]}; do
-		wait $pid
+	for pid in "${pids[*]}"; do
+		wait_for=`echo $pid | cut -d ':' -f 1`
+		wait $wait_for
+		out_string=`echo $pid | cut -d ':' -f 2-`
+		echo Finsihed $out_string
 	done
 
 	#
@@ -2124,10 +2212,11 @@ check_for_python()
 
 check_for_aws()
 {
-	aws_version=`dnf list installed | grep awscli.noarch`
+	aws_version=`aws --version 2> /dev/null`
 	if [[ $? -eq 1 ]]; then
-		cleanup_and_exit "aws requires the aws clis to be installed\ndnf install -y awscli" 1
+		cleanup_and_exit "aws requires the aws CLIs to be installed\ndnf install -y awscli or pip3 install awscli" 1
 	fi
+	aws_version=`echo $aws_version | cut -d'/' -f 2 | cut -d' ' -f 1`
 	report_util_version aws_version "${aws_version}"
 }
 
@@ -2165,7 +2254,7 @@ check_for_terraform()
 #
 package_check()
 {
-	flock -x 0
+	gl_lock_exclusive 3
 	if [[ ! -f utils_version ]]; then
 		check_for_pip3
 		check_for_ansible
@@ -2178,7 +2267,7 @@ package_check()
 		fi
 		check_for_terraform
 	fi
-	flock -u 0
+	gl_unlock_exclusive 3
 }
 
 #
@@ -3088,6 +3177,10 @@ usage()
 	echo "Usage: $0"
 	echo "Version: "$version
 	echo "General options"
+	echo "  --ansible_noise_level <level>: How much information ansible is to output."
+	echo "    normal: standard ansible output"
+	echo "    dense: just report the task executed"
+	echo "    silence: nothing reported"
 	echo "  --archive <dir>/<results>:  location to save the archive information to"
 	echo "  --child: tells burden it is a child of another burden process and not to"
 	echo "    perform the initial setup work"
@@ -3264,6 +3357,14 @@ set_general_value()
 {
 	shift_by=0
 	case "$1" in
+		--ansible_noise_level)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			if [[ $2 != "normal" ]] && [[ $2 != "dense" ]] && [[ $2 != "silence" ]]; then
+				cleanup_and_exit "$2 not valid value for --ansible_noise_level.  Valid values are normal, dense or silence" 1
+			fi
+			gl_ansible_verbosity=$2
+			shift_by=2
+		;;
 		--archive)
 			if [[ $gl_archive_location == $value_not_set ]]; then
 				gl_archive_location=$2
@@ -3630,6 +3731,7 @@ grab_cli_data()
 	# Define user options
 	#
 	ARGUMENT_LIST=(
+		"ansible_noise_level"
 		"archive"
 		"cloud_os_id"
 		"create_attempts"
@@ -3973,13 +4075,13 @@ first_invocation()
 		fi
 	fi
 
-	flock -x 0
+	gl_lock_exclusive 4
 	if [[ ! -f test_info ]] || [[ $gl_test_version_check -eq 1 ]] || [[ $gl_update_test_versions -eq 1 ]]; then
 		integrate_templates ${gl_test_def_dir}/test_defs.yml
 		cat $gl_test_def_dir/full_test_defs.yml | yq . > test_info
 		cat $gl_test_def_dir/java_pkg_def.yml | yq . > java_info
 	fi
-	flock -u 0
+	gl_unlock_exclusive 4
 }
 
 cli_data="$@"
@@ -4046,6 +4148,14 @@ if [[ $gl_show_os_versions -eq 1 ]]; then
 	#
 	cloud_image_lookup
 	cleanup_and_exit "" 0
+fi
+
+if [[ "$gl_selinux_state" == "$value_not_set" ]]; then
+	if [[ "$gl_os_vendor" == "rhel" ]] || [[ "$gl_os_vendor" == "amazon" ]]; then
+		gl_selinux_state="enabled"
+	else
+		gl_selinux_state="disabled"
+	fi	
 fi
 
 verify_selinux

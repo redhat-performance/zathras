@@ -52,6 +52,11 @@ variable "vm_image" {
   default = "RedHat:RHEL:8_4:8.4.2021081003"
 }
 
+variable "az_subscription" {
+  type    = string
+  default = "none"
+}
+
 variable "publisher" {
   type    = string
   default = "RedHat"
