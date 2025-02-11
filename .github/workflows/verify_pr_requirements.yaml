@@ -1,6 +1,7 @@
 name: Verify PR has JIRA ticket and issue number
 
 on:
+  workflow_call:
   pull_request:
     types:
       - opened
