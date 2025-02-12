@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           echo PARENT_ISSUES=$(
-            /opt/tools/get_parent_issue.sh
+            /opt/tools/get_parent_issue.sh ${{ github.event.repository }} $PR_NUMBER
           ) >> "$GITHUB_ENV"
 
 
@@ -46,7 +46,7 @@ jobs:
       - name: Get PR Status
         run: >
           echo PR_STATUS=$(
-            gh pr view $PR_NUMBER --json reviewRequests,latestReviews | 
+            gh -R ${{ github.event.repository }} pr view $PR_NUMBER --json reviewRequests,latestReviews | 
             python /opt/tools/determine_status.py
           ) >> "$GITHUB_ENV"
 
