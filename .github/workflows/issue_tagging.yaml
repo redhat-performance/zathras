@@ -56,7 +56,7 @@ jobs:
           ) >> "$GITHUB_ENV"
 
       - name: Get number of pending reviews
-        if: env.PR_STATE == ""
+        if: env.PR_STATE == ''
         run: >
           echo PENDING_REVIEWS=$(
             gh pr view "$PR_NUMBER" --json reviewRequests | jq '.reviewRequests | length'
@@ -67,7 +67,7 @@ jobs:
         run: echo PR_STATE="pr_inprogress"
 
       - name: Set review state
-        if: env.PR_STATE == ""
+        if: env.PR_STATE == ''
         run: echo PR_STATE="pr_review"
 
 
