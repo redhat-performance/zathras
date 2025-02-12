@@ -1,0 +1,44 @@
+{
+  "latestReviews": [
+	{
+		"id": "",
+		"author": {
+		  "login": "gdumas"
+		},
+		"authorAssociation": "MEMBER",
+		"body": "",
+		"submittedAt": "2025-02-11T13:14:17Z",
+		"includesCreatedEdit": false,
+		"reactionGroups": [],
+		"state": "APPROVED",
+		"commit": {
+		  "oid": ""
+		}
+	},
+    {
+      "id": "",
+      "author": {
+        "login": "dvalinrh"
+      },
+      "authorAssociation": "MEMBER",
+      "body": "",
+      "submittedAt": "2025-02-11T13:14:17Z",
+      "includesCreatedEdit": false,
+      "reactionGroups": [],
+      "state": "CHANGES_REQUESTED",
+      "commit": {
+        "oid": ""
+      }
+    }
+  ],
+  "reviewRequests": [
+	{
+		"__typename": "User",
+		"login": "kdvalin"
+	  },
+	  {
+		"__typename": "User",
+		"login": "frival"
+	  }
+  ]
+}
