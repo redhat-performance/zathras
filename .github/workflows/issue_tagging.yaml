@@ -28,7 +28,7 @@ jobs:
         run: echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> "$GITHUB_ENV"
 
       - name: Get PR number on PR event
-        if: github.event_name == 'pull_request_target'
+        if: github.event_name == 'pull_request'
         run: echo "PR_NUMBER=${{ github.event.number }}" >> "$GITHUB_ENV"
 
       - name: Get parent issues
