@@ -4,12 +4,13 @@ permissions:
   issues: write
 
 env:
+  ISSUE_STATE: pr_inprogress
   REMOVE_ISSUES: --remove-label pr_approved --remove-label pr_review --remove-label pr_inprogress
   GH_TOKEN: ${{ github.token }}
 
 on:
   workflow_call:
-  pull_request:
+  pull_request_target:
     types:
       - review_requested
   pull_request_review:
@@ -18,6 +19,7 @@ on:
 jobs:
   update_parent_issue:
     runs-on: ubuntu-latest
+    container: quay.io/zathras/jira-issue-tagging-ci:latest
     steps:
       - uses: actions/checkout@v4
 
@@ -32,14 +34,8 @@ jobs:
       - name: Get parent issues
         shell: bash
         run: |
-          mentioned_issues=$(gh pr view "$PR_NUMBER" --json body | jq -r .body | grep -Eo '#[0-9]+' | sed -e 's/#//g')
-          
           echo PARENT_ISSUES=$(
-            for issue in $mentioned_issues; do
-              if gh issue view "$issue" --json id > /dev/null; then
-                echo -n "$issue "
-              fi
-            done
+            /opt/tools/get_parent_issue.sh
           ) >> "$GITHUB_ENV"
 
 
@@ -47,35 +43,18 @@ jobs:
         if: env.PARENT_ISSUES == ''
         run: echo "Could not find a parent issue" && exit 1
 
-      - name: See if PR needs changes
+      - name: Get PR Status
         run: >
-          echo PR_STATE=$(
-            gh pr view "$PR_NUMBER" --json latestReviews |
-            jq -r '.latestReviews[].state' && echo "in_progress"
-            || echo ""
+          echo PR_STATUS=$(
+            gh pr view $PR_NUMBER --json reviewRequests,latestReviews | 
+            python /opt/tools/determine_status.py
           ) >> "$GITHUB_ENV"
-
-      - name: Get number of pending reviews
-        if: env.PR_STATE == ''
-        run: >
-          echo PENDING_REVIEWS=$(
-            gh pr view "$PR_NUMBER" --json reviewRequests | jq '.reviewRequests | length'
-          ) >> "$GITHUB_ENV"
-
-      - name: Set in progress state
-        if: env.PENDING_REVIEWS > 0
-        run: echo PR_STATE="pr_inprogress"
-
-      - name: Set review state
-        if: env.PR_STATE == ''
-        run: echo PR_STATE="pr_review"
-
 
       - name: Set parent issues state
         run: > 
           for issue in $PARENT_ISSUES; do
-            echo "Updating $issue to $PR_STATE" &&
+            echo "Updating $issue to $PR_STATUS" &&
             gh issue edit $issue $REMOVE_ISSUES && 
-            gh issue edit $issue --add-label=$PR_STATE
+            gh issue edit $issue --add-label=$PR_STATUS
           done
         
