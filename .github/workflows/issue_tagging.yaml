@@ -54,7 +54,7 @@ jobs:
         run: > 
           for issue in $PARENT_ISSUES; do
             echo "Updating $issue to $PR_STATUS" &&
-            gh issue edit $issue $REMOVE_ISSUES && 
-            gh issue edit $issue --add-label=$PR_STATUS
+            gh -R ${{ github.repository }} issue edit $issue $REMOVE_ISSUES && 
+            gh -R ${{ github.repository }} issue edit $issue --add-label=pr_$PR_STATUS
           done
         
