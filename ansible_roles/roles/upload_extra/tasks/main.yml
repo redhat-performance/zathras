@@ -13,6 +13,15 @@
     file: "{{ working_dir }}/ansible_vars.yml"
 
 #
+# Default status.
+#
+- name: Record default status of update sucess
+  lineinfile:
+    path: "/tmp/upload_extra_status"
+    line: "status: success"
+    create: yes
+
+#
 # If we are pulling a file
 #
 - name: Upload extra files
