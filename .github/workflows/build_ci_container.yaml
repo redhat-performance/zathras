@@ -1,0 +1,24 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  containerize:
+    runs-on: ubuntu-latest
+    container: registry.redhat.io/rhel9/podman:9.5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Quay
+        if: github.event.name == 'push'
+        run: podman login quay.io -u ${{ secrets.QUAY_UNAME }} -p ${{ secrets.QUAY_PASSWD }}
+        
+      - name: Build container
+        run: podman build -t quay.io/zathras/jira-issue-tagging-ci:latest .
+        working-directory: ci/issue-tagging-container
+
+      - name: Push container
+        if: github.event_name == 'push'
+        run: podman push quay.io/zathras/jira-issue-tagging-ci:latest
