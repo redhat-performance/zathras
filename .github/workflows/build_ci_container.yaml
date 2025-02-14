@@ -15,7 +15,7 @@ jobs:
         run: docker login quay.io -u ${{ secrets.QUAY_UNAME }} -p ${{ secrets.QUAY_PASSWD }}
         
       - name: Build container
-        run: docker build -t quay.io/zathras/jira-issue-tagging-ci:latest .
+        run: docker build -t quay.io/zathras/jira-issue-tagging-ci:latest -f Containerfile .
         working-directory: ci/issue-tagging-container
 
       - name: Push container
