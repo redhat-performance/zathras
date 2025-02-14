@@ -7,7 +7,7 @@ on:
 jobs:
   containerize:
     runs-on: ubuntu-latest
-    container: registry.redhat.io/rhel9/podman:9.5
+    container: quay.io/podman/stable:v5 
     steps:
       - uses: actions/checkout@v4
 
