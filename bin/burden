@@ -1913,7 +1913,7 @@ create_ansible_options()
 					wait_for=`echo $pid | cut -d ':' -f 1`
 					wait $wait_for
 					out_string=`echo $pid | cut -d ':' -f 2-`
-					echo Finsihed $out_string
+					echo Finished $out_string
 				done
 				pindex=0
 			fi
@@ -1931,7 +1931,7 @@ create_ansible_options()
 		wait_for=`echo $pid | cut -d ':' -f 1`
 		wait $wait_for
 		out_string=`echo $pid | cut -d ':' -f 2-`
-		echo Finsihed $out_string
+		echo Finished $out_string
 	done
 
 	#
