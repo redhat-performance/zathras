@@ -60,12 +60,6 @@ for package in "${packages[@]}"; do
         elif [ $os_release_clean = 'fedora' ]; then
             release='fedora'
         fi
-        # HashiCorp repo urls are case-sensitive
-        if [ $os_release_clean = 'rhel' ]; then
-            release='RHEL'
-        elif [ $os_release_clean = 'fedora' ]; then
-            release='fedora'
-        fi
             # repo URL for terraform
             repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
 
