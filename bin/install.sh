@@ -45,7 +45,6 @@ for package in "${packages[@]}"; do
         # Add the terraform repository from HashiCorp
         # currently supported distros: fedora, RHEL
         # reference: https://developer.hashicorp.com/terraform/cli/install/yum
-set -eu
 
 # Check if script is being run as root
 if (( $EUID == 0 )); then
