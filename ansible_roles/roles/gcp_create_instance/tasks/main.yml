@@ -44,6 +44,15 @@
 # - name: terraform apply tasks
 #   include_tasks: tf_apply.yml
 
+- name: Create and attach disks to instance
+  include_tasks: disks.yml
+  vars:
+    disk_params: "{{ disks }}"
+  loop: "{{ config_info.cloud_disks }}"
+  loop_control:
+    loop_var: disks
+  when: config_info.cloud_disks is defined
+
 - name: GCP, create instance
   include_role:
     name: tf_create
@@ -92,7 +101,6 @@
     - ssh_net_copy
   when: config_info.cloud_numb_networks|int >= 1
 
-
 - name: Create root .ssh directory
   delegate_to: "{{ item }}"
   become: yes
@@ -130,11 +138,3 @@
 - name: Add host to test and install groups
   include_tasks: add_host_to_groups.yml
 
-- name: Create and attach disks to instance
-  include_tasks: disks.yml
-  vars:
-    disk_params: "{{ disks }}"
-  loop: "{{ config_info.cloud_disks }}"
-  loop_control:
-    loop_var: disks
-  when: config_info.cloud_disks is defined
