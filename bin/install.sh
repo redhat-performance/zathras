@@ -46,17 +46,6 @@ for package in "${packages[@]}"; do
         # currently supported distros: fedora, RHEL
         # reference: https://developer.hashicorp.com/terraform/cli/install/yum
 
-# check for and install system packages
-packages=(ansible-core git jq python python3-pip terraform wget)
-
-for package in "${packages[@]}"; do 
-    if dnf list installed "$package" &> /dev/null; then
-        echo "$package is installed."
-    elif [ $package == "terraform" ]; then
-        # Add the terraform repository from HashiCorp
-        # currently supported distros: fedora, RHEL
-        # reference: https://developer.hashicorp.com/terraform/cli/install/yum
-
         # Get operating system distribution
         os_release=$(grep "^ID=" /etc/os-release | awk -F'=' '{print $2}')
         # Get operating system distribution
@@ -95,20 +84,6 @@ for package in "${packages[@]}"; do
     fi
 
 done
-
-        # install the package
-        sudo dnf install terraform-1.9.8-1 -y || {
-            exit 1
-        }
-    else
-        echo "Installing $package..."
-        sudo dnf install -y "$package" || {
-            exit 1
-        }
-    fi
-
-done
-
 
 
 # pip install requirements
