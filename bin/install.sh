@@ -46,22 +46,6 @@ for package in "${packages[@]}"; do
         # currently supported distros: fedora, RHEL
         # reference: https://developer.hashicorp.com/terraform/cli/install/yum
 
-# Check if script is being run as root
-if (( $EUID == 0 )); then
-    read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N " yesno
-
-    case $yesno in
-        [Yy]* )
-            echo "You answered yes, continuing install as root." ;;
-        [Nn]* )
-            echo "You answered no, exiting"; exit 1 ;; 
-        *) 
-            echo "Unknown input, exiting"; exit 1 ;;
-    esac
-else
-    echo "Not running as root, proceed."
-fi
-
 # check for and install system packages
 packages=(ansible-core git jq python python3-pip terraform wget)
 
