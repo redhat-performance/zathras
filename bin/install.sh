@@ -45,34 +45,6 @@ for package in "${packages[@]}"; do
         # Add the terraform repository from HashiCorp
         # currently supported distros: fedora, RHEL
         # reference: https://developer.hashicorp.com/terraform/cli/install/yum
-set -eu
-
-# Check if script is being run as root
-if (( $EUID == 0 )); then
-    read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N " yesno
-
-    case $yesno in
-        [Yy]* )
-            echo "You answered yes, continuing install as root." ;;
-        [Nn]* )
-            echo "You answered no, exiting"; exit 1 ;; 
-        *) 
-            echo "Unknown input, exiting"; exit 1 ;;
-    esac
-else
-    echo "Not running as root, proceed."
-fi
-
-# check for and install system packages
-packages=(ansible-core git jq python python3-pip terraform wget)
-
-for package in "${packages[@]}"; do 
-    if dnf list installed "$package" &> /dev/null; then
-        echo "$package is installed."
-    elif [ $package == "terraform" ]; then
-        # Add the terraform repository from HashiCorp
-        # currently supported distros: fedora, RHEL
-        # reference: https://developer.hashicorp.com/terraform/cli/install/yum
 
         # Get operating system distribution
         os_release=$(grep "^ID=" /etc/os-release | awk -F'=' '{print $2}')
@@ -112,20 +84,6 @@ for package in "${packages[@]}"; do
     fi
 
 done
-
-        # install the package
-        sudo dnf install terraform-1.9.8-1 -y || {
-            exit 1
-        }
-    else
-        echo "Installing $package..."
-        sudo dnf install -y "$package" || {
-            exit 1
-        }
-    fi
-
-done
-
 
 
 # pip install requirements
