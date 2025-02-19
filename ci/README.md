@@ -17,3 +17,27 @@ The idea behind this workflow is to keep Jira tickets in sync with the current s
 ![flow chart for PR labelling workflow](images/pr_labelling.jpg)
 
 This workflow does not work with forked repositories, since the `GITHUB_TOKEN` provided by GitHub runner will not have write access to the base repository unless the pull request originated from the base repository.
+
+# Container
+The container image build in [issue-tagging-container] is meant to provide CI helper scripts around to other repositories that
+reuse the workflows in this repository.  All scripts are kept in the `/opt/tools` directory within the container.
+
+## get_parent_issue.sh
+This script fetches any parent issues mentioned in a PR.  It will output a space separated list of issue numbers.
+
+### Usage
+`./get_parent_issue.sh <repository path (ie redhat-performance/zathras)> <pr number>`
+
+## determine_status.py
+This script will determine the target status of a PR by
+looking at the review state.  If any reviews request 
+changes, it will return "in progress", then if any  
+reviews are pending, it will return "review", if all 
+reviews approve the PR, it will return "approved".
+
+### Usage
+`python3 determine_status.py <json file of PR review states>`
+
+OR
+
+`gh pr view <PR Number> --json reviewRequests,latestReviews | python3 determine_status.py`
