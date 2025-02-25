@@ -1,0 +1,12 @@
+FROM registry.access.redhat.com/ubi9-minimal:9.5 AS builder
+
+RUN microdnf -y install wget
+RUN wget https://cli.github.com/packages/rpm/gh-cli.repo -O /gh-cli.repo
+
+FROM registry.access.redhat.com/ubi9-minimal:9.5
+
+COPY --from=builder /gh-cli.repo /etc/yum.repos.d/gh-cli.repo
+RUN microdnf -y install gh python3 jq
+WORKDIR /opt/tools
+
+COPY . /opt/tools/
