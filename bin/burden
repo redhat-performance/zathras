@@ -25,6 +25,26 @@
 #          the test.
 #
 
+#
+#  Locking overview
+#
+# To allow the user to run multiple copies of Zathras in the same directory the following must
+# happen.
+# 1) Unique file names for files that are specific to the Zathras instance
+# 2) For files that are common between instance, they must be locked if there is potential for 
+#    being updated by multiple Zathras instance.
+#
+# Unique file names are accomplished via mktemp
+#
+# For locking for blocks of shell code, we use
+#    Exclusive general lock
+#	To lock: gl_lock_exclusive <locking from, debug only>
+#	To unlock: gl_unlock_exclusive <unlocking from, debug only>
+#
+# For locking on a command, we use
+#   flock -x <file name> <command>
+#
+
 # Burdens version number.
 
 cli=${0}
@@ -88,7 +108,9 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   cloud_region: region to create the instance in.
 #   gl_cloud_region_zone: zone to create the instance in.
 #
+gl_run_info=`mktemp /tmp/zathras_run_info.XXXXX`
 value_not_set="none"
+gl_parse_file=""
 gl_sys_index_rerun=1
 gl_kit_upload_directory="none"
 gl_retry_failed_tests=1
@@ -211,6 +233,11 @@ gl_run_file=""
 gl_failed_test_rpt="failed_tests"
 
 #
+# Make sure the lock directory exists
+#
+lock_dir=${gl_top_dir}/lock_dir
+mkdir -p $lock_dir
+#
 # We get the number of failed test reports at the start of the test.  When we exit we will
 # check the original number of reported failed tests to what we currently have.  If they
 # are different then we will report failed for the run.  This is done because burden calls
@@ -232,23 +259,70 @@ else
 fi
 
 #
+# Exclusive locking routines
+#
+# Given bash does not have a locking mechism built in, for code blocks
+# we need to have our own.
+#
+# To do this:
+#  Locking exclusive: Attempt to make the directory $gl_lock.  If the mkdir
+#     fails, then sleep for 4 seconds, and repeat.  If mkdir passes, then set 
+#     $gl_have_locked to be 0, and break from the loop.
+# Unlocking exclusive: Simply remove the dir $gl_lock and set $gl_have_locked
+#     to be 0.
+#
+# $gl_have_locked is to make sure we do not attempt to remove the lock if we do not
+#     own it.  The cleanup_and_exit routine simply attempts to unlock it everytime,
+#     this prevents that from happening if we do not own the lock.
+#
+gl_lock=${gl_top_dir}/gl_lock
+gl_have_locked=0
+gl_debug_lock=0
+
+gl_lock_exclusive()
+{
+	if [[ $gl_debug_lock -eq 1 ]]; then
+		echo ${FUNCNAME[1]} ${BASH_LINENO[0]}
+	fi
+	while true
+	do
+		mkdir $gl_lock 2> /dev/null
+		if [[ $? -eq 0 ]]; then
+			gl_have_locked=1
+			break
+		else
+			sleep 4
+		fi
+	done
+}
+
+gl_unlock_exclusive()
+{
+	if [[ $gl_debug_lock -eq 1 ]]; then
+		echo ${FUNCNAME[1]} ${BASH_LINENO[0]}
+	fi
+	rmdir $gl_lock
+	gl_have_locked=0
+}
+
+#
 # Generate report of test status.
 # 
 process_results()
 {
 	if [ $gl_first_invocation -eq 1 ]; then
-		sort -u run_info > run_info.sorted
+		sort -u $gl_run_info > ${gl_run_info}.sorted
 		while IFS= read -r run_data
 		do
 			pushd $gl_top_dir/$run_data >& /dev/null
 			$gl_top_dir/tools_bin/determine_test_status
-			grep failed initial_summary > $gl_top_dir/failures
 			$gl_top_dir/tools_bin/report_missing_failed_test
 			if [[ $? -ne 0 ]] && [[ $gl_retry_failed_tests -eq 1 ]]; then
 				handle_error_reruns
 			fi
 			popd  >& /dev/null
-		done < "run_info.sorted"
+		done < "${gl_run_info}.sorted"
+		rm ${gl_run_info}.sorted $gl_run_info 
 	fi
 }
 
@@ -280,6 +354,13 @@ cleanup_and_exit()
 		if  [ $new_lines -ne $gl_failed_test_rpt_start_lines ]; then
 			rtc=1
 		fi
+	fi
+	rm -f $gl_cli_supplied_options $gl_run_info ${gl_run_info}.sorted
+	#
+	# In case we have a lock
+	#
+	if [[ $gl_have_locked -eq 1 ]]; then
+		gl_unlock_exclusive
 	fi
 	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
 }
@@ -741,9 +822,17 @@ general_setup()
 	#
 	gl_test_repos=`echo $1 | cut -d' ' -f 2 | sed "s/test_defs.yml/full_test_defs.yml/g"`
 
-	tar cf bin.tar bin
-	tar cf tools_bin.tar tools_bin
-	tar cf sysctl_settings.tar sysctl_settings
+	#
+	# Only build the tar files once.  Also make sure to only allow one process
+	# operating here.
+	#
+	gl_lock_exclusive
+	if [[ ! -f "bin.tar" ]]; then
+		tar cf bin.tar bin
+		tar cf tools_bin.tar tools_bin
+		tar cf sysctl_settings.tar sysctl_settings
+	fi
+	gl_unlock_exclusive
 }
 
 #
@@ -1594,6 +1683,7 @@ create_ansible_options()
 		#
 		# Azure, we have a limit on resource group name, need the test_index.
 		#
+		gl_lock_exclusive
 		if [[ $gl_sys_type == "azure" ]]; then
 			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${host_or_cloud_inst}
 		else
@@ -1617,8 +1707,9 @@ create_ansible_options()
 			rc=$?
 		done
 
-		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> ${gl_top_dir}/run_info
+		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> $gl_run_info
 		make_dir_report_errors $run_dir
+		gl_unlock_exclusive
 		dir_list=$dir_list$run_dir" "
 		cp ${gl_test_def_dir}/test_defs.yml $run_dir
 		cp ${gl_test_def_dir}/full_test_defs.yml $run_dir
@@ -1904,7 +1995,20 @@ create_ansible_options()
 			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
 			test_info_str=`grep test_to_run: $run_dir/ansible_vars_main.yml | sed "s/\[//g" | sed "s/\]//g" | cut -d: -f 2 | sed "s/ //g"`
 			echo "Starting ${test_info_str} on ${host_or_cloud_inst}"
-			kick_off.sh $base_string &
+			if [[ $gl_system_type == "local" ]]; then
+				#
+				# Do not allow simulatenous runs to the same local host.
+				#
+				touch $gl_top_dir/lock_dir/${host_or_cloud_inst}
+				flock -x $gl_top_dir/lock_dir/${host_or_cloud_inst} kick_off.sh $base_string | tee ${run_dir}/ansible_log &
+			else
+				#
+				# Cloud does not require exclusive locks on execution
+				# as we create a new cloud image.
+				#
+				kick_off.sh $base_string | tee ${run_dir}/ansible_log &
+			fi
+			pids[${pindex}]=$!
 			index=$!
 			pids[${pindex}]="${index}:${test_info_str} on ${host_or_cloud_inst}"
 			let "pindex=$pindex+1"
@@ -1992,7 +2096,7 @@ create_ansible_options()
 						if [[ $results_report != "" ]]; then
 							grep -q Failed $results_report
 							if [ $? -ne 1 ]; then
-								echo "${timestamp} Error: System: ${test_sys}, Test, $i, reported failure" >> $gl_top_dir/failed_runs
+								flock -x $gl_top_dir/failed_runs echo "${timestamp} Error: System: ${test_sys}, Test, $i, reported failure" >> $gl_top_dir/failed_runs
 								echo "    Error: reported a failure" >> ../results_info
 							fi
 						fi
@@ -2149,16 +2253,20 @@ check_for_terraform()
 #
 package_check()
 {
-	check_for_pip3
-	check_for_ansible
-	check_for_yq
-	check_for_jq
-	check_for_python
-	if [[ $gl_system_type == "aws" ]]; then
-		check_for_boto
-		check_for_aws
+	gl_lock_exclusive
+	if [[ ! -f utils_version ]]; then
+		check_for_pip3
+		check_for_ansible
+		check_for_yq
+		check_for_jq
+		check_for_python
+		if [[ $gl_system_type == "aws" ]]; then
+			check_for_boto
+			check_for_aws
+		fi
+		check_for_terraform
 	fi
-	check_for_terraform
+	gl_unlock_exclusive
 }
 
 #
@@ -2504,28 +2612,34 @@ convert_scenario_file()
 	#
 	# Now create the parse file to use.
 	#
-	echo "${sed_string}" > parse_reduce
-	chmod 755 parse_reduce
+	echo "${sed_string}" > parse_reduce_$$
+	chmod 755 parse_reduce_$$
 
 	tmp_run_file=$(mktemp /tmp/zath_temp_run.XXXXXX)
-	./parse_reduce | sed "s/+++/\//g" > $tmp_run_file
-	cat $tmp_run_file | yq .  > parse_file.tmp
+	./parse_reduce_$$ | sed "s/+++/\//g" > $tmp_run_file
+	rm ./parse_reduce_$$
+	parse_file_tmp=$(mktemp /tmp/parse_file_tmp.XXXXXX)
+	gl_parse_file=$(mktemp /tmp/parse_file.XXXXXX)
+	cat $tmp_run_file | yq .  > $parse_file_tmp
 	if [ $? -ne 0 ]; then
+		rm -f $gl_parse_file $parse_file_tmp $tmp_run_file
 		cleanup_and_exit "Creation of the parse_file via yq failed" 1
 	fi
 	#
 	# Verify the file just created is valid.
 	#
-	sed "s/----/;/g" parse_file.tmp > parse_file
-	python -c 'import yaml, sys; print(yaml.safe_load(sys.stdin))' < parse_file
+	sed "s/----/;/g" $parse_file_tmp > $gl_parse_file
+	python -c 'import yaml, sys; print(yaml.safe_load(sys.stdin))' < $gl_parse_file
 	if [ $? -eq 1 ]; then
+		rm -f $gl_parse_file $parse_file_tmp $tmp_run_file
 		cleanup_and_exit "The file, parse_file does not meet yaml requirements." 1
 	fi
 	#
 	# Check to make sure we have the proper number of host configs
 	# 
 	sc_cnt=`grep host_config $tmp_run_file |  wc -l`
-	ps_cnt=`grep host_config parse_file.tmp | wc -l`
+	ps_cnt=`grep host_config $parse_file_tmp | wc -l`
+	rm -f $parse_file_tmp
 	if [ $ps_cnt != $sc_cnt ]; then
 		cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
 	fi
@@ -2564,12 +2678,15 @@ run_scenario()
 	# Convert the scenario file.  After this the scenario will point to the parsed
 	# file
 	convert_scenario_file $scenario
-	scenario=parse_file
+	#
+	# $gl_parse_file points to a temp file.
+	#
+	working_scenario=$gl_parse_file
 
 	#
 	# Verify all tests that are present are valid tests.
 	#
-	verify_gl_test_list=`grep \"tests\": parse_file | cut -d\" -f 4`
+	verify_gl_test_list=`grep \"tests\": $gl_parse_file | cut -d\" -f 4`
 	for i in $verify_test_list;
 	do
 		verify_test $i
@@ -2609,7 +2726,7 @@ run_scenario()
 		globals[${gindex}]=$field_separ\"--$field_value\"
 		let "gindex=$gindex+1"
 		field_separ=" "
-	done < "$scenario"
+	done < "$working_scenario"
 	if [[ $update_target_uploaded -eq 1 ]]; then
 		update_the_image $gl_update_target
 	fi
@@ -2745,15 +2862,16 @@ run_scenario()
 				pid=""
 			else
 				tmpfile=$(mktemp /tmp/zath_temp_test_cli.XXXXXX)
+				run_burden_file="run_burden_$$_${pindex}"
 				echo "#!/bin/bash" > $tmpfile
-				echo ./burden $test_cli --run_file run_burden_${pindex}  > $tmpfile
+				echo ./burden $test_cli --run_file $run_burden_file  > $tmpfile
 				#
 				# Remove duplicate entries.
 				#
 				run_burden_remove_dups $tmpfile
-				mv $tmpfile run_burden_${pindex}
-				chmod 755 run_burden_${pindex}
-			 	./run_burden_${pindex} &
+				mv $tmpfile ${run_burden_file}
+				chmod 755 ${run_burden_file}
+			 	./${run_burden_file} &
 				pids[${pindex}]=$!
 				let "pindex=$pindex+1"
 			fi
@@ -2776,7 +2894,7 @@ run_scenario()
 		cli_value=`echo $setting | sed "s/://" | sed 's/,$//'`
 		test_values[${test_index}]=" --$cli_value"
 		let "test_index=$test_index+1"
-	done < "$scenario"
+	done < "$working_scenario"
 	#
 	# Wait for everyone to finish up.
 	#
@@ -2786,6 +2904,7 @@ run_scenario()
 	if [[ $gl_update_target != $value_not_set ]]; then
 		$UTILS_DIR/cleanup_install_lock $BASHPID
 	fi
+	rm $working_scenario
 }
 
 #
@@ -3686,7 +3805,7 @@ grab_cli_data()
 
 	eval set --$opts
 
-	gl_cli_supplied_options=`mktemp /tmp/zathras.XXXXX`
+	gl_cli_supplied_options=`mktemp /tmp/zathras_cli.XXXXX`
 
 	#
 	# If no options provided, then usage message.
@@ -3915,8 +4034,6 @@ first_invocation()
 		mv $tfile $gl_scenario_to_run
 		rm $cfile
 	fi
-	rm test_info 2> /dev/null
-	rm java_info 2> /dev/null
 
 	if [[ $gl_scenario_to_run != "" ]]; then
 		test_def_info=`grep "^  test_def_dir:" ${gl_scenario_to_run}`
@@ -3957,9 +4074,13 @@ first_invocation()
 		fi
 	fi
 
-	integrate_templates ${gl_test_def_dir}/test_defs.yml
-	cat $gl_test_def_dir/full_test_defs.yml | yq . > test_info
-	cat $gl_test_def_dir/java_pkg_def.yml | yq . > java_info
+	gl_lock_exclusive
+	if [[ ! -f test_info ]] || [[ $gl_test_version_check -eq 1 ]] || [[ $gl_update_test_versions -eq 1 ]]; then
+		integrate_templates ${gl_test_def_dir}/test_defs.yml
+		cat $gl_test_def_dir/full_test_defs.yml | yq . > test_info
+		cat $gl_test_def_dir/java_pkg_def.yml | yq . > java_info
+	fi
+	gl_unlock_exclusive
 }
 
 cli_data="$@"
@@ -3996,7 +4117,6 @@ fi
 # check to make sure the packages that are required are installed.
 #
 if [[ $gl_first_invocation -eq 1 ]]; then
-	rm utils_version run_info 2> /dev/null
 	package_check
 fi
 
