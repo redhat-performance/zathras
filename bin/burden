@@ -1992,7 +1992,6 @@ create_ansible_options()
 			if [[ $gl_ansible_verbosity != "normal" ]]; then
 				base_string=${base_string}" -l $gl_ansible_verbosity"
 			fi
-			echo $run_dir >> /tmp/dave
 			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
 			test_info_str=`grep test_to_run: $run_dir/ansible_vars_main.yml | sed "s/\[//g" | sed "s/\]//g" | cut -d: -f 2 | sed "s/ //g"`
 			echo "Starting ${test_info_str} on ${host_or_cloud_inst}"
