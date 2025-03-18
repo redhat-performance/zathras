@@ -2,8 +2,8 @@ location: https://github.com/redhat-performance/hammerdb-wrapper/archive/refs/ta
 exec_dir: "hammerdb-wrapper-1.16/hammerdb"
 repo_file: "v1.16.zip"
 os_supported: all
-rhel_pkgs_9: lvm2,sysstat,tar,bc,nvme-cli,perf,git,unzip,perf
-rhel_pkgs: lvm2,sysstat,tar,bc,perf,git,unzip,perf
+rhel_pkgs_9: lvm2,sysstat,tar,bc,nvme-cli,perf,git,unzip
+rhel_pkgs: lvm2,sysstat,tar,bc,perf,git,unzip
 ubuntu_pkgs: unzip,zip
 amazon_pkgs: none
 storage_required: "yes"
