@@ -95,7 +95,7 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   cloud_numb_networks: Number of networks we are creating
 #   test_iterations: How many times are we to run the test.  Each iteration is a full run of the tests,
 #                    deletion of the cloud image, and recreation of the cloud image.
-#   user_parent_home_dir: Parent home directory of the user executing the tests (who is logged into the 
+#   user_parent_home_dir: Parent home directory of the user executing the tests (who is logged into the
 #                         test system).
 #   user_running: Who is running Zathras
 #   test_user: User name that is executing the test on the test system (ec2-user, root etc)
@@ -307,7 +307,7 @@ gl_unlock_exclusive()
 
 #
 # Generate report of test status.
-# 
+#
 process_results()
 {
 	if [ $gl_first_invocation -eq 1 ]; then
@@ -564,7 +564,7 @@ grab_a_field()
 	str_val=`echo $1 | sed "s/\"//g" | sed "s/,$//g"`
 	#
 	# Check to make sure not going beyond last field.
-	# 
+	#
 	res="${str_val//[^${2}]}"
 	len=`echo $res | wc -c`
 	if [ $len -lt $3 ]; then
@@ -667,7 +667,7 @@ find_test_def_field()
 					break;
 				fi
 				#
-				# Get the field name, and if it is what we are looking for, 
+				# Get the field name, and if it is what we are looking for,
 				# process it.
 				#
 				field_val=$(grab_a_field "${line}" ":" 1)
@@ -709,7 +709,7 @@ create_test_run_file()
 	look_for=$1
 	found=0
 
-	
+
 	#
 	# We want the yaml file, not the converted version.
 	while IFS= read -r line
@@ -809,7 +809,7 @@ set_image_type()
 }
 
 #
-# General setup 
+# General setup
 #
 general_setup()
 {
@@ -854,7 +854,7 @@ obtain_zone()
 		aws_number_zones=0
 		declare -a aws_zones
 		for i in `cat aws_zones`
-		do 
+		do
 			aws_zones[${aws_number_zones}]=$i
 			let "aws_number_zones=$aws_number_zones+1"
 		done
@@ -1271,7 +1271,7 @@ add_local_config_info()
 		#
 		# Cloud systems, we use the utility grab_disks.  This utility shows
 		# what disks are not in use.  We do not do this for local systems,
-		# as disks that are not currently mounted may have information that the 
+		# as disks that are not currently mounted may have information that the
 		# user wants.
 		#
 		echo "storage: grab_disks" >> ansible_run_vars.yml
@@ -1354,7 +1354,7 @@ azure_specific_os_version()
 	echo "  cloud_os_version: ${azversion}" >> ansible_vars_main.yml
 	echo "  az_subscription: ${az_subscription}" >> ansible_vars_main.yml
 	#
-	# Because the sku may contain an _, and ansible when it replaces the 
+	# Because the sku may contain an _, and ansible when it replaces the
 	# variables in the tfvars.j2 file later will unquote _.
 	# After the envars file  is created, we remove the '_' to be _.
 	#
@@ -1424,7 +1424,7 @@ retrieve_spot_from_config()
 			gl_spot_cap=$gl_base_cost
 			#
 			# We will default to 5 intervals
-			# 
+			#
 			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*1.5)/5.00)" | bc`
 
 		elif [[ $gl_system_type == "gcp" ]]; then
@@ -1945,7 +1945,7 @@ create_ansible_options()
 		add_local_config_info $ct_config
 		cd $gl_top_dir
 		#
-		# Reset everything for the next round. 
+		# Reset everything for the next round.
 		#
 		gl_disks_asking_for=""
 		#
@@ -2147,7 +2147,7 @@ update_the_image()
 }
 
 #
-# We could put this on each line in the appropriate function, but if 
+# We could put this on each line in the appropriate function, but if
 # in the future we decide to change the output of this, we only have to
 # do it in one place.
 #
@@ -2157,7 +2157,7 @@ report_util_version()
 }
 
 #
-# Package checking operations. For each required package, we have a function that will check for 
+# Package checking operations. For each required package, we have a function that will check for
 # the package, and report any issues.
 #
 check_for_yq()
@@ -2165,7 +2165,7 @@ check_for_yq()
 	which yq 2> /dev/null
 	if [[ $? -eq 1 ]]; then
 		cleanup_and_exit "yq needs to be installed, to use the --test_def, please install." 1
-	fi 
+	fi
 	#
 	#  yq spits version out to stderr.
 	#
@@ -2179,7 +2179,7 @@ check_for_jq()
 	which jq 2> /dev/null
 	if [[ $? -eq 1 ]]; then
 		cleanup_and_exit "jq needs to be installed, to use the --test_def, please install.\nyum install jq\n"
-	fi 
+	fi
 	jq_version=`jq --version`
 	report_util_version jq_version "${jq_version}"
 }
@@ -2189,7 +2189,7 @@ check_for_ansible()
 	which ansible 2> /dev/null
 	if [[ $? -eq 1 ]]; then
 		cleanup_and_exit "Ansible is not installed, please install.\ndnf install -y ansible" 1
-	fi 
+	fi
 	ansible_version=`ansible --version | grep ^ansible | awk '{print $2}'`
 	echo "Running with ansible version: ${ansible_version}"
 	echo "Zathras developed using ansible version:  2.9.6"
@@ -2202,7 +2202,7 @@ check_for_python()
 	which python 2> /dev/null
 	if [[ $? -eq 1 ]]; then
 		cleanup_and_exit "python is not installed, please install." 1
-	fi 
+	fi
 	python_version=`python --version`
 	echo "Running with python version: ${python_version}"
 	echo "Zathras developed using python version:  3.7.4"
@@ -2224,7 +2224,7 @@ check_for_boto()
 	boto_version=`pip3 list --format="columns" | grep -F boto`
 	if [[ $? -eq 1 ]]; then
 		cleanup_and_exit "boto modules need to be installed.\npip3 install -U boto --user" 1
-	fi 
+	fi
 	report_util_version boto_version "${boto_version}"
 }
 
@@ -2313,16 +2313,46 @@ verify_test_def_file()
 verify_os_vendor()
 {
 	os_vendor_found=0
+	os_name=$(echo "$1" | awk -F ":" '{ print $1 }')
+	os_args=$(echo "$1" | awk -F ":" '{ print $2 }')
 
-	for os_vendor_check in  $gl_valid_os_vendors; 
+	for os_vendor_check in $gl_valid_os_vendors;
 	do
-		if [[ $1 == $os_vendor_check ]]; then
+		if [[ $os_name == $os_vendor_check ]]; then
 			os_vendor_found=1
+			gl_os_vendor=$os_name
 		fi
 	done
 	if [[ $os_vendor_found -eq 0 ]]; then
 		cleanup_and_exit "Error: $1, is an unrecognized OS vendor.  Possible values are: $gl_valid_os_vendors" 1
 	fi
+
+	if [ -n "$os_args" ]; then
+		process_os_args "$os_args"
+	fi
+}
+
+process_os_args() {
+	arg_file=$(mktemp zath_os_args.XXXXX)
+	$UTILS_DIR/parse_optstring.sh "$1" > $arg_file
+	mode=$(yq -r .mode $arg_file)
+
+	case $mode in
+		"package")
+			gl_no_packages=0
+		;;
+		# Image mode is Read only root, /root is writeable
+		"image")
+			gl_no_packages=1
+			if [ "$gl_kit_upload_directory" == $value_not_set ]; then # Allow the user to overwrite this default
+				gl_kit_upload_directory="/root"
+			fi
+		;;
+		*)
+			cleanup_and_exit "Error $mode is an unknown mode, valid options are: 'package' and 'image'" 1
+		;;
+	esac
+	rm $arg_file
 }
 
 #
@@ -2332,7 +2362,7 @@ verify_system_type()
 {
 	sys_type_found=0
 
-	for sys_type in $gl_valid_system_types; 
+	for sys_type in $gl_valid_system_types;
 	do
 		if [[ $1 == $sys_type ]]; then
 			sys_type_found=1
@@ -2403,7 +2433,7 @@ verify_java_version()
 	for ask_for in $1;
 	do
 		found=0
-		for version in $java_vers; 
+		for version in $java_vers;
 		do
 			if [[ $version == $ask_for ]]; then
 				found=1
@@ -2413,7 +2443,7 @@ verify_java_version()
 			cleanup_and_exit "Error: unknown java version $1, known versions are: $java_vers" 1
 		fi
 	done
-	
+
 }
 
 obtain_network_info()
@@ -2452,14 +2482,14 @@ verify_host_config()
 		fi
 		if [[ $gl_system_type == "gcp" ]]; then
 			gcloud compute machine-types describe $vm_instance > /dev/null
-			if [[ $? -ne 0 ]]; then 
+			if [[ $? -ne 0 ]]; then
 			    cleanup_and_exit "Error: GCP, unknown instance" 1 $vm_instance
 			fi
 		fi
 		if [[ $gl_system_type == "azure" ]]; then
 			# change eastus to be a value
 			az vm list-sizes --location "${gl_cloud_region}" | grep -o $vm_instance
-			if [[ $? -ne 0 ]]; then 
+			if [[ $? -ne 0 ]]; then
 			    cleanup_and_exit "Error: azure, unknown instance $vm_instance" 1
 			fi
 		fi
@@ -2636,7 +2666,7 @@ convert_scenario_file()
 	fi
 	#
 	# Check to make sure we have the proper number of host configs
-	# 
+	#
 	sc_cnt=`grep host_config $tmp_run_file |  wc -l`
 	ps_cnt=`grep host_config $parse_file_tmp | wc -l`
 	rm -f $parse_file_tmp
@@ -2797,7 +2827,7 @@ run_scenario()
 				if [[ $arg_value == *"--}"* ]]; then
 					continue
 				fi
-				if [[ $arg_value == *"--host_config"* ]]; then 
+				if [[ $arg_value == *"--host_config"* ]]; then
 					argument=`echo $arg_value | cut -d' ' -f 2`
 					test_cli=$test_cli" --host_config \"${argument}\""
 				fi
@@ -2835,7 +2865,7 @@ run_scenario()
 				done
 			fi
 
-		
+
 			#
 			# Have the line now, run the command.
 			#
@@ -2921,7 +2951,7 @@ verify_test_configuration()
 	bail_out=0
 	#
 	# First, make sure the test name is unique.  This protects
-	# against 
+	# against
 	# test_defs:
 	#   test1:
 	#     < test info>
@@ -3072,7 +3102,7 @@ process_test_template_data()
 	# We have an order that is expected for certain things.  Put it all in that order as
 	# indicated by the file entry_order.
 	# Format of the entry_order file
-	# 
+	#
 	# ^  test
 	# ^    test_template:
 	#
@@ -3169,7 +3199,7 @@ handle_test_defs()
 }
 
 #
-# Usage information. 
+# Usage information.
 #
 usage()
 {
@@ -3345,6 +3375,11 @@ usage()
 	echo "    Burden will select the right ami for the designated host."
 	echo "  --create_only: Only do the VM creation and OS install action."
 	echo "  --os_vendor <os vendor>: currently rhel, ubuntu, amazon"
+	echo "  --os_type <os type>: currently $gl_valid_os_types (default $value_not_set)"
+	echo "      Additional options can be supplied in this format <os type>:<option1>=<value1>&<option2>=<value2>"
+	echo "      Supported Options:"
+	echo "        mode=<mode name>"
+	echo "          Set to image or package (default), image sets kit_uploadt_location to /root by default and enables --no_packages"
 	echo "  --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running."
 	echo "      Default is to terminate"
 	echo "  --use_spot: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not"
@@ -3451,7 +3486,7 @@ set_general_value()
 				verify_data verify_java_version $2
 			fi
 			shift_by=2
-		;; 
+		;;
 		--kit_upload_directory)
 			echo "$1 $2" >> $gl_cli_supplied_options
 			gl_kit_upload_directory=$2
@@ -3644,7 +3679,7 @@ set_general_value()
 			#
 			# Does not return
 			#
-			show_test_version $2 
+			show_test_version $2
 		;;
 		--tests)
 			if [[ $gl_test_list == "" ]]; then
@@ -3809,7 +3844,7 @@ grab_cli_data()
 
 	#
 	# If no options provided, then usage message.
-	# 
+	#
 	if [ $# -eq 1 ]; then
 		usage "0"
 	fi
@@ -4182,7 +4217,7 @@ if [[ "${gl_scenario_to_run}" == *"https:"* ]] || [[ "${gl_scenario_to_run}" == 
 fi
 
 #
-# Set up the various config files, if everything is started from this 
+# Set up the various config files, if everything is started from this
 # process.
 #
 if [[ $gl_scenario_to_run != "" ]]; then
