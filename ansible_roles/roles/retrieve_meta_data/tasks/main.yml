@@ -21,7 +21,7 @@
     - name: Install jq on RHEL
       when: config_info.os_vendor == 'rhel'
       shell: yum -y install jq
-
+    
     - name: Install jq on Ubuntu
       when: config_info.os_vendor == 'ubuntu'
       shell: apt-get update && apt-get install -y jq
