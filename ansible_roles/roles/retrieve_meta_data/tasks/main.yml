@@ -18,14 +18,6 @@
 
 - name: Retrieve the GCP meta data
   block:
-    - name: Install jq on RHEL
-      when: config_info.os_vendor == 'rhel'
-      shell: yum -y install jq
-    
-    - name: Install jq on Ubuntu
-      when: config_info.os_vendor == 'ubuntu'
-      shell: apt-get update && apt-get install -y jq
-
     - name: Grab the metadata
       shell: curl -H Authorization:Bearer $(gcloud auth print-identity-token) -H Metadata-Flavor:Google 'http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true' | jq > /tmp/meta_data.yml
       register: gcp_meta_data
