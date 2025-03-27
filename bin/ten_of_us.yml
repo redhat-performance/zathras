@@ -376,14 +376,17 @@
     - name: Gather the rpm package facts
       package_facts:
         manager: auto
-    - name: pbench prep
-      include_role:
-        name: pbench_prep
-    - name: retrieve pbench prep status
-      include_role:
-        name: retrieve_status
-      vars:
-        status_file: "pbench_prep_status"
+    - name: pbench prep block
+      block:
+      - name: pbench prep
+        include_role:
+          name: pbench_prep
+      - name: retrieve pbench prep status
+        include_role:
+          name: retrieve_status
+        vars:
+          status_file: "pbench_prep_status"
+      when: config_info.pbench_install != 0
     - name: dev environment for uperf
       include_role:
         name: install_dev_environment
@@ -409,6 +412,7 @@
       vars:
         status_file: "pbench_prep_status"
         exit_msg: "pbench prep failure"
+      when: config_info.pbench_install != 0
     - name: Terminate on dev env failure
       include_role:
         name: terminate_on_error
