@@ -1,0 +1,13 @@
+if [[ $gl_debug_lock -eq 1 ]]; then
+	echo ${FUNCNAME[1]} ${BASH_LINENO[0]}
+fi
+while true
+do
+	mkdir $gl_lock 2> /dev/null
+	if [[ $? -eq 0 ]]; then
+		gl_have_locked=1
+		break
+	else
+		sleep 4
+	fi
+done

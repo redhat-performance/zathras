@@ -182,6 +182,7 @@ cleanup_and_exit_out()
 			mv $from $to
 		done
 	fi
+	source ${UTILS_DIR}/gl_unlock_exclusive
 	exit $rtc
 }
 
