@@ -68,12 +68,6 @@
     command: date +"%T_%m%d%Y"
     register: time_period
 
-  - name: Move old results to archive
-    include_role:
-      name: archive_exist_data
-    vars:
-      timeval: "{{ time_period.stdout }}"
-
   - name: command running
     debug:
       msg: "{{ dest_dir }}/{{ test_data.exec_dir }}/{{ test_data.test_script_to_run }} --run_user {{ config_info.test_user }} --home_parent {{ config_info.user_parent_home_dir }} --iterations {{ config_info.test_iterations }} --tuned_setting {{ sys_confg }} --host_config \"{{ config_info.host_config_info }}\" --sysname \"{{ config_info.host_or_cloud_inst }}\" --sys_type {{ config_info.system_type }} {{ test_data.test_specific }}"
