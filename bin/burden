@@ -38,8 +38,8 @@
 #
 # For locking for blocks of shell code, we use
 #    Exclusive general lock
-#	To lock: gl_lock_exclusive <locking from, debug only>
-#	To unlock: gl_unlock_exclusive <unlocking from, debug only>
+#	To lock: gl_lock_exclusive
+#	To unlock: gl_unlock_exclusive
 #
 # For locking on a command, we use
 #   flock -x <file name> <command>
@@ -279,32 +279,6 @@ gl_lock=${gl_top_dir}/gl_lock
 gl_have_locked=0
 gl_debug_lock=0
 
-gl_lock_exclusive()
-{
-	if [[ $gl_debug_lock -eq 1 ]]; then
-		echo ${FUNCNAME[1]} ${BASH_LINENO[0]}
-	fi
-	while true
-	do
-		mkdir $gl_lock 2> /dev/null
-		if [[ $? -eq 0 ]]; then
-			gl_have_locked=1
-			break
-		else
-			sleep 4
-		fi
-	done
-}
-
-gl_unlock_exclusive()
-{
-	if [[ $gl_debug_lock -eq 1 ]]; then
-		echo ${FUNCNAME[1]} ${BASH_LINENO[0]}
-	fi
-	rmdir $gl_lock
-	gl_have_locked=0
-}
-
 #
 # Generate report of test status.
 # 
@@ -360,7 +334,7 @@ cleanup_and_exit()
 	# In case we have a lock
 	#
 	if [[ $gl_have_locked -eq 1 ]]; then
-		gl_unlock_exclusive
+		source $UTILS_DIR/gl_unlock_exclusive
 	fi
 	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
 }
@@ -839,13 +813,13 @@ general_setup()
 	# Only build the tar files once.  Also make sure to only allow one process
 	# operating here.
 	#
-	gl_lock_exclusive
+	source $UTILS_DIR/gl_lock_exclusive
 	if [[ ! -f "bin.tar" ]]; then
 		tar cf bin.tar bin
 		tar cf tools_bin.tar tools_bin
 		tar cf sysctl_settings.tar sysctl_settings
 	fi
-	gl_unlock_exclusive
+	source $UTILS_DIR/gl_unlock_exclusive
 }
 
 #
@@ -1696,7 +1670,7 @@ create_ansible_options()
 		#
 		# Azure, we have a limit on resource group name, need the test_index.
 		#
-		gl_lock_exclusive
+		source $UTILS_DIR/gl_lock_exclusive
 		if [[ $gl_sys_type == "azure" ]]; then
 			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${host_or_cloud_inst}
 		else
@@ -1722,7 +1696,7 @@ create_ansible_options()
 
 		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> $gl_run_info
 		make_dir_report_errors $run_dir
-		gl_unlock_exclusive
+		source $UTILS_DIR/gl_unlock_exclusive
 		dir_list=$dir_list$run_dir" "
 		cp ${gl_test_def_dir}/test_defs.yml $run_dir
 		cp ${gl_test_def_dir}/full_test_defs.yml $run_dir
@@ -2266,7 +2240,7 @@ check_for_terraform()
 #
 package_check()
 {
-	gl_lock_exclusive
+	source $UTILS_DIR/gl_lock_exclusive
 	if [[ ! -f utils_version ]]; then
 		check_for_pip3
 		check_for_ansible
@@ -2279,7 +2253,7 @@ package_check()
 		fi
 		check_for_terraform
 	fi
-	gl_unlock_exclusive
+	source $UTILS_DIR/gl_unlock_exclusive
 }
 
 #
@@ -4087,13 +4061,13 @@ first_invocation()
 		fi
 	fi
 
-	gl_lock_exclusive
+	source $UTILS_DIR/gl_lock_exclusive
 	if [[ ! -f test_info ]] || [[ $gl_test_version_check -eq 1 ]] || [[ $gl_update_test_versions -eq 1 ]]; then
 		integrate_templates ${gl_test_def_dir}/test_defs.yml
 		cat $gl_test_def_dir/full_test_defs.yml | yq . > test_info
 		cat $gl_test_def_dir/java_pkg_def.yml | yq . > java_info
 	fi
-	gl_unlock_exclusive
+	source $UTILS_DIR/gl_unlock_exclusive
 }
 
 cli_data="$@"
