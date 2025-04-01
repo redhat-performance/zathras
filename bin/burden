@@ -385,11 +385,21 @@ azure_image_lookup()
 	else
 		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel" 1 ${gl_system_type}
 	fi
-	echo "Pulling requested Azure OS image information, may take a bit."
-	end_date=`date +"%Y"`
-	let "start_date=$end_date-1"
-	az vm image list --all --publisher $publisher --output tsv | grep -E ".$start_date|.$end_date"
-	cleanup_and_exit "" 0
+	if [[ $2 -eq  0 ]]; then
+		echo "Pulling requested Azure OS image information, may take a bit."
+		end_date=`date +"%Y"`
+		let "start_date=$end_date-1"
+		az vm image list --all --publisher $publisher --output tsv | grep -E ".$start_date|.$end_date"
+		cleanup_and_exit "" 0
+	else
+		work_with=`echo $gl_cloud_os_version | sed "s/,/ /g"`
+		for urn in $work_with; do
+			az vm image show --urn $urn --output tsv 2>&1 > /dev/null
+			if [[ $? -ne 0 ]]; then
+				cleanup_and_exit "Error: Requested Azure image $urn, does not exist" 1
+			fi
+		done
+	fi
 }
 
 #
@@ -490,6 +500,9 @@ verify_cloud_os_version()
 	if [[ "$gl_system_type" == "aws" ]]; then
 		show_aws_images $gl_os_vendor 1
 	fi
+	if [[ "$gl_system_type" == "azure" ]]; then
+		azure_image_lookup $gl_os_vendor 1
+	fi
 }
 
 #
@@ -505,7 +518,7 @@ cloud_image_lookup()
 		#
 		# We exit in azure_image_lookup
 		#
-		azure_image_lookup $gl_os_vendor
+		azure_image_lookup $gl_os_vendor 0
 	fi
 
 	if [ "$gl_system_type" == "gcp" ]; then
