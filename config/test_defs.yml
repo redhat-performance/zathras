@@ -176,8 +176,7 @@ test_defs:
     test_description: iozone
     pbench_required: "no"
     pbench_local_results: "no"
-    test_specific: "--devices_to_use {{ dyn_data.storage }} --filesys xfs --file_count_list 1,2,4 --test_type 0,1 --incache --mount_location /iozone/iozone0"
-
+    test_specific: "--devices_to_use {{ dyn_data.storage }} "--filesys xfs,ext4,ext3  --all_test --mount_location /iozone/iozone0 --eatmem --auto"
   test26:
     test_template: iozone_template.yml
     test_name: pbench_iozone
