@@ -16,7 +16,6 @@ resource "google_compute_firewall" "uperf-ingress" {
   count   = var.network_count
   name    = "${var.run_label}-${var.project_id}-${var.machine_type}-${count.index}"
   network = google_compute_network.test-network[count.index].id
-  }
 
   # Allow all communication 0.0.0.0/0 on the specific network
   allow {
