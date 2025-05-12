@@ -9,7 +9,7 @@
 #
 - name: Add disk information
   block:
-  - name: Creat disks.tf
+  - name: Create disks.tf
     shell: "sed \"s/REPLACE_INSTANCE_ID/{{ instance_id }}/g\" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/disks_template.tf | sed \"s/REPLACE_INDEX/{{ index_in}}/g\" | sed \"s/REPLACE_INST/{{ instance_type }}/g\" >> {{ working_dir }}/tf/disks.tf"
   - name: If no iops
     block:

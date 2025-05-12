@@ -40,7 +40,7 @@ cle_usage()
 	echo "--msg_string <string>: Message to output."
 	echo "--pid <pid>: Pid of the process that holds any locks."
 	echo "--restore_file <copy,original>: Restores a file from a copy.  You may"
-	echo "  designate multile --restor_file"
+	echo "  designate multiple --restore_file"
 	echo "--rtc <rtc>: Return code. Default is 0"
 	echo "--sysname <sysname>: Name of system."
 	echo "--top_dir <dir>: Execution top level directory.  Default is current directory"
