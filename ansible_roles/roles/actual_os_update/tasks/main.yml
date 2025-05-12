@@ -40,7 +40,7 @@
     when:
       - config_info.update_os_version != "none"
 
-  - name: Record default status of update sucess
+  - name: Record default status of update success
     lineinfile:
       path: "{{ working_dir }}/os_update_status"
       line: "status: failed"

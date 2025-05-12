@@ -8,7 +8,7 @@ resource "aws_ebs_volume" "pbench_volume_REPLACE_INDEX" {
   }
 }
 
-resource "aws_volume_attachment" "volume_attachement_REPLACE_INDEX" {
+resource "aws_volume_attachment" "volume_attachment_REPLACE_INDEX" {
   count       = var.vm_count
   volume_id   = aws_ebs_volume.pbench_volume_REPLACE_INDEX.*.id[count.index]
   device_name = var.pbench_device

@@ -67,7 +67,7 @@ General options
                 will randomly pick one
 	      number_networks: number of internal networks to create
 	      sysctl_settings: files in sysctl_setting to use.  Each file
-	                    sets a set of tunables, separator is +
+	                    sets a set of tuneables, separator is +
 	      number_of_disks: How many disks to create and attach
 	      disk_size: How large is the disk in gigabytes
 	      disk_type: Type of disk to be created
@@ -84,7 +84,7 @@ General options
 	         number_networks: number of internal networks to create
 	      <Sysctl_settings=n+n...>
 	      sysctl_settings: files in sysctl_setting to use.  Each file
-	                    sets a set of tunables, separator is +
+	                    sets a set of tuneables, separator is +
    System config file Examples
      Example 1: Designate 2 systems, no config options
 	     m5.xlarge,m5.4xlarge
@@ -92,7 +92,7 @@ General options
 	     m5.24xlarge:Disks;number=8;size=1200;type=gp2
 	   Example 3: Designate m5.24xlarge with 4 networks
 	     m5.24xlarge:Networks;number=4
-	   Example 4: Designate m5.24xlarge with sys tunings udp_fix and none
+	   Example 4: Designate m5.24xlarge with sys tuneings udp_fix and none
 	     m5.24xlarge:Sysctl_settings=none+udp_fix
 	   Example 5: Designate m5.xlarge to be created in us-east-1 and zone b
 	     "m5.xlarge[region=us-east-1&zone=b]"
@@ -153,7 +153,7 @@ General options
   -h --usage: condensed usage information
 Cloud options only
   --cloud_os_id <os id>: Image of the OS to install (example aws aminumber)
-  --create_only:  Only do the VM creation and OS installaction.
+  --create_only:  Only do the VM creation and OS installation.
   --os_vendor <os vendor>: currently rhel, ubuntu, amazon
   --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running.
       Default is to terminate
@@ -205,7 +205,7 @@ which those options are acquired.
    file, or the scenario file
 2) scenario vars file (--scenario_vars), these are overridden by the cli, but override the options
    designated in the scenario file.
-3) scenario file (--scenario), these are overriden by the options designated either via the cli or
+3) scenario file (--scenario), these are overridden by the options designated either via the cli or
    the scenario vars file.
 
 Execution example

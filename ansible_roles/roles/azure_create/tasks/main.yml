@@ -126,7 +126,7 @@
 
 - name: Handle wrong cpu types
   block:
-  - name: Verfiy Azure CPU
+  - name: Verify Azure CPU
     include_role:
       name: verify_cpu
     vars:

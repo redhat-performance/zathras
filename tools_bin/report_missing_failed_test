@@ -73,6 +73,6 @@ if [[ -f test_errors ]]; then
 	cat test_errors
 	exit 1
 else
-	echo All tests executed sucessfully
+	echo All tests executed successfully
 	exit 0
 fi
