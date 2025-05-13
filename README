@@ -92,7 +92,7 @@ General options
 	     m5.24xlarge:Disks;number=8;size=1200;type=gp2
 	   Example 3: Designate m5.24xlarge with 4 networks
 	     m5.24xlarge:Networks;number=4
-	   Example 4: Designate m5.24xlarge with sys tuneings udp_fix and none
+	   Example 4: Designate m5.24xlarge with sys tunings udp_fix and none
 	     m5.24xlarge:Sysctl_settings=none+udp_fix
 	   Example 5: Designate m5.xlarge to be created in us-east-1 and zone b
 	     "m5.xlarge[region=us-east-1&zone=b]"

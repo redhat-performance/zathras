@@ -3232,7 +3232,7 @@ usage()
 		echo "           m5.xlarge,m5.4xlarge"
 		echo "         Example 2: Designate m5.24xlarge, 8 gp2 disks of 1200 Gig"
 		echo "           m5.24xlarge:Disks;number=8;size=1200;type=gp2"
-		echo "         Example 3: Designate m5.24xlarge with sys tuneings udp_fix and none"
+		echo "         Example 3: Designate m5.24xlarge with sys tunings udp_fix and none"
 		echo "           m5.24xlarge:Sysctl_settings=none+udp_fix"
 		echo "         Example 4: Designate m5.xlarge to be created in us-east-1 and zone b"
 		echo "           \"m5.xlarge[region=us-east-1&zone=b]\""
