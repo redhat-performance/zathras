@@ -10,7 +10,7 @@ resource "aws_ebs_volume" "disk_volume_REPLACE_INDEX" {
   }
 }
 
-resource "aws_volume_attachment" "disk_attachement_REPLACE_INDEX" {
+resource "aws_volume_attachment" "disk_attachment_REPLACE_INDEX" {
   count       = var.vm_count * var.disk_count
   volume_id   = aws_ebs_volume.disk_volume_REPLACE_INDEX.*.id[count.index]
   device_name = element(var.ec2_device_names, count.index)

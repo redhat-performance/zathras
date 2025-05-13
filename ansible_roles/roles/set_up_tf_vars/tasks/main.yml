@@ -53,7 +53,7 @@
     block:
     - name: Local and not changed.
       block:
-      - name: copy to workig_dir so we can cat it onto the end of main.tf
+      - name: copy to working_dir so we can cat it onto the end of main.tf
         copy:
           src: "{{ pbench_ns_tf }}"
           dest: "{{ working_dir }}/tf/pbench.tf"
@@ -62,7 +62,7 @@
           - pbench_ns_tf != "none"
     - name: AWS.
       block:
-      - name: copy to workig_dir so we can cat it onto the end of main.tf
+      - name: copy to working_dir so we can cat it onto the end of main.tf
         shell: cat {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/{{ pbench_ns_tf }} | sed "s/REPLACE/{{ cloud_change_to }}/g" >> {{ working_dir }}/tf/pbench.tf
         when: config_info.system_type == "aws"
   when:

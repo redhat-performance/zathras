@@ -15,7 +15,7 @@
 
 #
 # update the return status, to be used by the calling module.  We could
-# use set facts here, but chose to use a file instead for debugabilty.
+# use set facts here, but chose to use a file instead for debugging purposes.
 # We can not write directly out the rtc, because spot returns ok, even
 # when it failed. So we need to check.
 #

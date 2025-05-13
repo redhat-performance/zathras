@@ -95,12 +95,12 @@
       reboot:
         reboot_timeout: 1800
     #
-    # For some unkown reason, we ignore the check 
-    # (config_info.selinux_state != "dsiabled") so we will use
+    # For some unknown reason, we ignore the check 
+    # (config_info.selinux_state != "disabled") so we will use
     # (config_info.selinux_state != "enabled")
     when: 
       - (config_info.selinux_state != "enabled")
       - (selinux_state.stdout == "enabled")
   when: 
     config_info.os_vendor == "rhel" or
-    config_info.os_vendor == "amnazon"
+    config_info.os_vendor == "amazon"

@@ -4,7 +4,7 @@
 #
 # Input format
 # <system>:<config> 
-#     Note <config> can be more one field grouping, each grouping is seperated by '&'
+#     Note <config> can be more one field grouping, each grouping is separated by '&'
 # Output format:
 #  <system>:<disk size>:<disk type>:<number disks>
 #
@@ -34,14 +34,14 @@ set_disk_field()
 	if [[ $dfield == *"iops"* ]]; then
 		disk_iops=$value
 	fi
-	if [[ $dfield == *"througput"* ]]; then
+	if [[ $dfield == *"throughput"* ]]; then
 		disk_tp=$value
 	fi
 }
 
 #
-# The argument being pased in will have an '&' as a seperator field.  To allow bash to work
-# with the stirng, we will replace it with a ' '
+# The argument being pased in will have an '&' as a separator field.  To allow bash to work
+# with the string, we will replace it with a ' '
 #
 instance_type=`echo $1 | cut -d: -f1`
 fields=`echo "$1" | sed "s/&/ /g"`

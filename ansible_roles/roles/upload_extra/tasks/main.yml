@@ -15,7 +15,7 @@
 #
 # Default status.
 #
-- name: Record default status of update sucess
+- name: Record default status of update success
   lineinfile:
     path: "/tmp/upload_extra_status"
     line: "status: success"
