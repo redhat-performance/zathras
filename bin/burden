@@ -279,6 +279,109 @@ gl_lock=${gl_top_dir}/gl_lock
 gl_have_locked=0
 gl_debug_lock=0
 
+declare -a gl_run_pids
+gl_run_pindex=0
+declare -a gl_burden_pids
+gl_burden_index=0
+gl_tf_sys_list=`mktemp /tmp/zathras_cl_systems.XXXXX`
+
+wait_for_procs()
+{
+	pids=$1
+	for pid in "${pids[*]}"; do
+		out_string=`echo $pid | cut -d ':' -f 2-`
+		wait_for=`echo $pid | cut -d ':' -f 1`
+		wait $wait_for
+		echo Finished $out_string
+	done
+}
+
+kill_off_procs()
+{
+	pids=$1
+	for pid in "${pids[*]}"; do
+		pid_to_kill=`echo $pid | cut -d ':' -f 1`
+		kill -2 $pid_to_kill
+	done
+}
+
+#
+# We call in here for cleanup purpose, then exit out
+# Arg1: Message string
+# Arg2: The exit code
+# Arg3: If present instance name
+#
+
+cleanup_and_exit()
+{
+	scenario_restore=""
+	sysname=""
+	rtc=$2
+	rtr_string=""
+
+	if [[ $rtc == "" ]]; then
+		rtc=0
+	fi
+	if [[ $gl_scenario_to_restore != "" ]]; then
+		scenario_restore="--restore_file $gl_scenario_to_restore,$gl_scenario_to_run"
+	fi
+	if [[ $3 != "" ]]; then
+		sysname="--sysname $3"
+	fi
+	cd $gl_top_dir
+
+	if [[ $gl_run_pindex -eq $gl_max_systems ]]; then
+		kill_off_procs "$gl_run_pids"
+		wait_for_procs "$gl_run_pids" 
+		gl_run_pindex=0
+		gl_run_pids=""
+	fi
+	if [ $gl_burden_index != 0 ]; then
+		kill_off_procs "${gl_burden_pids}"
+		wait_for_procs  "${gl_burden_pids}"
+		gl_burden_index=0
+		gl_burden_pids=""
+	fi
+	#
+	# We only check the failed report file if this is the burden process that
+	# started it all.
+	#
+	if [ $gl_first_invocation -eq 1 ] && [[ -f $gl_failed_test_rpt ]]; then
+		new_lines=`wc -l $gl_failed_test_rpt | awk '{print $1}'`
+		if  [ $new_lines -ne $gl_failed_test_rpt_start_lines ]; then
+			rtc=1
+		fi
+	fi
+	separ=""
+
+	if [[ -f $gl_tf_sys_list ]]; then
+		while IFS= read -r run_data
+		do
+			delete_tfs="${delete_tfs}${separ}${run_data}"
+			separ=","
+		done < $gl_tf_sys_list
+		$UTILS_DIR/terraform_ops --terminate_list "$delete_tfs"
+	fi
+	rm -f $gl_cli_supplied_options $gl_run_info ${gl_run_info}.sorted $gl_tf_sys_list
+	#
+	# In case we have a lock
+	#
+	if [[ $gl_have_locked -eq 1 ]]; then
+		source $UTILS_DIR/gl_unlock_exclusive
+	fi
+	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
+}
+
+cleanup_and_exit_on_break()
+{
+	cleanup_and_exit "Interrupt received, aborting" 1
+}
+
+#
+# Signal catcher
+#
+trap cleanup_and_exit_on_break SIGINT
+
 #
 # Generate report of test status.
 # 
@@ -300,44 +403,6 @@ process_results()
 	fi
 }
 
-#
-# We call in here for cleanup purpose, then exit out
-# Arg1: Message string
-# Arg2: The exit code
-# Arg3: If present instance name
-#
-
-cleanup_and_exit()
-{
-	scenario_restore=""
-	sysname=""
-	rtc=$2
-	if [[ $gl_scenario_to_restore != "" ]]; then
-		scenario_restore="--restore_file $gl_scenario_to_restore,$gl_scenario_to_run"
-	fi
-	if [[ $3 != "" ]]; then
-		sysname="--sysname $3"
-	fi
-	cd $gl_top_dir
-	#
-	# We only check the failed report file if this is the burden process that
-	# started it all.
-	#
-	if [ $gl_first_invocation -eq 1 ] && [[ -f $gl_failed_test_rpt ]]; then
-		new_lines=`wc -l $gl_failed_test_rpt | awk '{print $1}'`
-		if  [ $new_lines -ne $gl_failed_test_rpt_start_lines ]; then
-			rtc=1
-		fi
-	fi
-	rm -f $gl_cli_supplied_options $gl_run_info ${gl_run_info}.sorted
-	#
-	# In case we have a lock
-	#
-	if [[ $gl_have_locked -eq 1 ]]; then
-		source $UTILS_DIR/gl_unlock_exclusive
-	fi
-	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
-}
 
 make_dir_report_errors()
 {
@@ -1555,9 +1620,7 @@ generate_tags()
 create_ansible_options()
 {
 	dir_list=""
-	declare -a pids
-	index=1
-	pindex=0
+	rpid=1
 
 	#
 	# Parse the test list and make sure they all exist
@@ -1693,7 +1756,13 @@ create_ansible_options()
 			stat $run_dir > /dev/null 2>&1
 			rc=$?
 		done
-
+		#
+		# Save the tf system info if we are a cloud system, and gl_cloud_terminate_instance
+		# is set to 1 (terminate cloud upon completion.
+		#
+		if [[ $gl_system_type != "local" ]] && [[ $gl_cloud_terminate_instance -eq 1 ]]; then
+			echo $run_dir/tf >> $gl_tf_sys_list
+		fi
 		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> $gl_run_info
 		make_dir_report_errors $run_dir
 		source $UTILS_DIR/gl_unlock_exclusive
@@ -1936,14 +2005,6 @@ create_ansible_options()
 		#
 		gl_disks_asking_for=""
 		#
-		# Start the test in the background, record the pid and bump the index.
-		#
-		if [[ $gl_no_clean_up -eq 0 ]] && [ $gl_cloud_terminate_instance -eq 1 ]; then
-			rm_tf_dirs="-r"
-		else 
-			rm_tf_dirs=""
-		fi
-		#
 		# Update repos to use if required.
 		# Simple process
 		# 1) Check to see if the new repo package name exist in the template file.
@@ -1972,7 +2033,7 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [ $gl_preflight -eq 0 ]; then
-			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir $rm_tf_dirs "
+			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir"
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
 			fi
@@ -1995,18 +2056,12 @@ create_ansible_options()
 				#
 				kick_off.sh $base_string | tee ${run_dir}/ansible_log &
 			fi
-			pids[${pindex}]=$!
-			index=$!
-			pids[${pindex}]="${index}:${test_info_str} on ${host_or_cloud_inst}"
-			let "pindex=$pindex+1"
-			if [[ $pindex -eq $gl_max_systems ]]; then
-				for pid in "${pids[*]}"; do
-					wait_for=`echo $pid | cut -d ':' -f 1`
-					wait $wait_for
-					out_string=`echo $pid | cut -d ':' -f 2-`
-					echo Finished $out_string
-				done
-				pindex=0
+			rpid=$!
+			gl_run_pids[${gl_run_pindex}]="${rpid}:${test_info_str} on ${host_or_cloud_inst}"
+			let "gl_run_pindex=$gl_run_pindex+1"
+			if [[ $gl_run_pindex -eq $gl_max_systems ]]; then
+				wait_for_procs "$gl_run_pids" 
+				gl_run_pindex=0
 			fi
 		fi
 	done
@@ -2018,12 +2073,10 @@ create_ansible_options()
 	#
 	# Wait for everyone to finish up.
 	#
-	for pid in "${pids[*]}"; do
-		wait_for=`echo $pid | cut -d ':' -f 1`
-		wait $wait_for
-		out_string=`echo $pid | cut -d ':' -f 2-`
-		echo Finished $out_string
-	done
+	if [[ $gl_run_pindex != 0 ]]; then
+		wait_for_procs "$gl_run_pids" 
+		gl_run_pindex=0
+	fi
 
 	#
 	# Archive data if requested to do so.
@@ -2551,7 +2604,7 @@ run_burden_remove_dups()
 	#
 	# Overwrite the file with the new set of options.
 	#
-	echo ./burden --test_def_file  $gl_test_def_dir/full_test_defs.yml $real_string > $1
+	echo ./burden --test_def_file  $gl_test_def_dir/full_test_defs.yml $real_string \& > $1
 }
 
 replace_scenario_vars()
@@ -2643,12 +2696,10 @@ convert_scenario_file()
 #
 run_scenario()
 {
-	declare -a pids
  	update_target_uploaded=0
 	override_options=""
 	override_options_gl=""
 	over_gl_separ=""
-	pindex=0
 	declare -a globals
 	declare -a test_values
 	scenario=$1
@@ -2840,27 +2891,38 @@ run_scenario()
 				#
 				# Wait for all outstanding tests to finish before we do more.
 				#
-				if [ $pindex != 0 ]; then
-					for pid in ${pids[*]}; do
-						wait $pid
-					done
+				if [ $gl_burden_index != 0 ]; then
+					wait_for_procs  "${gl_burden_pids}"
+					gl_burden_index=0
+					gl_burden_pids=""
 				fi
-				pindex=0
-				pid=""
 			else
 				tmpfile=$(mktemp /tmp/zath_temp_test_cli.XXXXXX)
 				run_burden_file="run_burden_$$_${pindex}"
-				echo "#!/bin/bash" > $tmpfile
-				echo ./burden $test_cli --run_file $run_burden_file  > $tmpfile
+				echo ./burden $test_cli --run_file $run_burden_file  >> $tmpfile
 				#
 				# Remove duplicate entries.
 				#
 				run_burden_remove_dups $tmpfile
-				mv $tmpfile ${run_burden_file}
+				echo "#!/bin/bash" > $run_burden_file
+				#
+				# Add trap code.
+				#
+				echo "trap_signal()" >> $run_burden_file
+				echo "{" >> $run_burden_file
+				echo "kill -2 \$bpid" >> $run_burden_file
+				echo "wait \$bpid" >> $run_burden_file
+				echo "}" >> $run_burden_file
+				echo "trap trap_signal SIGINT" >> $run_burden_file
+				cat  $tmpfile >> ${run_burden_file}
+				echo "bpid=\$!" >> $run_burden_file
+				echo "wait \$bpid" >> $run_burden_file
+				rm $tmpfile
 				chmod 755 ${run_burden_file}
 			 	./${run_burden_file} &
-				pids[${pindex}]=$!
-				let "pindex=$pindex+1"
+	                        rpid=$!
+	                        gl_burden_pids[${gl_burden_index}]="${rpid}:${run_burden_file}"
+				let "gl_burden_index=$gl_burden_index+1"
 			fi
 			#
 			# Done with this test, reset and continue.
@@ -2885,9 +2947,12 @@ run_scenario()
 	#
 	# Wait for everyone to finish up.
 	#
-	for pid in ${pids[*]}; do
-		wait $pid
-	done
+	if [[ $gl_burden_index -ne 0 ]]; then
+		wait_for_procs  "${gl_burden_pids}"
+		gl_burden_index=0
+		gl_burden_pids=""
+	fi
+
 	if [[ $gl_update_target != $value_not_set ]]; then
 		$UTILS_DIR/cleanup_install_lock $BASHPID
 	fi

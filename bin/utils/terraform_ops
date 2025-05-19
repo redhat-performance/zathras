@@ -35,24 +35,29 @@ tf_terminate()
 		echo $dirs
 	fi
 	for tf_del in $dirs; do
-		pushd $tf_del > /dev/null
-		terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
-		if [ $? -eq 0 ]; then
-			terraform apply "destroy.tfplan"
-		else
+		if [[ -d $tf_del ]]; then
+			pushd $tf_del > /dev/null
+			terraform show | grep -q "No resources" > /dev/null
+			if [[ $? -ne 0 ]]; then
+				terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
+				if [ $? -eq 0 ]; then
+					terraform apply "destroy.tfplan"
+				else
+					#
+					# We do not want to exit out on an error.  The instance could have been
+					# deleted via the web, and there are other instances to
+					# delete.
+					#
+					echo "Warning: Unable to create the plan for $tf_del"
+				fi
+			fi
 			#
-			# We do not want to exit out on an error.  The instance could have been
-			# deleted via the web, and there are other instances to
-			# delete.
+			# Get arid of the tf directory
 			#
-			echo "Warning: Unable to create the plan for $tf_del"
+			cd ..
+#			rm -rf tf
+			popd > /dev/null
 		fi
-		#
-		# Get arid of the tf directory
-		#
-		cd ..
-		rm -rf tf
-		popd > /dev/null
 	done
 	exit 0
 }
