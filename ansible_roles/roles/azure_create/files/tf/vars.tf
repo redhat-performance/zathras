@@ -62,6 +62,11 @@ variable "publisher" {
   default = "RedHat"
 }
 
+variable "az_urn_sub" {
+  type    = string
+  default = "none"
+}
+
 variable "offer" {
   type    = string
   default = "RHEL"

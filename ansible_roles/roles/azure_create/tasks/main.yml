@@ -11,12 +11,24 @@
     copy:
       src: "tf/main_no_net.tf"
       dest: "{{ working_dir }}/tf/main.tf"
-  - name: cat non spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
-    when: config_info.spot_start_price == 0
-  - name: cat non spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf" 
-    when: config_info.spot_start_price == 1
+  - name: Using urn for image.
+    block:
+    - name: cat non spot machine terraform
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set_urn.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
+      when: config_info.spot_start_price == 0
+    - name: cat spot machine terraform
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set_urn.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf" 
+      when: config_info.spot_start_price == 1
+    when: config_info.cloud_os_version != "none"
+  - name: Using subscription for image.
+    block:
+    - name: cat non spot machine terraform
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set_sub.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
+      when: config_info.spot_start_price == 0
+    - name: cat spot machine terraform
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set_sub.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf" 
+      when: config_info.spot_start_price == 1
+    when: config_info.cloud_os_version == "none"
   - name: copy output.tf
     copy:
       src: "tf/output_no_net.tf"
@@ -27,8 +39,16 @@
   block:
   - name: copy main_net_p1.tf to tf/main_net.tf
     shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_p1.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf"
-  - name: copy main_net_p2.tf to work area for later use
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_p2.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\"  >> {{ working_dir }}/tf/main_net_p2.tf"
+  - name: copy main_net_p2_urn.tf to work area for later use
+    block:
+    - name: copy for urn image.
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_p2_urn.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\"  >> {{ working_dir }}/tf/main_net_p2.tf"
+    when: config_info.cloud_os_version != "none"
+  - name: copy main_net_p2_sub.tf to work area for later use
+    block:
+    - name: copy for subscription urn, private
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_sub.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\"  >> {{ working_dir }}/tf/main_net_p2.tf"
+    when: config_info.cloud_os_version == "none"
   - name: copy output.tf to tf/output_net.tf
     copy:
       src: "tf/output_net.tf"

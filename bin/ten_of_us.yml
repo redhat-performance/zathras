@@ -234,6 +234,7 @@
           status_file: "/tmp/cr_status"
       when:
         - config_info.system_type == "azure"
+        - config_info.do_not_install_packages == 0
 
     - name: Enable CodeReady Builder for AWS
       block:
