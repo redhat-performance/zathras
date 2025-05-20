@@ -368,8 +368,15 @@ azure_image_lookup()
 	else
 		work_with=`echo $gl_cloud_os_version | sed "s/,/ /g"`
 		for urn in $work_with; do
-			az vm image show --urn $urn --output tsv 2>&1 > /dev/null
-			if [[ $? -ne 0 ]]; then
+			if [[ $urn != *"subscription"* ]]; then
+				az vm image show --urn $urn --output tsv 2>&1 > /dev/null
+				rtc=$?
+			else
+				resource_group=`echo $urn | cut -d'/' -f 5`
+				az resource list --resource-group $resource_group | grep -q $urn
+				rtc=$?
+			fi
+			if [[ $rtc -ne 0 ]]; then
 				cleanup_and_exit "Error: Requested Azure image $urn, does not exist" 1
 			fi
 		done
@@ -1332,14 +1339,24 @@ azure_specific_os_version()
 	# So we need to go and pull the publisher from az_vm image show.
 	#
 	az_subscription=`az account show | grep id | cut -d'"' -f 4`
-	azpublisher=$(echo $gl_cloud_os_version | cut -f1 -d:)
-	azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
-	azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
-	azversion=$(echo $gl_cloud_os_version | cut -f 4 -d:)
+	if [[ $gl_cloud_os_version == *"subscription"* ]]; then
+		azpublisher="none"
+		azoffer="none"
+		azsku="none"
+		azversion="none"
+		az_urn_sub=$gl_cloud_os_version
+	else
+		azpublisher=$(echo $gl_cloud_os_version | cut -f1 -d:)
+		azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
+		azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)
+		azversion=$(echo $gl_cloud_os_version | cut -f 4 -d:)
+		az_urn_sub="none"
+	fi
 	echo "  cloud_offer: ${azoffer}" >> ansible_vars_main.yml
 	echo "  cloud_publisher: ${azpublisher}" >> ansible_vars_main.yml
 	echo "  cloud_os_version: ${azversion}" >> ansible_vars_main.yml
 	echo "  az_subscription: ${az_subscription}" >> ansible_vars_main.yml
+	echo "  az_urn_sub: ${az_urn_sub}" >> ansible_vars_main.yml
 	#
 	# Because the sku may contain an _, and ansible when it replaces the 
 	# variables in the tfvars.j2 file later will unquote _.
