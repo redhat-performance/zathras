@@ -305,7 +305,6 @@
         - config_info.system_type != "local"
     when:
       - config_info.os_vendor == "rhel"
-      - config_info.do_not_install_packages == 0
 
 - hosts: local
   vars_files: ansible_vars.yml
@@ -317,7 +316,7 @@
     vars:
       status_file: "cr_status"
       exit_msg: "Code repo installation failure"
-    when: (config_info.os_vendor == "rhel") and (config_info.do_not_install_packages == 0) and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
+    when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
 
  #
  # Determine where to upload from, assumption is all test systems have the same
@@ -388,14 +387,6 @@
         vars:
           status_file: "pbench_prep_status"
       when: config_info.pbench_install != 0
-    - name: dev environment for uperf
-      include_role:
-        name: install_dev_environment
-    - name: retrieve dev env status
-      include_role:
-        name: retrieve_status
-      vars:
-        status_file: "dev_env_status"
     when:
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
@@ -414,12 +405,6 @@
         status_file: "pbench_prep_status"
         exit_msg: "pbench prep failure"
       when: config_info.pbench_install != 0
-    - name: Terminate on dev env failure
-      include_role:
-        name: terminate_on_error
-      vars:
-        status_file: "dev_env_status"
-        exit_msg: "Failure on dev environment."
     when:
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
@@ -579,20 +564,6 @@
       when:
         - config_info.do_not_install_packages == 0
 
-- hosts: local
-  vars_files: ansible_vars.yml
-  gather_facts: no
-  tasks:
-  - name: Terminate on repo failure
-    block:
-    - name: determine pack failure
-      include_role:
-        name: terminate_on_error
-      vars:
-        status_file: "install_status"
-        exit_msg: "Package installation failure."
-    when:
-      - config_info.do_not_install_packages == 0
 #
 # Reboot the system if we did an update.
 # 

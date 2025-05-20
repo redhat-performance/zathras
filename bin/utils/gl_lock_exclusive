@@ -8,6 +8,7 @@ do
 		gl_have_locked=1
 		break
 	else
+		echo Unable to get the lock $gl_lock, wait for the lock to be free.
 		sleep 4
 	fi
 done

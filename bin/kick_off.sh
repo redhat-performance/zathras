@@ -20,7 +20,18 @@
 #
 
 top_dir=`pwd`
+ans_pid="0"
 
+cleanup_and_exit()
+{
+	if [[ $ans_pid -ne 0 ]]; then
+		kill -2 $ans_pid
+		wait $ans_pid
+	fi
+	exit 1
+}
+
+trap cleanup_and_exit SIGINT
 #
 # Set up the headrs for the log files
 #
@@ -87,10 +98,9 @@ report_usage()
 
 spot_recover=1
 create_attempts=5
-remove_dirs=0
 ssh_key_file=""
 ansible_noise_level="normal"
-while getopts "a:c:d:f:s:rS:t:l:" o; do
+while getopts "a:c:d:f:s:S:t:l:" o; do
         case "${o}" in
 		a)
 			create_attempts=${OPTARG}
@@ -106,9 +116,6 @@ while getopts "a:c:d:f:s:rS:t:l:" o; do
 		;;
 		l)
 			ansible_noise_level=${OPTARG}
-		;;
-		r)
-			remove_dirs=1
 		;;
 		S)
 			spot_recover=${OPTARG}
@@ -206,7 +213,10 @@ do
 	do
 		mkdir tf
 		echo ===== attempt $attempts of $create_attempts ==============
-		ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml
+		ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml &
+		ans_pid=$!
+		wait $ans_pid
+		ans_pid=0
 		#
 		if [ $spot_recover -eq 1 ] && [[ ! -f "test_returned" ]] && [[ ! -f "cpu_type_failure" ]]; then
 			#
@@ -260,9 +270,6 @@ do
 	done
 	$top_dir/bin/remove_wrong_cpus $top_dir/$direct
 	init_system=\""no\""
-	if [ $remove_dirs -eq 1 ]; then
-		rm -rf tf
-	fi
 done
 
 #
