@@ -9,7 +9,7 @@ resource "aws_ebs_volume" "disk_volume" {
   }
 }
 
-resource "aws_volume_attachment" "disk_attachemnt" {
+resource "aws_volume_attachment" "disk_attachment" {
   count       = var.vm_count * var.disk_count
   volume_id   = aws_ebs_volume.disk_volume.*.id[count.index]
   device_name = element(var.ec2_device_names, count.index)
