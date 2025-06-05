@@ -16,6 +16,7 @@ resource "azurerm_linux_virtual_machine" "virtualmachine" {
 
     os_disk {
         caching              = "ReadWrite"
+        disk_size_gb         = 128
         storage_account_type = "Premium_LRS"
     }
 
