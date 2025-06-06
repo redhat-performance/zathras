@@ -760,18 +760,9 @@
     - name: obtain various stats
       shell: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/tools_bin/gather_boot_info initial"
 
-    - name: obtain system config info
-      shell: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/tools_bin/data_gather > /tmp/system_config"
-
     - name: retrieve boot time stats
       fetch:
         src: "/tmp/initial_boot_info.tar"
-        dest: "{{ working_dir }}/boot_info/"
-        flat: yes
-
-    - name: retrieve system config info
-      fetch:
-        src: "/tmp/system_config"
         dest: "{{ working_dir }}/boot_info/"
         flat: yes
 
