@@ -67,7 +67,7 @@ General options
                 will randomly pick one
 	      number_networks: number of internal networks to create
 	      sysctl_settings: files in sysctl_setting to use.  Each file
-	                    sets a set of tuneables, separator is +
+	                    sets a set of tunables, separator is +
 	      number_of_disks: How many disks to create and attach
 	      disk_size: How large is the disk in gigabytes
 	      disk_type: Type of disk to be created
@@ -84,7 +84,7 @@ General options
 	         number_networks: number of internal networks to create
 	      <Sysctl_settings=n+n...>
 	      sysctl_settings: files in sysctl_setting to use.  Each file
-	                    sets a set of tuneables, separator is +
+	                    sets a set of tunables, separator is +
    System config file Examples
      Example 1: Designate 2 systems, no config options
 	     m5.xlarge,m5.4xlarge
