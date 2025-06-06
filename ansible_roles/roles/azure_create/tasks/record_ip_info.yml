@@ -1,5 +1,5 @@
 ---
-# Records ip addresses of the network interafaces(internal) and instance(public)
+# Records ip addresses of the network interfaces(internal) and instance(public)
 
 - name: Output public ip address to ansible var
   shell: terraform output -json public_ip_address 

@@ -1,11 +1,11 @@
 ---
 #
 # Retrieve the system meta data for azure/gcp.  As AWS is via a cli not curl, we do that from 
-# the aws code itseldf.
+# the aws code itself.
 #
 - name: Retrieve the azure meta data and set the tags
   block:
-  - name: Grab the metada
+  - name: Grab the metadata
     shell: curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq > /tmp/meta_data.yml
     register: azure_meta_data
   - name: retrieve the azure metadata

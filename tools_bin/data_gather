@@ -63,7 +63,7 @@ do
 echo $i   `udevadm info --query=all $i | grep ID_MODEL | cut -d: -f 2`
 done
 #
-# Sanity check for filesystems mounted on top of eachother.
+# Sanity check for filesystems mounted on top of each other.
 #
 echo ==============================================
 echo Checking for mount overlays

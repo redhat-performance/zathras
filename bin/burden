@@ -261,7 +261,7 @@ fi
 #
 # Exclusive locking routines
 #
-# Given bash does not have a locking mechism built in, for code blocks
+# Given bash does not have a locking mechanism built in, for code blocks
 # we need to have our own.
 #
 # To do this:
@@ -984,7 +984,7 @@ set_requirements()
 				#
 				grep pbench_config_url ${gl_top_dir}/ansible_roles/roles/install_pbench/vars/main.yml > /dev/null
 				if [ $? -ne 0 ]; then
-					cleanup_and_exit "Asking for pbench, but does not look like pbench urls have been conmfigured." 1
+					cleanup_and_exit "Asking for pbench, but does not look like pbench urls have been configured." 1
 				fi
 				gl_install_pbench=1
 			fi
@@ -1495,7 +1495,7 @@ generate_tags()
   		echo "  Jirald: ${1}" >> tags_defaults
 	fi
 	#
-	# Ok now add the variable information into the various files
+	# OK now add the variable information into the various files
 	# This sets them up to be set  when the system is created or
 	# shortly after it is created via terraform.  The various
 	# cloud subsections will update the required files.
@@ -2001,7 +2001,7 @@ create_ansible_options()
 			echo "Starting ${test_info_str} on ${host_or_cloud_inst}"
 			if [[ $gl_system_type == "local" ]]; then
 				#
-				# Do not allow simulatenous runs to the same local host.
+				# Do not allow simultaneous runs to the same local host.
 				#
 				touch $gl_top_dir/lock_dir/${host_or_cloud_inst}
 				flock -x $gl_top_dir/lock_dir/${host_or_cloud_inst} kick_off.sh $base_string | tee ${run_dir}/ansible_log &
@@ -3225,7 +3225,7 @@ usage()
 		echo "            includes region and zone requests, both are optional."
 		echo "          <Cloud_Placement=value>"
 		echo "            value is specific to each cloud, depending on their definition.  For the placement"
-		echo "            name see the documenation for the cloud being designated. Default value is none"
+		echo "            name see the documentation for the cloud being designated. Default value is none"
 		echo "          <CPU_type=value>"
 		echo "             value is a string that is provided by the user that has to match a substring in the output"
 		echo "             from lscpu field, Model name:"
@@ -3271,7 +3271,7 @@ usage()
 	echo "  --no_spot_recover: Do not recover from a spot system going away."
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
-	echo "  --pbench_install_stats: level of pbench stats to insall: light, medium, legacy, heavy.  Default is medium."
+	echo "  --pbench_install_stats: level of pbench stats to install: light, medium, legacy, heavy.  Default is medium."
 	echo "        light = vmstat"
 	echo "	      medium = vmstat,iostat,sar"
         echo "        heavy = vmstat,iostat,sar,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,turbostat"
@@ -4024,7 +4024,7 @@ first_invocation()
 			line=$line1
 			field_name=`echo $line | cut -d':' -f 1`
 			#
-			# Replace any / with ####, makes sed eaiser to deal with on
+			# Replace any / with ####, makes sed easier to deal with on
 			# ssh key paths.
 			#
 			field_value=`echo $line | cut -d':' -f 2- | sed "s/ //g" | sed "s/\//####/g"`
@@ -4299,7 +4299,7 @@ if [[ $gl_warning_string != "" ]]; then
 fi
 
 #
-# Ok, go back through things and perfrom any runs related to spot failirues or other such things.
+# OK, go back through things and perform any runs related to spot failures or other such things.
 # We try only once.
 #
 
