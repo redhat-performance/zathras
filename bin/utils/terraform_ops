@@ -55,7 +55,7 @@ tf_terminate()
 			# Get arid of the tf directory
 			#
 			cd ..
-#			rm -rf tf
+			rm -rf tf
 			popd > /dev/null
 		fi
 	done
