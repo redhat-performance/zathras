@@ -140,7 +140,7 @@ General options
   --child: tells burden it is a child of another burden process and not to
     perform the initial setup work
   --create_attempts: number of times we attempt to create an instance to get the
-    desginated cpu type
+    designated cpu type
   --git_timeout: Number of seconds to timeout on git requests.  Default is 60
   --system_type &lt;vendor&gt; aws, azure, gcp or local
   --host_config &lt;config options&gt; Specification of the system and configuration
@@ -176,7 +176,7 @@ General options
             includes region and zone requests, both are optional.
           &lt;Cloud_Placement=value&gt;
             value is specific to each cloud, depending on their definition.  For the placement
-            name see the documenation for the cloud being designated. Default value is none
+            name see the documentation for the cloud being designated. Default value is none
           &lt;CPU_type=value&gt;
             value is a string that is provided by the user that has to match a substring in the output
             from lscpu field, Model name:
@@ -219,7 +219,7 @@ General options
   --no_spot_recover: Do not recover from a spot system going away.
   --package_name &lt;name&gt;: Use this set of packages to override the default in the test config
     file instead of the default. Default format  package name &lt;os&gt;_pkg, new name &lt;os&gt;_pkg_&lt;ver&gt;.
-  --pbench_install_stats: level of pbench stats to insall: light, medium, legacy, heavy.  Default is medium.
+  --pbench_install_stats: level of pbench stats to install: light, medium, legacy, heavy.  Default is medium.
        light = vmstat
        medium = vmstat,iostat,sar
        heavy = vmstat,iostat,sar,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,turbostat
@@ -234,7 +234,7 @@ General options
     , then that line is a comment.  If the line starts with a %, it indicates to replace the string.
     Format to replace a string  % &lt;current string&gt;=&lt;new string&gt;
   --scenario_vars &lt;file&gt;: file that contains the variables for the scenario file, default is config/zathras_scenario_vars_def
-  --selinux_level: ennforcing/permissive/disabled.  The setting to have in /etc/selinux/config file.  Note: Ubuntu we do not support
+  --selinux_level: enforcing/permissive/disabled.  The setting to have in /etc/selinux/config file.  Note: Ubuntu we do not support
     enforcing at this time.
   --selinux_state: disabled/enabled.  If disabled is selected, selinux will be disabled via grubby (Amazon and RHEL). For Ubuntu,
     enabled will install the require packages, update the config file and reboot.
@@ -690,7 +690,7 @@ Now the streams template shown in the above section will become
     test_script_to_run: streams_run
 ----
 === Test template file
-This file, if it exsists, contains the specific information for the test, instead of having everything reside in the test_defs.yml file. +
+This file, if it exists, contains the specific information for the test, instead of having everything reside in the test_defs.yml file. +
 ----
 streams_template.yml file
 
@@ -703,7 +703,7 @@ ubuntu_pkgs: gcc,build-essential,libnuma-dev,zip,unzip
 amazon_pkgs: gcc,bc,git,unzip,zip
 test_script_to_run: streams_run
 ----
-With the default_template.yml desingated above, the entry for the streams test_defs.yml becomes
+With the default_template.yml designated above, the entry for the streams test_defs.yml becomes
 ----
  test3:
     test_template: streams_template.yml
@@ -822,7 +822,7 @@ with.  Defined tags +
   full_name: your name
   manager: managers name
   project: project name
-  env: name of the environment assoicated with
+  env: name of the environment associated with
 </code></pre>
 </div>
 ++++
@@ -852,7 +852,7 @@ volume creation.
 *   $test_name is the name of the test, will be tagged to the stdout file
 *   ${TOOLS_BIN} is the loction of the tools_bin binary
 *   ${arguments} is the saved arguments.
-. Test is also responsible for indicating if the test ran sucessfuly.  A value of "Ran" or "Failed" is placed in the file test_results_report.  It is the responsiblity of the test to save this file in the proper location. +
+. Test is also responsible for indicating if the test ran successfully.  A value of "Ran" or "Failed" is placed in the file test_results_report.  It is the responsibility of the test to save this file in the proper location. +
 . Test is responsible for archiving any results to be passed back. That result information is placed
 in a tarball located in /tmp and has the following naming convention: 
 ----
@@ -1051,7 +1051,7 @@ Zathras will create the following in the directory you are running it from.
 . Results_directory: results_name/os_vendor/cloud_type/instance_type
 * results_name: name is from the Zathras option --results_prefix 
 * os_vendor: name is from the Zathras option --os_vendor
-* cloud_type: name is from the Zathras opption --system_type
+* cloud_type: name is from the Zathras option --system_type
 * instance_type: name is from the --host_config option, using just the first field.  There will be added to the end of the name _x where x is a numerical value
 . The Results directory contains the information used to run the test as well as the results tarball.  Note we do not save any of the terraform creation information as it takes up too much space.
 . failed_runs: created in the run directory if a test failed (test failed/passed is up to each test script).  Contained in the file will be 
@@ -1070,7 +1070,7 @@ system config: m5.xlarge
     test_specific: ""
     results_ptr: info_test/rhel/aws/m5.xlarge_0/results_streams_tuned_none_sys_file_none.tar
 ----
-. In run direrctory: test_system_usage: Contains the test run information for this particular run
+. In run directory: test_system_usage: Contains the test run information for this particular run
 +
 ++++
 <div class="content" style="font-size: 12px;">
@@ -1093,7 +1093,7 @@ system config: m5.xlarge
 </code></pre>
 </div>
 ++++
-. In /home/zathras_log directory (if it exist), zathras_log_file: Contails the test run information performed on the systme.  Note, if the directory/file does not exist we will not write to it.  The file has to be writeable by the user.
+. In /home/zathras_log directory (if it exist), zathras_log_file: Contails the test run information performed on the system.  Note, if the directory/file does not exist we will not write to it.  The file has to be writable by the user.
 ++++
 <div class="content" style="font-size: 12px;">
 <pre><code>
@@ -1243,7 +1243,7 @@ Now execute the desired test.
 ----
 $ ./burden --scenario aws_example
 ----
-There will be a large amount of messages displayed on the screeen.  When the test is complete, to look at the results
+There will be a large amount of messages displayed on the screen.  When the test is complete, to look at the results
 ----
 $ cd testing/aws/rhel
 $ ls
@@ -1293,7 +1293,7 @@ To run the streams test on the Azure system
 $ ./burden --scenario aws_example --scenario_vars config/scenario_example --system_type azure
 ----
 This is a very simple example of using the scenario vars file, it becomes much more useful when dealing with
-multiple workloads, with multiple resourcce requirements (disks, networks etc).
+multiple workloads, with multiple resource requirements (disks, networks etc).
 
 [appendix]
 == Changing test options from the cli
@@ -1331,7 +1331,7 @@ m5.4xlarge_0  m5.xlarge_0
 So we ran both m5.4xlarge and m5.xlarge, not two m5.xlarges as designated in the scenario file.
 
 [appendix]
-=== Desginating multiple hardware architectures
+=== Designating multiple hardware architectures
 Executing a scenario file, with multiple hardware architectures. +
 Create the file aws_example with the following content
 ----
@@ -1383,7 +1383,7 @@ Git version check.
             streams_template.yml      v1.1      v1.1   yes
               uperf_template.yml      v1.0      v1.1    no
 ----
-In the example of above, we see autohpl, burst_io and uperf are not runniing the latest test.
+In the example of above, we see autohpl, burst_io and uperf are not running the latest test.
 
 [appendix]
 === Update config file versions to the latest (github only)

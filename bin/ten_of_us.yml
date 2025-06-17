@@ -121,7 +121,7 @@
 
 #
 # Move meta data to its own role
-# Pull metada for azure
+# Pull metadata for azure
 #
 #
 - hosts: install_group
@@ -218,7 +218,7 @@
 
   gather_facts: no
   tasks:
-  - name: install codready repo (if RHEL)
+  - name: install codeready repo (if RHEL)
     block:
     - name: Enable CodeReady Builder for Azure
       block:
@@ -226,7 +226,7 @@
         shell: "yum-config-manager --enable rhui-codeready-builder-for-rhel-8-x86_64-rhui-rpms"
         register: yum_config
         ignore_errors: yes
-      - name: Record status of yum config sucess
+      - name: Record status of yum config success
         include_role:
           name: record_status
         vars:
@@ -234,6 +234,7 @@
           status_file: "/tmp/cr_status"
       when:
         - config_info.system_type == "azure"
+        - config_info.do_not_install_packages == 0
 
     - name: Enable CodeReady Builder for AWS
       block:
@@ -242,7 +243,7 @@
           cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
         register: repo_name
         ignore_errors: yes
-      - name: Record status of yum config sucess
+      - name: Record status of yum config success
         include_role:
           name: record_status
         vars:
@@ -252,7 +253,7 @@
         shell: "yum-config-manager --enable {{ repo_name.stdout }}"
         register: yum_config
         ignore_errors: yes
-      - name: Record status of yum config sucess
+      - name: Record status of yum config success
         include_role:
           name: record_status
         vars:
@@ -274,7 +275,7 @@
         #    warn: false
         #    register: repo_name
         #    ignore_errors: yes
-        #- name: Record status of yum config sucess
+        #- name: Record status of yum config success
         #  include_role:
         #    name: record_status
         #  vars:
@@ -287,7 +288,7 @@
           register: yum_config
           ignore_errors: yes
 
-        - name: Record status of yum config sucess
+        - name: Record status of yum config success
           include_role:
             name: record_status
           vars:
@@ -759,18 +760,9 @@
     - name: obtain various stats
       shell: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/tools_bin/gather_boot_info initial"
 
-    - name: obtain system config info
-      shell: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/tools_bin/data_gather > /tmp/system_config"
-
     - name: retrieve boot time stats
       fetch:
         src: "/tmp/initial_boot_info.tar"
-        dest: "{{ working_dir }}/boot_info/"
-        flat: yes
-
-    - name: retrieve system config info
-      fetch:
-        src: "/tmp/system_config"
         dest: "{{ working_dir }}/boot_info/"
         flat: yes
 
