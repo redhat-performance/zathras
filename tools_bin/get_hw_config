@@ -190,7 +190,7 @@ fi
 
 
 #
-# Get the cpus assoicated with each node
+# Get the cpus associated with each node
 grep "NUMA node" /tmp/lscpu | grep CPU | cut -d: -f2 > /tmp/cpu_mappings
 cpu_node_index=0
 input="/tmp/cpu_mappings"

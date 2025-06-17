@@ -8,7 +8,7 @@
   ignore_errors: yes
   register: tar_rval
 
-- name: Record status of yum config sucess
+- name: Record status of yum config success
   include_role:
     name: record_status
   vars:

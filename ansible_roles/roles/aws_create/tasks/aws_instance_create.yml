@@ -117,7 +117,7 @@
 #
 - name: Handle wrong cpu types
   block:
-  - name: Verfiy AWS CPU
+  - name: Verify AWS CPU
     include_role:
       name: verify_cpu
     vars:
