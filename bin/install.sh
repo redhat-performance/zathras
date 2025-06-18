@@ -63,14 +63,15 @@ for package in "${packages[@]}"; do
             echo "Please install Terraform manually from https://developer.hashicorp.com/terraform/install"
             exit 1
         fi
-            # repo URL for terraform
-            repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
 
-            # run dnf config-manager
-            sudo dnf config-manager --add-repo "$repo_url" || {
-                echo "Error: Failed to add HashiCorp repository"
-                exit 1
-            }
+        # repo URL for terraform
+        repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
+
+        # run dnf config-manager
+        sudo dnf config-manager --add-repo "$repo_url" || {
+            echo "Error: Failed to add HashiCorp repository"
+            exit 1
+        }
 
         # install the package
         sudo dnf install terraform-1.9.8-1 -y || {
