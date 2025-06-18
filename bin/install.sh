@@ -57,6 +57,11 @@ for package in "${packages[@]}"; do
             release='RHEL'
         elif [ $os_release_clean = 'fedora' ]; then
             release='fedora'
+        else
+            echo "Error: Terraform installation is only supported on RHEL and Fedora distributions."
+            echo "Detected OS: $os_release_clean"
+            echo "Please install Terraform manually from https://developer.hashicorp.com/terraform/install"
+            exit 1
         fi
             # repo URL for terraform
             repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
