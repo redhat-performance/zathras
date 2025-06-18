@@ -50,12 +50,12 @@ for package in "${packages[@]}"; do
         os_release=$(grep "^ID=" /etc/os-release | awk -F'=' '{print $2}')
 
         # Sometimes the $release contains quotes that need to be removed
-        os_release_clean=$(echo $os_release | tr -d '"')
+        os_release_clean=$(echo "$os_release" | tr -d '"')
 
         # HashiCorp repo urls are case-sensitive
-        if [ $os_release_clean = 'rhel' ]; then
+        if [[ "$os_release_clean" == "rhel" ]]; then
             release='RHEL'
-        elif [ $os_release_clean = 'fedora' ]; then
+        elif [[ "$os_release_clean" == "fedora" ]]; then
             release='fedora'
         else
             echo "Error: Terraform installation is only supported on RHEL and Fedora distributions."
