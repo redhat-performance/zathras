@@ -19,6 +19,15 @@
 
 set -eu
 
+# Check if dnf package manager is available
+if ! command -v dnf &> /dev/null; then
+    echo "Error: This script requires the DNF package manager."
+    echo "Supported distributions: RHEL 8+, Fedora, CentOS 8+, Rocky Linux, AlmaLinux"
+    echo "For other distributions, please install the required packages manually:"
+    echo "  - ansible-core, git, jq, python, python3-pip, terraform, unzip, wget"
+    exit 1
+fi
+
 # Check if script is being run as root
 if (( $EUID == 0 )); then
     read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N " yesno
