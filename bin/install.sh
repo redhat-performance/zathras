@@ -30,7 +30,7 @@ if ! command -v dnf &> /dev/null; then
     echo "Error: This script requires the DNF package manager."
     echo "Installer supported distributions: RHEL 8+, Fedora"
     echo "For other distributions, please install the required packages manually:"
-    echo "  - ansible-core, git, jq, python, python3-pip, terraform, unzip, wget"
+    echo "  ansible-core, git, jq, python, python3-pip, terraform, unzip, wget"
     exit 1
 fi
 
