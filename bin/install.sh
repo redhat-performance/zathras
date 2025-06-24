@@ -19,6 +19,21 @@
 
 set -eu
 
+# Check if dnf package manager is available
+# Note: [[ ]] brackets are NOT needed here because:
+# - 'if' statements work directly with command exit codes (0 = success, non-zero = failure)
+# - 'command -v dnf' returns exit code 0 if dnf exists, non-zero if not found
+# - The '!' negates the exit code result
+# - '&> /dev/null' suppresses output while preserving the exit status
+# - Test brackets are only needed for comparisons like [[ "$a" == "$b" ]] or [[ -f "$file" ]]
+if ! command -v dnf &> /dev/null; then
+    echo "Error: This script requires the DNF package manager."
+    echo "Installer supported distributions: RHEL 8+, Fedora"
+    echo "For other distributions, please install the required packages manually:"
+    echo "  ansible-core, git, jq, python, python3-pip, terraform, unzip, wget"
+    exit 1
+fi
+
 # Check if script is being run as root
 if (( $EUID == 0 )); then
     read -p "For most use cases, running this script as root is NOT recommended. Are you sure? Y/N " yesno
@@ -50,22 +65,32 @@ for package in "${packages[@]}"; do
         os_release=$(grep "^ID=" /etc/os-release | awk -F'=' '{print $2}')
 
         # Sometimes the $release contains quotes that need to be removed
-        os_release_clean=$(echo $os_release | tr -d '"')
+        os_release_clean=$(echo "$os_release" | tr -d '"')
 
         # HashiCorp repo urls are case-sensitive
-        if [ $os_release_clean = 'rhel' ]; then
+        if [[ "$os_release_clean" == "rhel" ]]; then
             release='RHEL'
-        elif [ $os_release_clean = 'fedora' ]; then
+        elif [[ "$os_release_clean" == "fedora" ]]; then
             release='fedora'
+        else
+            echo "Error: Terraform installation is only supported on RHEL and Fedora distributions."
+            echo "Detected OS: $os_release_clean"
+            echo "Please install Terraform manually from https://developer.hashicorp.com/terraform/install"
+            exit 1
         fi
-            # repo URL for terraform
-            repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
 
-            # run dnf config-manager
-            sudo dnf config-manager --add-repo $repo_url
+        # repo URL for terraform
+        repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
+
+        # run dnf config-manager
+        sudo dnf config-manager --add-repo "$repo_url" || {
+            echo "Error: Failed to add HashiCorp repository"
+            exit 1
+        }
 
         # install the package
         sudo dnf install terraform-1.9.8-1 -y || {
+            echo "Error: Failed to install Terraform"
             exit 1
         }
     else
