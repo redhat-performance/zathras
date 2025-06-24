@@ -28,7 +28,7 @@ set -eu
 # - Test brackets are only needed for comparisons like [[ "$a" == "$b" ]] or [[ -f "$file" ]]
 if ! command -v dnf &> /dev/null; then
     echo "Error: This script requires the DNF package manager."
-    echo "Supported distributions: RHEL 8+, Fedora, CentOS 8+, Rocky Linux, AlmaLinux"
+    echo "Installer supported distributions: RHEL 8+, Fedora"
     echo "For other distributions, please install the required packages manually:"
     echo "  - ansible-core, git, jq, python, python3-pip, terraform, unzip, wget"
     exit 1
