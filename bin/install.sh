@@ -20,6 +20,12 @@
 set -eu
 
 # Check if dnf package manager is available
+# Note: [[ ]] brackets are NOT needed here because:
+# - 'if' statements work directly with command exit codes (0 = success, non-zero = failure)
+# - 'command -v dnf' returns exit code 0 if dnf exists, non-zero if not found
+# - The '!' negates the exit code result
+# - '&> /dev/null' suppresses output while preserving the exit status
+# - Test brackets are only needed for comparisons like [[ "$a" == "$b" ]] or [[ -f "$file" ]]
 if ! command -v dnf &> /dev/null; then
     echo "Error: This script requires the DNF package manager."
     echo "Supported distributions: RHEL 8+, Fedora, CentOS 8+, Rocky Linux, AlmaLinux"
