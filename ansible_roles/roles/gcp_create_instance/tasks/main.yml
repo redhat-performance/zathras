@@ -78,7 +78,7 @@
   shell : |
     ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
-    {{ config_info.test_user }}@{{ item }} \
+    {{ config_info.test_user }}@{{ item.1 }} \
     "id {{ config_info.test_user }} && echo 'User ready'"
   register: user_ssh_ready
   until: user_ssh_ready.rc == 0
