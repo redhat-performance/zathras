@@ -388,6 +388,14 @@
         vars:
           status_file: "pbench_prep_status"
       when: config_info.pbench_install != 0
+    - name: Install the dev environment
+      include_role:
+        name: install_dev_environment
+    - name: retrieve dev env status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "dev_env_status"
     when:
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
@@ -406,6 +414,12 @@
         status_file: "pbench_prep_status"
         exit_msg: "pbench prep failure"
       when: config_info.pbench_install != 0
+    - name: Terminate on dev env failure
+      include_role:
+        name: terminate_on_error
+      vars:
+        status_file: "dev_env_status"
+        exit_msg: "Failure on dev environment."
     when:
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
