@@ -1,0 +1,52 @@
+on:
+  pull_request:
+    types: [opened, review_requested]
+  issue_comment:
+    types: [created]
+
+jobs:
+  pullhero:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' ||
+        (
+          github.event_name == 'issue_comment' &&
+          github.event.issue.pull_request != null &&
+          startsWith(github.event.comment.body, '/review')
+        )
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install pullhero
+        run: pip3 install pullhero
+      
+      - name: Get pull request details
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "PR_NUMBER=$(jq -r '.pull_request.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+          echo "BASE_BRANCH=$(jq -r '.pull_request.base.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+          echo "HEAD_BRANCH=$(jq -r '.pull_request.head.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+      
+      - name: Get PR Details (comment)
+        if: github.event_name == 'issue_comment'
+        run: |
+          echo "PR_NUMBER=$(jq -r '.issue.pull_request.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+          echo "BASE_BRANCH=$(jq -r '.issue.pull_request.base.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+          echo "HEAD_BRANCH=$(jq -r '.issue.pull_request.head.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+
+      - name: Push code review
+        run: >
+          pullhero --vcs-provider github 
+          --vcs-token ${{ secrets.GITHUB_TOKEN }}
+          --vcs-change-id $PR_NUMBER
+          --vcs-repository ${{ github.repository }}
+          --vcs-change-type pr
+          --agent review
+          --agent-action comment
+          --vcs-base-branch $BASE_BRANCH
+          --vcs-head-branch $HEAD_BRANCH
+          --llm-api-key ${{ secrets.PULLHERO_API_KEY }}
+          --llm-api-host ${{ secrets.PULLHERO_API_HOST }}
+          --llm-api-model ${{ secrets.PULLHERO_API_MODEL }}
+          --llm-api-endpoint ${{ secrets.PULLHERO_API_ENDPOINT }}
