@@ -1,3 +1,16 @@
+# This workflow is used to review pull requests, it is intended for a first pass review of a pull request.
+# It is not intended to be a full review, but rather to provide a quick overview of the changes and catch any obvious issues.
+# It can be triggered by:
+# - opening a pull request
+# - requesting a review
+# - commenting on a pull request with the `/review` command
+# Required secrets:
+# - PULLHERO_API_KEY: The API key for the LLM API
+# - PULLHERO_API_HOST: The host of the LLM API
+# - PULLHERO_API_MODEL: The model to use for the LLM API
+# - PULLHERO_API_ENDPOINT: The endpoint of the LLM API
+
+
 on:
   pull_request:
     types: [opened, review_requested]
