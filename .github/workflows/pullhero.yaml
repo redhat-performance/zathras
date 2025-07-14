@@ -19,13 +19,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install pullhero
-        run: pip3 install pullhero || (echo "::error title=Pullhero Error::Pullhero failed to install" && exit 1)
+        run: pip3 install "pullhero<1.0.0" || (echo "::error title=Pullhero Error::Pullhero failed to install" && exit 1)
       
       - name: Verify jq is installed
         run: |
           if ! command -v jq &> /dev/null; then
-            echo "::error title=jq Error::jq could not be found"
-            exit 1
+            echo "::warning title=jq Warning::jq could not be found, installing"
+            sudo apt-get update && sudo apt-get install -y jq
           fi
 
       - name: Get pull request details
