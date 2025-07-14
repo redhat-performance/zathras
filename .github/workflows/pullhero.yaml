@@ -31,6 +31,7 @@ jobs:
       - name: Get PR Details (comment)
         if: github.event_name == 'issue_comment'
         run: |
+          set -e # Exit if any jq command fails
           echo "PR_NUMBER=$(jq -r '.issue.pull_request.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
           echo "BASE_BRANCH=$(jq -r '.issue.pull_request.base.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
           echo "HEAD_BRANCH=$(jq -r '.issue.pull_request.head.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
@@ -49,4 +50,5 @@ jobs:
           --llm-api-key ${{ secrets.PULLHERO_API_KEY }}
           --llm-api-host ${{ secrets.PULLHERO_API_HOST }}
           --llm-api-model ${{ secrets.PULLHERO_API_MODEL }}
-          --llm-api-endpoint ${{ secrets.PULLHERO_API_ENDPOINT }}
+          --llm-api-endpoint ${{ secrets.PULLHERO_API_ENDPOINT }} || 
+          (echo "::error title=Pullhero Error::Pullhero failed to run" && exit 1)
