@@ -51,9 +51,10 @@ jobs:
       - name: Get PR Details (comment)
         if: github.event_name == 'issue_comment'
         run: |
-          echo "PR_NUMBER=$(jq -r '.issue.pull_request.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
-          echo "BASE_BRANCH=$(jq -r '.issue.pull_request.base.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
-          echo "HEAD_BRANCH=$(jq -r '.issue.pull_request.head.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+          echo $GITHUB_EVENT_PATH
+          echo "PR_NUMBER=$(jq -r '.issue.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+          echo "BASE_BRANCH=$(gh pr view ${{ github.event.issue.number }} --json baseRefName | jq -r '.baseRefName')" >> $GITHUB_ENV
+          echo "HEAD_BRANCH=$(gh pr view ${{ github.event.issue.number }} --json headRefName | jq -r '.headRefName')" >> $GITHUB_ENV
 
       - name: Push code review
         run: >
