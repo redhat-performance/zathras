@@ -51,9 +51,19 @@ jobs:
       - name: Get PR Details (comment)
         if: github.event_name == 'issue_comment'
         run: |
-          echo "PR_NUMBER=$(jq -r '.issue.pull_request.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
-          echo "BASE_BRANCH=$(jq -r '.issue.pull_request.base.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
-          echo "HEAD_BRANCH=$(jq -r '.issue.pull_request.head.ref' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+          echo "PR_NUMBER=$(jq -r '.issue.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+          
+          # Use gh cli to get the branch names since event path does not contain that info
+          BASE_BRANCH=$(gh pr view ${{ github.event.issue.number }} --json baseRefName | jq -r '.baseRefName')
+          HEAD_BRANCH=$(gh pr view ${{ github.event.issue.number }} --json headRefName | jq -r '.headRefName')
+
+          if [ -z "$BASE_BRANCH" ] || [ -z "$HEAD_BRANCH" ]; then
+            echo "::error title=Pullhero Error::Failed to get PR branch names"
+            exit 1
+          fi
+
+          echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
+          echo "HEAD_BRANCH=$HEAD_BRANCH" >> $GITHUB_ENV
 
       - name: Push code review
         run: >
