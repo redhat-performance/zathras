@@ -51,7 +51,6 @@ jobs:
       - name: Get PR Details (comment)
         if: github.event_name == 'issue_comment'
         run: |
-          echo $GITHUB_EVENT_PATH
           echo "PR_NUMBER=$(jq -r '.issue.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
           
           # Use gh cli to get the branch names since event path does not contain that info
