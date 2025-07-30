@@ -2213,6 +2213,11 @@ report_util_version()
 	echo ${1}: ${2} >> utils_version
 }
 
+version_greater_equal()
+{
+	printf '%s\n%s\n' "$2" "$1" | sort --reverse --version-sort | head -n 1
+}
+
 #
 # Package checking operations. For each required package, we have a function that will check for 
 # the package, and report any issues.
@@ -2227,7 +2232,13 @@ check_for_yq()
 	#  yq spits version out to stderr.
 	#
 	yq_version=$(yq --version 2>&1)
+	yq_version=`echo $yq_version | cut -d' ' -f2`
 	echo "Running with yq version ${yq_version}, tested with 2.10.0"
+	max_vers=$(version_greater_equal "3.2.3" $yq_version)
+	if [[ $max_vers != "3.2.3" ]]; then
+		rm utils_version
+		cleanup_and_exit "yq needs to be version 3.2.3 or earlier, running $yq_version." 1
+	fi
 	report_util_version yq_version "${yq_version}"
 }
 
