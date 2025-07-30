@@ -50,6 +50,8 @@ jobs:
       
       - name: Get PR Details (comment)
         if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "PR_NUMBER=$(jq -r '.issue.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
           
