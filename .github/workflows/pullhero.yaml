@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install pullhero
-        run: pip3 install "pullhero<1.0.0" || (echo "::error title=Pullhero Error::Pullhero failed to install" && exit 1)
+        run: pip3 install "pullhero<1.0.0" gitingest[server] || (echo "::error title=Pullhero Error::Pullhero failed to install" && exit 1)
       
       - name: Verify jq is installed
         run: |
