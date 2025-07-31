@@ -220,23 +220,7 @@
   tasks:
   - name: install codeready repo (if RHEL)
     block:
-    - name: Enable CodeReady Builder for Azure
-      block:
-      - name: Enable CodeReady Builder for Azure
-        shell: "yum-config-manager --enable rhui-codeready-builder-for-rhel-8-x86_64-rhui-rpms"
-        register: yum_config
-        ignore_errors: yes
-      - name: Record status of yum config success
-        include_role:
-          name: record_status
-        vars:
-          results: "{{ yum_config }}"
-          status_file: "/tmp/cr_status"
-      when:
-        - config_info.system_type == "azure"
-        - config_info.do_not_install_packages == 0
-
-    - name: Enable CodeReady Builder for AWS
+    - name: Enable CodeReady Builder for AWS/Azure
       block:
       - name: get codeready repo name
         shell:
@@ -260,7 +244,7 @@
           results: "{{ yum_config }}"
           status_file: "/tmp/cr_status"
       when:
-        - config_info.system_type == "aws"
+        - config_info.system_type == "aws" or config_info.system_type == "azure"
 
     - name: Enable CodeReady Builder for GCP
       block:
