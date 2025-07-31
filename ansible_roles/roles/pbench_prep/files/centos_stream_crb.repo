@@ -1,5 +1,0 @@
-[centos_stream_crb]
-name=CentOS Stream CRB
-baseurl=http://mirror.stream.centos.org/9-stream/CRB/$basearch/os
-enabled=1
-gpgcheck=0
