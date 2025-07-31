@@ -78,7 +78,7 @@ Each test is a self contained instance, and creates its own files.  Files that m
 -  configuration information
 -  anything the test creator desires.
 
-If the test does not save the results file to a permanent area (ie pbench), then the Ansible code that invoked the
+If the test does not save the results file to a permanent area, then the Ansible code that invoked the
 wrapper has to have knowledge of what the results file is, save it to the local directory the ansible script is running from
 
 Example: linpack

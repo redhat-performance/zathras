@@ -60,7 +60,6 @@ test_version_ops()
 	   	   [[ $test_repo == "java_pkg_def.yml" ]] ||
 	   	   [[ $test_repo == "default_template.yml" ]] ||
 	   	   [[ $test_repo = "test_defs.yml" ]] ||
-	   	   [[ $test_repo = "install_pbench_vars.yml" ]] ||
 	   	   [[ $test_repo = "verify.yml" ]]; then
 			continue;
 		fi

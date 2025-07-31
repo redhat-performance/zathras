@@ -186,13 +186,6 @@
 # Set up the terraform variables, includes setting the disk parameters.
 #
 #
-- name: Set up terraform vars non spot
-  include_role:
-    name:  set_up_tf_vars
-  vars:
-    pbench_ns_tf: pbench.tf
-    cloud_change_to: aws_instance
-
 - name: grab aws create start time
   command: "date -u +%s"
   register: aws_create_time_start
