@@ -92,11 +92,6 @@ variable "network_count" {
   default = 1
 }
 
-variable "pbench_device" {
-  type    = string
-  default =   "/dev/sdd"
-}
-
 variable "pb_disk_count" {
   type    = number
   default = 1

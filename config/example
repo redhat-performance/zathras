@@ -9,8 +9,6 @@ repo_file: example.tar
 rhel_pkgs: gcc,make,gcc-gfortran,openblas-openmp,openmpi,openmpi-devel,wget,bc
 ubuntu_pkgs: gcc,make,g++,python3-pip,mpi,libopenblas-base,mpi-default-bin,mpi-default-dev,mpi-specs,libmkl-intel-thread,libmkl-intel-ilp64,libmkl-intel-lp64,libmkl-core,libmkl-gnu-thread
 amazon_pkgs: git,gcc,make,gcc-gfortran,blas,openmpi,openmpi-devel,wget,bc
-pbench_required: "no"
-pbench_local_results: "no"
 storage_required: "no"
 network_required: "no"
 java_required: "no"
