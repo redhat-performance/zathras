@@ -5,4 +5,3 @@ rhel_pkgs: gcc,numactl-devel,bc,git,unzip,perf
 ubuntu_pkgs: libnuma-dev,gcc,unzip,zip
 amazon_pkgs: numactl,bc,git,zip,unzip
 test_script_to_run: run_pig.sh
-pre_setup: /home/dvalin/install_bc
