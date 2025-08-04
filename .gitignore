@@ -1,0 +1,36 @@
+.ansible/
+2
+
+# Ignore local configs
+local_configs/
+!local_configs/README
+!local_configs/config_samp
+
+# Ignore system locks
+lock_dir
+
+# Ignore test result files
+failed_runs
+failed_tests
+java_info
+test_info
+results_info
+utils_version
+
+# Ignore archive files
+*.tar*
+*.zip
+
+run_burden_*
+
+# Ignore most scenario files
+*scenario*
+
+#Ignore most result directories
+*/rhel/*
+*/ubuntu/*
+*/amazon/*
+
+#ignore auto-generated configs
+config/full_test_defs.yml
+config/git_vers
