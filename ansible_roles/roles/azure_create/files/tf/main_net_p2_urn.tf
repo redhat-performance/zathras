@@ -17,7 +17,6 @@ resource "azurerm_linux_virtual_machine" "virtualmachine" {
 
     os_disk {
         name                 = "${var.run_label}-OS_Disk-${format("%02d",each.value.index)}"
-        disk_size_gb         =  64
         caching              = "ReadWrite"
         storage_account_type = "Premium_LRS"
     }
