@@ -69,10 +69,10 @@ if [[ $ct_config == *"Disks"* ]]; then
 		fi
 		let "dindex=$dindex+1"
 		new_dfield=`echo $ct_config | cut -d';' -f${dindex}`
-		if [ -z $new_dfield ] ; then
+		if [[ -z $new_dfield ]] ; then
 			break
 		fi
-		if [ $new_dfield == $dfield ]; then
+		if [[ $new_dfield == $dfield ]]; then
 			break
 		fi
 		dfield=$new_dfield
