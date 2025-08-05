@@ -34,3 +34,4 @@ run_burden_*
 #ignore auto-generated configs
 config/full_test_defs.yml
 config/git_vers
+config/failed_test
