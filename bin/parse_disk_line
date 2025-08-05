@@ -47,7 +47,7 @@ fields=`echo "$1" | sed "s/&/ /g"`
 index=0
 for i in $fields
 do
-	let "indecx=$index+1"
+	let "index=$index+1"
 	if [[ $i == *"Disks"* ]]; then
 		ct_config=$i
 		break
