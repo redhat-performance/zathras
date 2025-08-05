@@ -33,7 +33,7 @@ set_disk_field()
 	elif [[ $dfield == *"throughput"* ]]; then
 		disk_tp=$value
 	else
-		echo $dfield: Unknown field, bail out.
+		echo echo "$dfield: Unknown field, bail out."
 		exit 1
 	fi
 }
