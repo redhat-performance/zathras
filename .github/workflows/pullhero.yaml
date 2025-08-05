@@ -13,7 +13,7 @@
 
 on:
   pull_request:
-    types: [opened, review_requested]
+    types: [review_requested]
   issue_comment:
     types: [created]
 
@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install pullhero
-        run: pip3 install "pullhero<1.0.0" || (echo "::error title=Pullhero Error::Pullhero failed to install" && exit 1)
+        run: pip3 install "pullhero<1.0.0" gitingest[server] || (echo "::error title=Pullhero Error::Pullhero failed to install" && exit 1)
       
       - name: Verify jq is installed
         run: |
@@ -50,6 +50,8 @@ jobs:
       
       - name: Get PR Details (comment)
         if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "PR_NUMBER=$(jq -r '.issue.number' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
           
