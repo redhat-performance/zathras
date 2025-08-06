@@ -45,7 +45,7 @@ General options
   --dir_index: designates an index value to add to the run directory, default is 0
   --force_upload: upload all packages and tools to the cloud instance.
   --git_timeout: Number of seconds to timeout on git requests.  Default is 60
-  --system_type <vendor>: aws, azure or local
+  --system_type <vendor>: amazon, azure or local
   --host_config <config options>: Specification of the system and configuration
 	If the --system_type option is local, then this is simply the system name
 	to run on, and it will pull the config value from the file <hostname>.conf
@@ -121,17 +121,17 @@ General options
         cloud_os_id: aminumber
         os_vendor: rhel
         results_prefix: linpack
-        system_type: aws
+        system_type: amazon
       systems:
         system1:
           java_version: java-8
           tests: linpack
-          system_type: aws
+          system_type: amazon
           host_config: "m5.xlarge"
         system2:
           java_version: java-8
           tests: linpack
-          system_type: aws
+          system_type: amazon
           host_config: "m5.4xlarge"
     To override java_version for system1:
        --test_override "system1:java_version=java-11"
@@ -152,7 +152,7 @@ General options
            scenario file, the first one will be used
   -h --usage: condensed usage information
 Cloud options only
-  --cloud_os_id <os id>: Image of the OS to install (example aws aminumber)
+  --cloud_os_id <os id>: Image of the OS to install (example amazon aminumber)
   --create_only:  Only do the VM creation and OS installation.
   --os_vendor <os vendor>: currently rhel, ubuntu, amazon
   --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running.
@@ -192,7 +192,7 @@ dnf install dialog.x86_64
 Using scenario_vars 
 To run the general scenario regression
 
-./burden --scenario regression_scenario --system_type aws --scenario_vars definition_vars
+./burden --scenario regression_scenario --system_type amazon --scenario_vars definition_vars
 
 That will run the regression scenario in the AWS environment.
 
@@ -218,7 +218,7 @@ global:
   cloud_os_id: ami-myaminumbe
   os_vendor: rhel
   results_prefix: linpack
-  system_type: aws
+  system_type: amazon
 systems:
   system1:
     tests: linpack
