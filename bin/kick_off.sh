@@ -177,7 +177,7 @@ done
 #
 export ANSIBLE_HOST_KEY_CHECKING=False
 echo "[defaults]" >> ansible.cfg
-echo "roles_path = ~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:~/.ansible/collections/ansible_collections/pbench/agent/roles" >> ansible.cfg
+echo "roles_path = ~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles" >> ansible.cfg
 echo "log_path=${curdir}/ansible_log" >> ansible.cfg
 if [[ $ansible_noise_level != "normal" ]]; then
 	if [[ $ansible_noise_level == "silence" ]]; then

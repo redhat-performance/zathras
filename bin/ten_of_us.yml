@@ -165,7 +165,7 @@
       cd_homedir: "{{ ansible_env.HOME }}"
 
 #
-# Upload the metadata for saving with pbench data
+# Upload the metadata
 #
 - hosts: install_group
   gather_facts: yes
@@ -361,17 +361,6 @@
     - name: Gather the rpm package facts
       package_facts:
         manager: auto
-    - name: pbench prep block
-      block:
-      - name: pbench prep
-        include_role:
-          name: pbench_prep
-      - name: retrieve pbench prep status
-        include_role:
-          name: retrieve_status
-        vars:
-          status_file: "pbench_prep_status"
-      when: config_info.pbench_install != 0
     - name: Install the dev environment
       include_role:
         name: install_dev_environment
@@ -391,13 +380,6 @@
   tasks:
   - name : Terminate on repo or dev env failure
     block:
-    - name: Terminate on repo failure
-      include_role:
-        name: terminate_on_error
-      vars:
-        status_file: "pbench_prep_status"
-        exit_msg: "pbench prep failure"
-      when: config_info.pbench_install != 0
     - name: Terminate on dev env failure
       include_role:
         name: terminate_on_error
@@ -408,39 +390,6 @@
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
       - config_info.do_not_install_packages == 0
-
-#
-# Install pbench
-#
-- hosts: install_group
-  vars_files:
-    - ansible_vars.yml
-
-  gather_facts: no
-  tasks:
-  - name: pbench_installation
-    block:
-    - name: Read in dynamic information
-      include_vars:
-        file: "{{ working_dir }}/ansible_run_vars.yml"
-        name: dyn_data
-    - name: install pbench on server
-      include_role:
-        name: install_pbench
-        apply:
-          become: yes
-      vars:
-        target_sys: "{{ dyn_data.test_hostname }}"
-    - name: install pbench on client
-      include_role:
-        name: install_pbench
-      vars:
-        target_sys: "{{ dyn_data.net_hostname }}"
-      when:
-        - config_info.network_required == "yes"
-    when:
-      - config_info.pbench_install != 0
-      - config_info.system_type != "local"
 
 - hosts: install_group
   user: config_info.test_user
@@ -455,49 +404,6 @@
       name: install_rpms
     vars:
       results_file: "/tmp/rpm_installs"
-
-#
-# Install the packages.
-# 
-- hosts: install_group
-  user: config_info.test_user
-  become_user: root
-  become: true
-  vars_files:
-    - ansible_vars.yml
-
-  gather_facts: yes
-  tasks:
-  - name: pbench test install
-    block:
-    - name: pbench install tests
-      block:
-      - name: install pbench tests
-        include_role:
-          name: install_pbench_tests
-    - name: retrieve pbench test install status
-      include_role:
-        name: retrieve_status
-      vars:
-        status_file: "pbench_test_inst_status"
-    when:
-      - config_info.pbench_install != 0
-      - config_info.do_not_install_packages == 0
-
-- hosts: local
-  vars_files: ansible_vars.yml
-  gather_facts: no
-  tasks:
-  - name: Terminate on pbench test install failure
-    block:
-    - name: Check results
-      include_role:
-        name: terminate_on_error
-      vars:
-        status_file: "pbench_test_inst_status"
-        exit_msg: "Failure on pbench test installation."
-    when:
-      - config_info.pbench_install != 0
 
 # Install packages for other OSes
 - hosts: install_group
