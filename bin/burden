@@ -134,7 +134,7 @@ gl_git_timeout_set=0
 gl_archive_location=$value_not_set
 gl_error_repo_errors=1
 gl_valid_os_vendors="rhel ubuntu amazon private none"
-gl_valid_system_types="aws azure gcp local"
+gl_valid_system_types="amazon azure gcp local"
 gl_package_name=$value_not_set
 gl_show_tests=0
 gl_create_attempts=5
@@ -470,7 +470,7 @@ gcp_image_lookup()
 get_cloud_acct_id()
 {
 	if [[ $gl_cloud_acct_id == "" ]]; then
-		if [[ $gl_system_type == "aws" ]]; then
+		if [[ $gl_system_type == "amazon" ]]; then
 			gl_cloud_acct_id=`aws sts get-caller-identity | awk '{print $1}'`
 		else
 			cleanup_and_exit "$gl_system_type:  Do not support pulling account id at this time" 1
@@ -543,7 +543,7 @@ show_aws_images()
 #
 verify_cloud_os_version()
 {
-	if [[ "$gl_system_type" == "aws" ]]; then
+	if [[ "$gl_system_type" == "amazon" ]]; then
 		show_aws_images $gl_os_vendor 1
 	fi
 	if [[ "$gl_system_type" == "azure" ]]; then
@@ -556,7 +556,7 @@ verify_cloud_os_version()
 #
 cloud_image_lookup()
 {
-	if [[ "$gl_system_type" == "aws" ]]; then
+	if [[ "$gl_system_type" == "amazon" ]]; then
 		show_aws_images $gl_os_vendor 0
 	fi
 
@@ -897,12 +897,12 @@ general_setup()
 #
 # To keep us from using the same zone all the time, we randomize it.
 # For azure, this is fairly simply as there are only 3 possible zones.
-# For aws, it is a bit more complicated, as the number of zones is not the
+# For amazon, it is a bit more complicated, as the number of zones is not the
 # same in all regions.
 #
 obtain_zone()
 {
-	if [[ $gl_system_type == "aws" ]]; then
+	if [[ $gl_system_type == "amazon" ]]; then
 		#
 		# Retrieve the regions, and figure out how many regions we have.
 		#
@@ -945,7 +945,7 @@ obtain_zone()
 #
 set_region_zone_defaults()
 {
-	if [[ $gl_system_type == "aws" ]]; then
+	if [[ $gl_system_type == "amazon" ]]; then
 		gl_cloud_region=`aws configure get region`
 		if [ $? -eq 1 ]; then
 			cleanup_and_exit "Unable to retrieve the AWS region" 1
@@ -1197,7 +1197,7 @@ reduce_options()
 		#
 		# indicate if we are using nvme storage.  AWS is always nvme.
 		#
-		if [[ $gl_system_type == "aws" || ($gl_system_type == "azure" && "$gl_host_config" =~ "^Standard_L[[:digit:]]*_v2*") ]]; then
+		if [[ $gl_system_type == "amazon" || ($gl_system_type == "azure" && "$gl_host_config" =~ "^Standard_L[[:digit:]]*_v2*") ]]; then
 			gl_host_uses_nvme=1
 		else
 			gl_host_uses_nvme=0
@@ -1356,14 +1356,14 @@ set_cloud_region()
 #
 # test user set up.
 # This varies from system to system.
-# aws will either be ubuntu or ec2-user
+# amazon will either be ubuntu or ec2-user
 # azure is the user name of who is running burden
 # local (direct ip/hostname) is root.
 #
 set_user_name()
 {
 	if [[ $gl_test_user == "" ]]; then
-		if [[ $gl_system_type == "aws" ]]; then
+		if [[ $gl_system_type == "amazon" ]]; then
 			if [[ $gl_os_vendor == "ubuntu" ]]; then
 				gl_test_user=ubuntu
 			else
@@ -1518,7 +1518,7 @@ retrieve_spot_from_config()
 #
 disk_check()
 {
-	if [[ $gl_system_type == "aws" ]]; then
+	if [[ $gl_system_type == "amazon" ]]; then
 		if [[ $gl_cloud_disk_type != "internal" ]]; then
 			if [[ $gl_cloud_number_disks -eq 0 ]]; then
 				cleanup_and_exit "Error: Disks where designated, but the number of disks being used is 0." 1
@@ -1566,8 +1566,11 @@ generate_tags()
 	# cloud subsections will update the required files.
 	#
 	cat tags_defaults >> ansible_vars_main.yml
-	if [[ $gl_system_type == "aws" ]]; then
-		echo "provider \"${gl_system_type}\" {" >> add_main_vars.tf
+	if [[ $gl_system_type == "amazon" ]]; then
+		#
+		# aws is the defined provider for hashicorp.
+		#
+		echo "provider \"aws\" {" >> add_main_vars.tf
   		echo "  profile = \"default\"" >> add_main_vars.tf
   		echo "  region  = var.region" >> add_main_vars.tf
   		echo "  default_tags {" >> add_main_vars.tf
@@ -1604,7 +1607,7 @@ generate_tags()
 		#
 		# Terraform spot does not set the tags, build a tag list (AWS only)
 		#
-		if [ $gl_use_spot -eq 1 ] && [[ $gl_system_type == "aws" ]]; then
+		if [ $gl_use_spot -eq 1 ] && [[ $gl_system_type == "amazon" ]]; then
 			tag_value=`echo $line  | cut -d':' -f 2 | sed "s/ //g"`
 			aws_tags="${aws_tags}${tag_separ}Key=${value},Value=${tag_value}"
 			tag_separ=" "
@@ -1617,7 +1620,7 @@ generate_tags()
 	#
 	# Done, now end it.
 	#
-	if [[ $gl_system_type == "aws" ]]; then
+	if [[ $gl_system_type == "amazon" ]]; then
 		echo "    }" >> add_main_vars.tf
 		echo "  }" >> add_main_vars.tf
 	fi
@@ -1736,7 +1739,7 @@ create_ansible_options()
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Unable to retrieve base cost $1" 1
 			fi
-			if [[ $gl_system_type == "aws" ]]; then
+			if [[ $gl_system_type == "amazon" ]]; then
 				worker=`curl -L ec2.shop?filter=$host_or_cloud_inst -H 'accept: json'`
 				gl_base_cost=`echo $worker | cut -d':' -f 8 | cut -d',' -f 1`
 			fi
@@ -1795,7 +1798,7 @@ create_ansible_options()
 		if [ $gl_use_spot -eq 0 ]; then
 			echo $gl_base_cost >> instance_cost
 		else
-			if [[ $gl_system_type == "aws" ]]; then
+			if [[ $gl_system_type == "amazon" ]]; then
 				echo $gl_base_cost > if_spot_fail
 			fi
 			echo 0 >> instance_cost
@@ -1839,7 +1842,7 @@ create_ansible_options()
 			#
 			# Azure, only proximity setting at this time, so it can be whatever the user wants.
 			#
-			if [[ $gl_system_type == "aws" ]]; then
+			if [[ $gl_system_type == "amazon" ]]; then
 				if [[ $gl_cloud_placement != "cluster" ]] && [[ $gl_cloud_placement != "partition" ]] && [[ $gl_cloud_placement != "spread" ]]; then
 					cleanup_and_exit "Unknown AWS placement group ${gl_cloud_placement}." 1
 				fi
@@ -1893,7 +1896,7 @@ create_ansible_options()
 		#
 		if [[ $gl_system_type = "azure" ]]; then
 			azure_specific_os_version
-		elif [[ $gl_system_type = "aws" ]]; then
+		elif [[ $gl_system_type = "amazon" ]]; then
 			aws_specific_os_version $system_name
 		else
 			echo "  cloud_os_version: ${gl_cloud_os_version}" >> ansible_vars_main.yml
@@ -1949,7 +1952,7 @@ create_ansible_options()
 		#
 		# More differences in the cloud space that has to be addressed here.
 		#
-		if [[ $gl_system_type == "aws" ]]; then
+		if [[ $gl_system_type == "amazon" ]]; then
 			echo "  cloud_region: ${gl_cloud_region}${gl_cloud_region_zone}" >> ansible_vars_main.yml
 		elif [[ $gl_system_type == "azure" ]]; then
 			# Azure does not put the zone in the region name
@@ -1968,7 +1971,7 @@ create_ansible_options()
 			#
 			# Need a value here to keep AWS terraform happy.
 			#
-			if [[ $gl_system_type == "aws" ]]; then
+			if [[ $gl_system_type == "amazon" ]]; then
 				echo "  cloud_disks: [\"0:na:na:0\"]" >> ansible_vars_main.yml
 			elif [[ $gl_system_type == "gcp" ]]; then
 			  echo "  cloud_disks: []" >> ansible_vars_main.yml
@@ -2281,7 +2284,7 @@ check_for_aws()
 {
 	aws_version=`aws --version 2> /dev/null`
 	if [[ $? -eq 1 ]]; then
-		cleanup_and_exit "aws requires the aws CLIs to be installed\ndnf install -y awscli or pip3 install awscli" 1
+		cleanup_and_exit "amazon requires the amazon CLIs to be installed\ndnf install -y awscli or pip3 install awscli" 1
 	fi
 	aws_version=`echo $aws_version | cut -d'/' -f 2 | cut -d' ' -f 1`
 	report_util_version aws_version "${aws_version}"
@@ -2328,7 +2331,7 @@ package_check()
 		check_for_yq
 		check_for_jq
 		check_for_python
-		if [[ $gl_system_type == "aws" ]]; then
+		if [[ $gl_system_type == "amazon" ]]; then
 			check_for_boto
 			check_for_aws
 		fi
@@ -2512,7 +2515,7 @@ verify_host_config()
 
 	for entry in $verify_config; do
 		vm_instance=`echo $entry | cut -d':' -f 1`
-		if [[ $gl_system_type == "aws" ]]; then
+		if [[ $gl_system_type == "amazon" ]]; then
 			aws ec2 describe-instance-types --instance-types $vm_instance > /dev/null
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: AWS, unknown instance" 1 $vm_instance
@@ -3266,7 +3269,7 @@ usage()
 	echo "	--create_attempts: number of times we attempt to create an instance to get the"
 	echo "    designated cpu type"
 	echo "  --git_timeout: Number of seconds to timeout on git requests.  Default is 60"
-	echo "  --system_type <vendor>: aws, azure, gcp, or local"
+	echo "  --system_type <vendor>: amazon, azure, gcp, or local"
 	echo "  --host_config <config options>: Specification of the system and configuration"
 	if [[ $1 -eq 1 ]]; then
 		echo "    If the --system_type option is local, then this is simply the system name"
@@ -3378,17 +3381,17 @@ usage()
 	echo "        cloud_os_id: aminumber"
 	echo "        os_vendor: rhel"
 	echo "        results_prefix: linpack"
-	echo "        system_type: aws"
+	echo "        system_type: amazon"
 	echo "      systems:"
 	echo "        system1:"
 	echo "          java_version: java-8"
 	echo "          tests: linpack"
-	echo "          system_type: aws"
+	echo "          system_type: amazon"
 	echo "          host_config: \"m5.xlarge\""
 	echo "        system2:"
 	echo "          java_version: java-8"
 	echo "          tests: linpack"
-	echo "          system_type: aws"
+	echo "          system_type: amazon"
 	echo "          host_config: \"m5.4xlarge\""
 	echo "    To override java_version for system1:"
 	echo "       --test_override \"system1:java_version=java-11\""
@@ -3419,7 +3422,7 @@ usage()
 	echo "  --verbose: Verbose usage message"
 	echo "  -h --usage: condensed usage information"
 	echo "Cloud options only"
-	echo "  --cloud_os_id <os id>: Image of the OS to install (example aws aminumber)"
+	echo "  --cloud_os_id <os id>: Image of the OS to install (example amazon aminumber)"
 	echo "    For multiple architectures, this is allowed"
 	echo "    x86:ami-0fbec8a0a2beb6a71,arm64:ami-0cfa90ca3ebfc506e"
 	echo "    Burden will select the right ami for the designated host."

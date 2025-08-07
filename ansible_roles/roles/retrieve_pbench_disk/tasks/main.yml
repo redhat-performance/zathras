@@ -41,7 +41,7 @@
     when:
       - sys_index != "0"
       - "'pbench_volume_{{ sys_index }}' in pbench_disk_name"
-  when: config_info.system_type == "aws"
+  when: config_info.system_type == "amazon"
 
 #
 # On Azure we always use LUN 10 for the pbench disk, and subsequent data disks start at 11

@@ -96,7 +96,7 @@
       - name: aws_operations
         include_role:
           name: aws_create
-      when: config_info.system_type == "aws"
+      when: config_info.system_type == "amazon"
 
     - name: azure operations
       block:
@@ -260,7 +260,7 @@
           results: "{{ yum_config }}"
           status_file: "/tmp/cr_status"
       when:
-        - config_info.system_type == "aws"
+        - config_info.system_type == "amazon"
 
     - name: Enable CodeReady Builder for GCP
       block:
@@ -317,7 +317,7 @@
     vars:
       status_file: "cr_status"
       exit_msg: "Code repo installation failure"
-    when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
+    when: (config_info.os_vendor == "rhel") and (config_info.system_type == "amazon" or config_info.system_type == "azure" or config_info.system_type == "gcp")
 
  #
  # Determine where to upload from, assumption is all test systems have the same
@@ -1003,7 +1003,7 @@
         name: tf_delete
       vars:
         tf_dir: "tf"
-      when: config_info.system_type == "aws" or config_info.system_type == "gcp" or config_info.system_type == "azure"
+      when: config_info.system_type == "amazon" or config_info.system_type == "gcp" or config_info.system_type == "azure"
     
     - name: terminate end time
       command: "date -u +%s"

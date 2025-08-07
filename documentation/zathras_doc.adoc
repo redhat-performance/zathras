@@ -142,7 +142,7 @@ General options
   --create_attempts: number of times we attempt to create an instance to get the
     designated cpu type
   --git_timeout: Number of seconds to timeout on git requests.  Default is 60
-  --system_type &lt;vendor&gt; aws, azure, gcp or local
+  --system_type &lt;vendor&gt; amazon, azure, gcp or local
   --host_config &lt;config options&gt; Specification of the system and configuration
     If the --system_type option is local, then this is simply the system name
     to run on, and it will pull the config value from the file &lt;hostname&gt;.conf
@@ -252,17 +252,17 @@ General options
         cloud_os_id: aminumber
         os_vendor: rhel
         results_prefix: linpack
-        system_type: aws
+        system_type: amazon
       systems:
         system1:
           java_version: java-8
           tests: linpack
-          system_type: aws
+          system_type: amazon
           host_config: "m5.xlarge"
         system2:
           java_version: java-8
           tests: linpack
-          system_type: aws
+          system_type: amazon
           host_config: "m5.4xlarge"
     To override java_version for system1:
        --test_override "system1:java_version=java-11"
@@ -293,7 +293,7 @@ General options
   ----use_latest_version: Will update the templates so we are using the latest versions of the test (git repos only)
   -h --usage: condensed usage information
 Cloud options only
-  --cloud_os_id &lt;os id&gt;: Image of the OS to install (example aws aminumber)
+  --cloud_os_id &lt;os id&gt;: Image of the OS to install (example amazon aminumber)
     For multiple architectures, this is allowed"
     x86:ami-0fbec8a0a2beb6a71,arm64:ami-0cfa90ca3ebfc506e"
     Burden will select the right ami for the designated host."
@@ -344,7 +344,7 @@ v1.1            Merge pull request #3 from redhat-performance/fix_usage
 ----
 List the available OSs for AWS:
 ----
-$ burden --os_vendor rhel --show_os_versions --system_type aws
+$ burden --os_vendor rhel --show_os_versions --system_type amazon
 Pulling requested AWS OS image information, may take a bit.
 |  2022-02-22T18:44:59.000Z|  RHEL-7.9_HVM-20220222-x86_64-0-Hourly2-GP2                 |  ami-0c1c3220d0b1716d2  |
 |  2022-02-28T21:18:12.000Z|  RHEL7-STIG-MAR2022-529a0bcd-3ca5-49b1-8dde-caeb1c5fd916    |  ami-001efb8d10971ad22  |
@@ -358,25 +358,25 @@ Run streams on an AWS m5.xlarge instance. Note this assumes the streams test is 
 ----
 $ ./burden --ssh_key_file /home/test_user/permissions/aws_region_2_ssh_key --terminate_cloud 1 \
 --cloud_os_id ami-0fdea47967124a409 --os_vendor rhel --results_prefix just_a_test \
---system_type aws --tests linpack --host_config "m5.xlarge"
+--system_type amazon --tests linpack --host_config "m5.xlarge"
 ----
 Run fio on AWS i3en.xlarge instance.  Note this assumes the fio test is defined in the config directory.
 ----
 $ ./burden --ssh_key_file /home/test_user/permissions/aws_region_2_ssh_key --terminate_cloud 1 \
 --cloud_os_id ami-0fdea47967124a409 --os_vendor rhel --results_prefix just_a_test \
---system_type aws --tests fio --host_config "i3en.xlarge:Disks;type=internal"
+--system_type amazon --tests fio --host_config "i3en.xlarge:Disks;type=internal"
 ----
 Run uperf on AWS m5.xlarge. Note this assumes the uperf test is configured in the config directory.
 ----
 $ ./burden --ssh_key_file /home/test_user/permissions/aws_region_2_ssh_key --terminate_cloud 1 \
---cloud_os_id ami-0fdea47967124a409 --os_vendor rhel --results_prefix just_a_test --system_type aws \
+--cloud_os_id ami-0fdea47967124a409 --os_vendor rhel --results_prefix just_a_test --system_type amazon \
 --tests uperf --host_config "m5.xlarge:networks;number=1"
 ----
 Run uperf and fio on AWS m5.xlarge.  Note this assumes both fio and uperf test are configured in the config directory.
 ----
 $ ./burden --ssh_key_file /home/test_user/permissions/aws_region_2_ssh_key --terminate_cloud 1 \
 --cloud_os_id ami-0fdea47967124a409 --os_vendor rhel --results_prefix just_a_test \
---system_type aws --tests uperf,fio \
+--system_type amazon --tests uperf,fio \
 --host_config "m5.xlarge:networks;number=1&Disks;number=2;size=6000;type=gp2”
 ----
 Run from a test scenario file:
@@ -385,7 +385,7 @@ $ ./burden --scenario test_to_run
 ----
 Run from a test scenario file with using a scenario vars file
 ----
-$ ./burden --scenario rhel_85_2 --system_type aws --scenario_vars aws_vars
+$ ./burden --scenario rhel_85_2 --system_type amazon --scenario_vars aws_vars
 ----
 === Test scenario files
 Defining the tests to run via a test scenario file has numerous advantages over the CLI, these
@@ -429,7 +429,7 @@ global:
   cloud_os_id: ami-0fdea47967124a409
   os_vendor: rhel
   results_prefix: just_a_test
-  system_type: aws
+  system_type: amazon
 systems:
   system1:
     tests: linpack
@@ -443,7 +443,7 @@ global:
   cloud_os_id: ami-0fdea47967124a409
   os_vendor: rhel
   results_prefix: just_a_test
-  system_type: aws
+  system_type: amazon
 systems:
   system1:
   tests: fio
@@ -460,7 +460,7 @@ global:
   cloud_os_id: ami-0fdea47967124a409
   os_vendor: rhel
   results_prefix: just_a_test
-  system_type: aws
+  system_type: amazon
 systems:
   system1:
     tests: fio
@@ -481,7 +481,7 @@ global:
   os_vendor: rhel
   results_prefix: create_only
   os_vendor: rhel
-  system_type: aws
+  system_type: amazon
 
 systems:
   system1:
@@ -752,7 +752,7 @@ m5.24xlarge:1.75:0.25:4.50
 ----
 === Scenario variable file
 To allow the scenarios file to be more generic across the various cloud platforms, a scenario variable
-file is used. The file contains variables that are prefixed with the the system type (aws, azure, gcp or
+file is used. The file contains variables that are prefixed with the the system type (amazon, azure, gcp or
 local) and has a string associated with it. This string will replace all entries designated as [string] in
 the scenario file. +
  +
@@ -766,7 +766,7 @@ os_vendor: rhel
 results_prefix: full_testing
 #
 #
-aws_system_type: aws
+aws_system_type: amazon
 aws_cloud_os_id: ami-0fdea47967124a409
 aws_no_storage_x86: m5.xlarge,m5.24xlarge
 aws_no_storage_non_x86: m5a.xlarge,m5a.2xlarge
@@ -804,9 +804,9 @@ systems:
 </code></pre>
 </div>
 ++++
-To run Zathras and have the values in the scenario file updated for an aws run, the command is +
+To run Zathras and have the values in the scenario file updated for an amazon run, the command is +
 ----
-$ ./burden --scenario <scenario file> --scenario_vars <scenario vars file> --system_type aws
+$ ./burden --scenario <scenario file> --scenario_vars <scenario vars file> --system_type amazon
 ----
 To run Zathras and have the values in the scenario file updated for an azure run, the command is +
 ----
@@ -840,7 +840,7 @@ volume creation.
 * --pbench_user <value>: user who started everything. Defaults to the current user.
 * --run_label: the label to associate with the pbench run
 * --run_user : user running the test
-* --sys_type : At this time will be one of: aws, azure, gcp or local.
+* --sys_type : At this time will be one of: amazon, azure, gcp or local.
 * --sysname : name of the system we are running. In the case of cloud instances, this will be the name of the instance; this should be included in the results name
 * --tuned_setting : tuned profile to use; this should be included in the results name
 * --usage: this usage message
@@ -949,7 +949,7 @@ fi
 # to_puser: User running pbench
 # to_run_label: Label for the run
 # to_user: User on the test system running the test
-# to_sys_type: for results info, basically aws, azure or local
+# to_sys_type: for results info, basically amazon, azure or local
 # to_sysname: name of the system
 # to_tuned_setting: tuned setting
 #
@@ -1222,7 +1222,7 @@ $
 ----
 We want to run AWS m5.xlarge (x86), RHEL 9, need to locate the proper AMI
 ----
-$ ./burden --show_os_versions --os_vendor rhel --system_type aws | egrep "RHEL-9.*x86"
+$ ./burden --show_os_versions --os_vendor rhel --system_type amazon | egrep "RHEL-9.*x86"
 |  2021-11-02T14:55:39.000Z|  RHEL-9.0.0_HVM_BETA-20211026-x86_64-10-Hourly2-GP2 |  ami-0fbec8a0a2beb6a71  |
 ----
 Create the file aws_example with the following content
@@ -1233,7 +1233,7 @@ global:
   cloud_os_id: ami-0fbec8a0a2beb6a71
   os_vendor: rhel
   results_prefix: testing
-  system_type: aws
+  system_type: amazon
 systems:
   system1:
     tests: streams
@@ -1245,9 +1245,7 @@ $ ./burden --scenario aws_example
 ----
 There will be a large amount of messages displayed on the screen.  When the test is complete, to look at the results
 ----
-$ cd testing/aws/rhel
-$ ls
-$ cd testing/rhel/aws/m5.xlarge_0
+$ cd testing/rhel/amazon/m5.xlarge_0
 $ ls res*str*tar
 results_streams_tuned_none_sys_file_none.tar
 $ tar xvf results_streams_tuned_none_sys_file_none.tar
@@ -1274,7 +1272,7 @@ azure_host_config: Standard_D8s_v3
 Now modify the aws_example file created earlier to look like
 ----
 global:
-  ssh_key_file: <your ssh key for the aws system>
+  ssh_key_file: <your ssh key for the amazon system>
   terminate_cloud: 1
   cloud_os_id: [os_id]
   os_vendor: rhel
@@ -1286,7 +1284,7 @@ systems:
 ----
 To run the streams test on the AWS system
 ----
-$ ./burden --scenario aws_example --scenario_vars config/scenario_example --system_type aws
+$ ./burden --scenario aws_example --scenario_vars config/scenario_example --system_type amazon
 ----
 To run the streams test on the Azure system
 ----
@@ -1301,12 +1299,12 @@ multiple workloads, with multiple resource requirements (disks, networks etc).
 Create the file aws_example with the following content
 ----
 global:
-  ssh_key_file: <your ssh key for the aws system>
+  ssh_key_file: <your ssh key for the amazon system>
   terminate_cloud: 1
   cloud_os_id: ami-0fbec8a0a2beb6a71
   os_vendor: rhel
   results_prefix: testing
-  system_type: aws
+  system_type: amazon
 systems:
   system1:
     tests: streams
@@ -1336,12 +1334,12 @@ Executing a scenario file, with multiple hardware architectures. +
 Create the file aws_example with the following content
 ----
 global:
-  ssh_key_file: <your ssh key for the aws system>
+  ssh_key_file: <your ssh key for the amazon system>
   terminate_cloud: 1
   cloud_os_id: x86:ami-0fbec8a0a2beb6a71,arm64:ami-0cfa90ca3ebfc506e
   os_vendor: rhel
   results_prefix: testing
-  system_type: aws
+  system_type: amazon
 systems:
   system1:
     tests: streams
@@ -1353,7 +1351,7 @@ $ ./burden --scenario aws_example
 ----
 Now take a look at the results directory
 ----
-$ ls testing/aws/rhel
+$ ls testing/rhel/amazon
 m5.xlarge_0  m6g.xlarge_0
 ----
 We see that we ran both m5.xlarge (x86) and m6g.xlarge (arm64) systems.

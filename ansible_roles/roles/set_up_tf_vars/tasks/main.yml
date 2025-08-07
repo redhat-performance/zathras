@@ -58,13 +58,13 @@
           src: "{{ pbench_ns_tf }}"
           dest: "{{ working_dir }}/tf/pbench.tf"
         when:
-          - config_info.system_type != "aws" 
+          - config_info.system_type != "amazon" 
           - pbench_ns_tf != "none"
     - name: AWS.
       block:
       - name: copy to working_dir so we can cat it onto the end of main.tf
         shell: cat {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/{{ pbench_ns_tf }} | sed "s/REPLACE/{{ cloud_change_to }}/g" >> {{ working_dir }}/tf/pbench.tf
-        when: config_info.system_type == "aws"
+        when: config_info.system_type == "amazon"
   when:
     - config_info.pbench_disk_required == "yes"
 
