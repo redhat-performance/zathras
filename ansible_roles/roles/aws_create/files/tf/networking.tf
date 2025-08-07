@@ -12,6 +12,9 @@ provider "aws" {
         Environment = "${var.Environment}"
         Jirald = "${var.Jirald}"
         TicketID = "${var.TicketID}"
+        app-code = "${var.app_code}"
+        service-phase = "${var.service_phase}"
+        cost-center = "${var.cost_center}"
       }
     }
 }
@@ -28,6 +31,9 @@ resource "aws_vpc" "zathras_vpc" {
       Environment = "${var.Environment}"
       Jirald = "${var.Jirald}"
       TicketID = "${var.TicketID}"
+      app-code = "${var.app_code}"
+      service-phase = "${var.service_phase}"
+      cost-center = "${var.cost_center}"
     }
 #
 # Uncomment when using ipv6
