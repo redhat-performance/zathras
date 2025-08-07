@@ -2442,6 +2442,17 @@ verify_selinux()
 }
 
 #
+# We cannot install packages on a bootc-based host.  If the user wants to try to install packages,
+# we error out before it becomes a headache.
+#
+verify_bootc_mode()
+{
+	if [[ $gl_mode == "image" ]] && [[ $gl_no_packages -eq 0 ]]; then
+		cleanup_and_exit "Error: mode \"image\" is not supported with package installation" 1
+	fi
+}
+
+#
 # Verify iterations is a positive number, > 1
 #
 verify_iterations()
@@ -4239,6 +4250,7 @@ if [[ "$gl_selinux_state" == "$value_not_set" ]]; then
 fi
 
 verify_selinux
+verify_bootc_mode
 
 #
 # Retrieve the scenario file if need be.
