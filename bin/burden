@@ -1518,6 +1518,9 @@ generate_tags()
   		echo "  Manager: Unknown" >> tags_defaults
   		echo "  Project: Testing" >> tags_defaults
   		echo "  Environment: Test" >> tags_defaults
+		echo "  app_code: None" >> tags_defaults
+		echo "  service_phase: None" >> tags_defaults
+		echo "  cost_center: None" >> tags_defaults
   		echo "  Jirald: ${1}" >> tags_defaults
 	fi
 	#
@@ -1560,8 +1563,14 @@ generate_tags()
   		echo "  type = string" >> add_vars_tf
   		echo "  default = \"none\"" >> add_vars_tf
 		echo "}" >> add_vars_tf
+		if [[ $gl_system_type == "azure" ]]; then
+			val1=`echo $value | sed "s/_/-/g"`
+			echo $value $val1 >> /tmp/dave
+		else
+			val1=$value
+		fi
 		echo "${value} = \"{{ config_info.${value} }}\"" >> add_main_tf_vars
-		echo "${indent}${value} = \"\${var.${value}}\"" >> add_main_vars.tf
+		echo "${indent}${val1} = \"\${var.${value}}\"" >> add_main_vars.tf
 		#
 		# Terraform spot does not set the tags, build a tag list (AWS only)
 		#
