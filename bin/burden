@@ -50,7 +50,6 @@
 cli=${0}
 arguments=("$@")
 version="3.2"
-export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/agent/roles:$ANSIBLE_ROLES_PATH
 #
 # This bash script generates the test parameters to be used by ansible. End results
 # is an ansible data file called ansible_vars_main.yml containing the following
@@ -84,7 +83,6 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #   gl_rhel_tuned_setting: tuned configuration to use
 #   gl_cloud_execute_tests: If set to 1, we will execute test on the cloud image, else
 #                        we will simply create the image.
-#   pbench_disk_required: If set to 1, we need a disk for pbench
 #   gl_os_vendor: Who is the OS provider (rhel, ubuntu, amazon)
 #   storage_required: is storage required?
 #   network_required: is a network required?
@@ -99,7 +97,6 @@ export ANSIBLE_ROLES_PATH=$HOME/.ansible/collections/ansible_collections/pbench/
 #                         test system).
 #   user_running: Who is running Zathras
 #   test_user: User name that is executing the test on the test system (ec2-user, root etc)
-#   pbench_install: Do we need to install pbench?
 #
 
 #
@@ -146,7 +143,6 @@ gl_preflight=0
 # Global values
 #   gl_sys_file: sysctl files to use.
 #   gl_cloud_execute_tests: If set to 1, will execute the test, else will not
-#   gl_install_pbench:  Does pbench need to be installed
 #   gl_test_repos: where to find the test repository (git)
 #   gl_image_type: what is the OS image type we are using for update (ftp/iso).
 #   disk_present: are disks requested.
@@ -159,7 +155,6 @@ gl_tf_term_list="all"
 gl_tf_list=0
 gl_sys_file=$value_not_set
 gl_cloud_execute_tests=1
-gl_install_pbench=0
 gl_test_repos=""
 gl_image_type=""
 gl_disks_present=0
@@ -226,8 +221,6 @@ gl_cloud_disk_type=""
 gl_zathras_specific_vals="config/zathras_specific_vals_def"
 gl_zathras_specific_vals_set=0
 gl_no_packages=0
-gl_no_pbench_install=0
-gl_pbench_stats="medium"
 gl_cpu_type_request="none"
 gl_run_file=""
 gl_failed_test_rpt="failed_tests"
@@ -802,20 +795,11 @@ create_test_run_file()
 obtain_required_packages()
 {
 	packages=$(find_test_def_field "test_info" "test_name" "$1" "${gl_os_vendor}_pkgs" )
-	pbench_usage=$(find_test_def_field "test_info" "test_name" $1 "test_run_from" )
 	if [[ "$packages" != $value_not_set ]]; then
 		worker=`echo $packages | sed "s/,/ /g"`
 		for i in $worker; do
 			echo "  - ${i}" >> install_choices
 		done
-	fi
-	#
-	# Package install for pbench
-	# The packages being installed for pbench need to be reviewed every so often to make sure
-	# they are still required
-	#
-	if [[ $1 == *"pbench"* ]]; then
-		echo "  - perf" >> install_choices
 	fi
 }
 
@@ -1024,36 +1008,17 @@ check_for_dup_config_entries()
 # 1) If storage is required, storage has been provided, or  type is designated as internal
 # 2) If network is required, network has been provided.
 # 3) If workload requires java, that java is being installed.
-# 4) If workload requires pbench, that pbench is being installed.
 #
 set_requirements()
 {
-	pbench_required="no"
 	uperf_required="no"
 	storage_required="no"
 	network_required="no"
 	java_required="no"
 
-	gl_install_pbench=0
 	worker=`echo $1 | cut -d' ' -f2- | sed "s/,/ /g"`
 	for test_name in ${worker};
 	do
-		#
-		# Pbench check.
-		#
-		if [[ "$pbench_required" == "no" ]]; then
-			pbench_required=$(find_test_def_field "test_info" "test_name" "$test_name" "pbench_required" )
-			if [[ "$pbench_required" == *"yes"* ]]; then
-				#
-				# Verify pbench url is defined.
-				#
-				grep pbench_config_url ${gl_top_dir}/ansible_roles/roles/install_pbench/vars/main.yml > /dev/null
-				if [ $? -ne 0 ]; then
-					cleanup_and_exit "Asking for pbench, but does not look like pbench urls have been configured." 1
-				fi
-				gl_install_pbench=1
-			fi
-		fi
 		#
 		# Storage check.
 		#
@@ -1111,7 +1076,6 @@ set_requirements()
 			fi
 		fi
 	done
-	echo "  pbench_disk_required: \"${pbench_required}\"" >> ansible_vars_main.yml
 	echo "  storage_required: \"${storage_required}\"" >> ansible_vars_main.yml
 	echo "  network_required: \"${network_required}\"" >> ansible_vars_main.yml
 }
@@ -1523,14 +1487,8 @@ disk_check()
 			if [[ $gl_cloud_number_disks -eq 0 ]]; then
 				cleanup_and_exit "Error: Disks where designated, but the number of disks being used is 0." 1
 			fi
-			if [[ $gl_install_pbench -eq 1 ]]; then
-				if [[ $gl_cloud_number_disks -gt 9 ]]; then
-					cleanup_and_exit "Error: AWS Maximum # disks when pbench is present is 9, you designated $gl_cloud_number_disks" 1
-				fi
-			else
-				if [[ $gl_cloud_number_disks -gt 10 ]]; then
-					cleanup_and_exit "Error: AWS Maximum # disks is 10, you designated $gl_cloud_number_disks" 1
-				fi
+			if [[ $gl_cloud_number_disks -gt 10 ]]; then
+				cleanup_and_exit "Error: AWS Maximum # disks is 10, you designated $gl_cloud_number_disks" 1
 			fi
 		fi
 	fi
@@ -1993,23 +1951,6 @@ create_ansible_options()
 		echo "  user_running: ${user_name}" >> ansible_vars_main.yml
 		set_user_name $user_name
 		generate_tags $user_name
-		#
-		# Installation options
-		#
-		if [ $gl_no_pbench_install -eq 0 ]; then
-			echo "  pbench_install: ${gl_install_pbench}" >> ansible_vars_main.yml
-		else
-			if [ $gl_install_pbench -eq 1 ]; then
-				echo "Notice: Benchmark requires pbench, you designated not to install pbench"
-			fi
-			echo "  pbench_install: 0" >> ansible_vars_main.yml
-		fi
-		echo "  pbench_tool_level: ${gl_pbench_stats}" >> ansible_vars_main.yml
-		if [[ $gl_install_pbench -eq 1 ]]; then
-			if [[ "$gl_os_vendor" != "rhel" ]]; then
-				cleanup_and_exit "Pbench is only usable with RHEL at this time." 1
-			fi
-		fi
 
 		#
 		# Handle local config info in ansible_run_vars.yml, networks, disks.  Hostname is added via
@@ -2121,7 +2062,6 @@ create_ansible_options()
 			echo "system config: ${test_sys}" >> results_info
 			for i in `ls tests_to_run`
 			do
-				pbench_usage=`grep pbench_required: tests_to_run/$i`
 				test_location=`grep location: tests_to_run/$i`
 				test_specific=`grep test_specific: tests_to_run/$i`
 				test_script_to_run=`grep test_script_to_run: tests_to_run/$i`
@@ -3343,15 +3283,9 @@ usage()
 	echo "    is a cloud or local system. The default is 3."
 	echo "  --no_clean_up: Do not cleanup at the end of the test"
 	echo "  --no_packages: Do not install any packages. The default is no."
-	echo "  --no_pbench_install: Do not install pbench.  The default is 0 (install pbench)"
 	echo "  --no_spot_recover: Do not recover from a spot system going away."
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
-	echo "  --pbench_install_stats: level of pbench stats to install: light, medium, legacy, heavy.  Default is medium."
-	echo "        light = vmstat"
-	echo "	      medium = vmstat,iostat,sar"
-        echo "        heavy = vmstat,iostat,sar,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,turbostat"
-	echo "        legacy = iostat,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,sar turbostat"
 	echo "  --persistent_log: enable persistent logging"
 	echo "  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits"
 	echo "  --results_prefix <prefix>: Run directory prefix"
@@ -3556,11 +3490,6 @@ set_general_value()
 			gl_no_packages=1
 			shift_by=1
 		;;
-		--no_pbench_install)
-			echo "$1 $2" >> $gl_cli_supplied_options
-			gl_no_pbench_install=$2
-			shift_by=2
-		;;
 		--no_spot_recover)
 			echo "$1" >> $gl_cli_supplied_options
 			gl_spot_recover=0
@@ -3579,11 +3508,6 @@ set_general_value()
 				echo "$1 $2" >> $gl_cli_supplied_options
 				gl_package_name=$2
 			fi
-			shift_by=2
-		;;
-		--pbench_install_stats)
-			echo "$1 $2" >> $gl_cli_supplied_options
-			gl_pbench_stats=$2
 			shift_by=2
 		;;
 		--persistent_log)
@@ -3823,8 +3747,6 @@ grab_cli_data()
 		"max_systems"
 		"os_vendor"
 		"package_name"
-		"no_pbench_install"
-		"pbench_install_stats"
 		"results_prefix"
 		"retry_failed_tests"
 		"run_file"
