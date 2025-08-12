@@ -217,15 +217,9 @@ General options
     `image` treats it as a bootc-based host which cannot install packages and the default kit_upload_directory is $HOME/zathras_uploads.
   --no_clean_up: Do not cleanup at the end of the test
   --no_packages: Do not install any packages, default is no
-  --no_pbench_install: Do not install pbench.  The default is 0 (install pbench).
   --no_spot_recover: Do not recover from a spot system going away.
   --package_name &lt;name&gt;: Use this set of packages to override the default in the test config
     file instead of the default. Default format  package name &lt;os&gt;_pkg, new name &lt;os&gt;_pkg_&lt;ver&gt;.
-  --pbench_install_stats: level of pbench stats to install: light, medium, legacy, heavy.  Default is medium.
-       light = vmstat
-       medium = vmstat,iostat,sar
-       heavy = vmstat,iostat,sar,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,turbostat
-       legacy = iostat,mpstat,perf,pidstat,proc-interrupts,proc-vmstat,sar turbostat
   --persistent_log: enable persistent logging
   --preflight_check: Performs various checks on the scenario file, and Zathras and then exits
   --results_prefix &lt;prefix&gt;: Run directory prefix
@@ -318,7 +312,7 @@ Available tests
  burst_io:  burst_io
  coremark:  coremark test
  coremark_pro:  core mark pro test
- etcd_fio:  etcd simulation via fio, using pbench-fio
+ etcd_fio:  etcd simulation via fio
  fio:  straight fio
  hammerdb_mariadb:  hammerdb mariadb
  hammerdb_mssql:  hammerdb mssql
@@ -554,8 +548,6 @@ test_defs:
   rhel_pkgs: <rhel packages required>
   ubuntu_pkgs: <ubuntu packages required>
   amazon_pkgs: <amazon packages required>
-  pbench_required: <yes/no>
-  pbench_local_results: <yes/no>
   storage_required: <yes/no>
   network_required: <yes/no>
   java_required: <yes/no>
@@ -615,13 +607,8 @@ the test system. +
 *rhel_pkgs:* RHEL packages that are required to run the test; “none” if there aren't any packaging requirements +
 *ubuntu_pkgs:* Ubuntu packages that are required to run the test; “none” if there aren't any packaging requirements. +
 *amazon_pkgs:* Amazon packages that are required to run the test; “none” if there aren't any packaging requirements. +
-*pbench_required:* If set to yes, the test requires pbench to be installed to run. Zathras will install
-pbench on the test system for you. Only supported for RHEL/Fedora. *Note:* it is the responsibility of the user to make sure the pbench repos are set up properly. +
-*pbench_local_result:* If set to yes, will tell the various wrapper scripts to consolidate the pbench results into a results tarball in /tmp with the format:
 ----
 results_<workload>_<tuned_setting>.tar
-e.g.
-results_pbench_linpack_tuned_virtual-guest_sys_file_none.tar
 ----
 *storage_required:* If set to yes, Zathras will check to make sure storage has been designated for the system before provisioning it. +
 *network_required:* If set to yes, Zathras will check to make sure a network (other than the defaults)
@@ -648,8 +635,6 @@ Example entry (not using test templates or default_template.yml) +
     rhel_pkgs: gcc,bc
     ubuntu_pkgs: gcc,build-essential,libnuma-dev,zip,unzip
     amazon_pkgs: gcc,bc,git,unzip,zip
-    pbench_required: "no"
-    pbench_local_results: "no"
     storage_required: "no"
     network_required: "no"
     java_required: "no"
@@ -669,8 +654,6 @@ Example of default_template.yml file
 reboot_system: "no"
 test_run_from: "remote"
 os_supported: all
-pbench_required: "no"
-pbench_local_results: "no"
 storage_required: "no"
 network_required: "no"
 java_required: "no"
@@ -837,10 +820,6 @@ volume creation.
 * --home_parent: Parent directory of the user's home directory. If the home directory is /home/test_user, then the value for this will be /home.
 * --host_config <value>: default is the current host name
 * --iterations : how many times we are to run the test.
-* --pbench: use pbench-user-benchmark and place information into pbench, defaults to do not use
-* --pbench_copy: Copy the pbench data, not move it.
-* --pbench_user <value>: user who started everything. Defaults to the current user.
-* --run_label: the label to associate with the pbench run
 * --run_user : user running the test
 * --sys_type : At this time will be one of: aws, azure, gcp or local.
 * --sysname : name of the system we are running. In the case of cloud instances, this will be the name of the instance; this should be included in the results name
@@ -947,8 +926,6 @@ fi
 # to_home_root: home directory
 # to_configuration: configuration information
 # to_times_to_run: number of times to run the test
-# to_pbench: Run the test via pbench
-# to_puser: User running pbench
 # to_run_label: Label for the run
 # to_user: User on the test system running the test
 # to_sys_type: for results info, basically aws, azure or local
