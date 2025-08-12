@@ -7,4 +7,4 @@ ubuntu_pkgs: unzip,zip,numactl
 amazon_pkgs: bc,git,zip,unzip
 test_script_to_run: linpack_run
 test_specific: "--interleave all --iterations 1"
-upload_extra: "/home/exports/l_onemklbench_p_2023.2.0_49340.tgz,/home/exports/xlinpack_xeon64-NEW"
+upload_extra: "/home/exports/xlinpack_xeon64-NEW"

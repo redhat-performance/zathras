@@ -69,11 +69,6 @@ variable "spot_price" {
   type    = string
 }
 
-variable "pbench_device" {
-  type    = string
-  default =   "/dev/sdd"
-}
-
 variable "pb_disk_count" {
   default = 1
 }
