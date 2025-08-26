@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/iozone-wrapper/archive/refs/tags
-exec_dir: "iozone-wrapper-1.21/iozone"
-repo_file: "v1.21.zip"
+exec_dir: "iozone-wrapper-1.22/iozone"
+repo_file: "v1.22.zip"
 rhel_pkgs: gcc,bc,wget,perl-Math-BigInt.noarch,perl-Math-BigRat.noarch,perl-Math-Complex.noarch,perf,git,unzip
 ubuntu_pkgs: gcc
 amazon_pkgs: gcc
