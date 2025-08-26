@@ -213,6 +213,8 @@ General options
       the filesystem with the most space on it and use that location.
   --max_systems &lt;n&gt;: Maximum number of burden subinstances that will be created from the parent.  Each subinstance
     is a cloud or local system. 3 is the default"
+  --mode &lt;mode&gt;: Selects the default mode for an OS. Default is to treat it as a normal package-managed OS,
+    `image` treats it as a bootc-based host which cannot install packages and the default kit_upload_directory is $HOME/zathras_uploads.
   --no_clean_up: Do not cleanup at the end of the test
   --no_packages: Do not install any packages, default is no
   --no_spot_recover: Do not recover from a spot system going away.

@@ -221,6 +221,7 @@ gl_cloud_disk_type=""
 gl_zathras_specific_vals="config/zathras_specific_vals_def"
 gl_zathras_specific_vals_set=0
 gl_no_packages=0
+gl_bootc_mode=0
 gl_cpu_type_request="none"
 gl_run_file=""
 gl_failed_test_rpt="failed_tests"
@@ -1820,6 +1821,7 @@ create_ansible_options()
 		echo "  "cloud_placement: $gl_cloud_placement >> ansible_vars_main.yml
 		echo "  "run_label: ${gl_run_prefix}_${gl_os_vendor} >> ansible_vars_main.yml
 		echo "  "do_not_install_packages: ${gl_no_packages} >> ansible_vars_main.yml
+		echo "  "bootc_mode: ${gl_bootc_mode} >> ansible_vars_main.yml
 		echo "  "error_repo_errors: ${gl_error_repo_errors} >> ansible_vars_main.yml
 		spot_pricing=0
 		if [[ $gl_spot_price != "0" ]]; then
@@ -2399,6 +2401,17 @@ verify_selinux()
 {
 	if [[ $gl_os_vendor == "ubuntu" ]] && [[ $gl_selinux_state == "enabled" ]] && [[ $gl_selinux_level == "enforcing" ]]; then
 		cleanup_and_exit "Error: We do not support enforcing with selinux on ubuntu" 1
+	fi
+}
+
+#
+# We cannot install packages on a bootc-based host.  If the user wants to try to install packages,
+# we error out before it becomes a headache.
+#
+verify_bootc_mode()
+{
+	if [[ $gl_mode == "image" ]] && [[ $gl_no_packages -eq 0 ]]; then
+		cleanup_and_exit "Error: mode \"image\" is not supported with package installation" 1
 	fi
 }
 
@@ -3296,6 +3309,7 @@ usage()
 	echo "    the filesystem with the most space on it and use that location."
 	echo "  --max_systems <n>:  Maximum number of burden subinstances that will be created from the parent.  Each subinstance"
 	echo "    is a cloud or local system. The default is 3."
+	echo "  --mode <mode>: Operating mode. Use 'image' for bootc-based hosts (skips packages, uses safe upload paths)."
 	echo "  --no_clean_up: Do not cleanup at the end of the test"
 	echo "  --no_packages: Do not install any packages. The default is no."
 	echo "  --no_spot_recover: Do not recover from a spot system going away."
@@ -3504,6 +3518,14 @@ set_general_value()
 			echo "$1" >> $gl_cli_supplied_options
 			gl_no_packages=1
 			shift_by=1
+		;;
+		--mode)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			if [[ "$2" == "image" ]]; then
+				gl_no_packages=1
+				gl_bootc_mode=1
+			fi
+			shift_by=2
 		;;
 		--no_spot_recover)
 			echo "$1" >> $gl_cli_supplied_options
@@ -3760,6 +3782,7 @@ grab_cli_data()
 		"java_version"
 		"kit_upload_directory"
 		"max_systems"
+		"mode"
 		"os_vendor"
 		"package_name"
 		"results_prefix"
@@ -4175,6 +4198,7 @@ if [[ "$gl_selinux_state" == "$value_not_set" ]]; then
 fi
 
 verify_selinux
+verify_bootc_mode
 
 #
 # Retrieve the scenario file if need be.

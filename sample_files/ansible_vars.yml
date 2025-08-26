@@ -30,3 +30,4 @@ config_info:
   sys_config: "none"
   init_system: "yes"
   term_system: "yes"
+  bootc_mode: 0
