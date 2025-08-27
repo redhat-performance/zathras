@@ -67,7 +67,8 @@ test_version_ops()
 		location=`grep location: ${test_repo} | cut -d: -f2- | sed "s/ //g"`
 		if [[ $location == "https://github.com"* ]]; then
 			repo=`echo $location | cut -d'/' -f 1-5`
-			git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags $repo | rev | cut -d'/' -f1 | rev >  git_vers
+			gh release list  --repo $repo | rev | awk '{print $1" "$2" "$3}' | rev > vers_file
+			cut -d' ' -f 2 vers_file > git_vers
 			#
 			# Make sure the tag we want is present
 			#
@@ -77,7 +78,10 @@ test_version_ops()
 				version_fail="$repo, version $using_version is not defined."
 				bail_out=1
 			fi
-			latest=`tail -1 git_vers`
+			#
+			# Now obtain the latest official version
+			#
+			latest=`grep "^Latest" vers_file | cut -d' ' -f 2`
 			if [[ $using_version != $latest ]]; then
 				version_ok="no"
 			else
