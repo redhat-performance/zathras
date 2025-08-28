@@ -601,7 +601,7 @@ show_test_version()
 		retrieve_versions $test_name
 		cd ..
 	done
-	rm -rf tests_to_run 2> /dev/null
+	rm -rf tests_to_run
 	cleanup_and_exit "" 0
 }
 
@@ -859,7 +859,7 @@ general_setup()
 {
 	hostdir=`pwd`/ssh_known_hosts
 	running_dir=`pwd`
-	rm -rf $hostdir 2> /dev/null
+	rm -rf $hostdir
 	make_dir_report_errors $hostdir
 	#
 	# Replace test_defs.yml with full_test_defs.yml.
@@ -2125,7 +2125,7 @@ create_ansible_options()
 			#
 			# We do not want ssh perm files there.
 			#
-			rm -rf $gl_archive_location/$direct/config 2> /dev/null
+			rm -rf $gl_archive_location/$direct/config
 		fi
 		rm -rf results_info tests*
 		popd > /dev/null
@@ -4086,7 +4086,7 @@ first_invocation()
 				#
 				# Pulling from git
 				#
-				rm -rf config_git 2> /dev/null
+				rm -rf config_git
 				timeout $gl_git_timeout git clone ${git_area} config_git 2> /dev/null
 				if [[ $? -ne  0 ]]; then
 					cleanup_and_exit "\nError: retrieval of git repo $git_area has failed." 1
@@ -4212,7 +4212,7 @@ if [[ "${gl_scenario_to_run}" == *"https:"* ]] || [[ "${gl_scenario_to_run}" == 
 	#
 	# Pulling from git
 	#
-	rm -rf scenarios 2> /dev/null
+	rm -rf scenarios
 	timeout $gl_git_timeout git clone ${git_area} scenarios 2> /dev/null
 	if [[ $? -ne  0 ]]; then
 		cleanup_and_exit "\nError: retrieval of git repo $git_area has failed." 1
