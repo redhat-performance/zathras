@@ -960,7 +960,7 @@ remove_hostnames_added()
 {
 	if [[ $gl_system_type != "local" ]]; then
 		cd $hostdir
-		ssh_files_to_remove=`ls remove_from_ssh_* 2> /dev/null`k
+		ssh_files_to_remove=`ls remove_from_ssh_* 2> /dev/null`
 		if [ $? -eq 0 ]; then
 			for rm_ssh_file in $ssh_files_to_remove;
 			do
