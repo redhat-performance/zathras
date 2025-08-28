@@ -3096,7 +3096,7 @@ process_test_template_data()
 			while IFS= read -r fline
 			do
 				look_for=`echo $fline | cut -d: -f 1`
-				grep ${look_for}: $tmpfile >2 /dev/null
+				grep -q ${look_for}: $tmpfile
 				if [[ $? -eq 1 ]]; then
 					echo "    ${fline}" >> $new_file
 				fi
@@ -3106,7 +3106,7 @@ process_test_template_data()
 			while IFS= read -r fline
 			do
 				look_for=`echo $fline | cut -d: -f 1`
-				grep ${look_for}: $new_file >2 /dev/null
+				grep -q ${look_for}: $new_file
 				if [[ $? -eq 1 ]]; then
 					echo "    ${fline}" >> $new_file
 				fi
@@ -3862,7 +3862,7 @@ grab_cli_data()
 
 check_for_scen_value()
 {
-	grep "$1" $2 >2 /dev/null
+	grep -q "$1" $2
 	if [ $? -ne 0 ]; then
 		cleanup_and_exit "Scenario file "$2": missing $1" 1
 	fi
