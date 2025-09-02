@@ -303,6 +303,49 @@
       exit_msg: "Code repo installation failure"
     when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
 
+#
+# Enable SLES legacy module
+#
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: enable SLES legacy module
+    block:
+    - name: Enable sle-module-legacy/15.7/x86_64
+      shell: "SUSEConnect -p sle-module-legacy/15.7/x86_64"
+      register: suse_connect_result
+      ignore_errors: yes
+    - name: Record status of SUSEConnect success
+      include_role:
+        name: record_status
+      vars:
+        results: "{{ suse_connect_result }}"
+        status_file: "/tmp/sles_legacy_status"
+    - name: retrieve sles legacy module status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "sles_legacy_status"
+    when:
+      - config_info.os_vendor == "suse"
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Terminate on SLES legacy module failure
+    include_role:
+      name: terminate_on_error
+    vars:
+      status_file: "sles_legacy_status"
+      exit_msg: "SLES legacy module installation failure"
+    when: config_info.os_vendor == "suse"
+
+
  #
  # Determine where to upload from, assumption is all test systems have the same
  # disk space.
@@ -452,6 +495,18 @@
       - config_info.os_vendor == "amazon"
       - config_info.init_system == "yes"
       - config_info.do_not_install_packages == 0
+  - name: suse
+    block:
+    - name: install_pkgs
+      include_role:
+        name: install_packages
+      vars:
+        results_file: "/tmp/install_status"
+    when:
+      - config_info.os_vendor == "suse"
+      - config_info.init_system == "yes"
+      - config_info.do_not_install_packages == 0
+
 #
 # Terminate if told to.
 # 

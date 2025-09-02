@@ -5,6 +5,14 @@
 #
 - name: Retrieve the azure meta data and set the tags
   block:
+  - name: Install jq
+    ansible.builtin.package:
+      name: jq
+      state: latest
+    register: jq_installed
+    until: jq_installed is succeeded
+    retries: 5
+    delay: 10
   - name: Grab the metadata
     shell: curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq > /tmp/meta_data.yml
     register: azure_meta_data

@@ -58,3 +58,37 @@
       rtc_val: "{{ install_results.rc }}"
       packages: "{{ pkg_install }}"
   when: config_info.os_vendor == "ubuntu"
+
+#
+# Install packages on SUSE images.
+#
+- name: install SUSE packages
+  block:
+  - name: Remove any existing status file.
+    shell: "rm -f {{ results_file }}"
+  - name: install zypper packages
+    zypper:
+      name: "{{ pkg_install }}"
+      state: latest
+    register: install_results
+    until: install_results is succeeded
+    retries: 5
+    delay: 10
+  - name: Report Success
+    lineinfile:
+       path: "{{ results_file }}"
+       line: "status: success"
+       create: yes
+  - name: Log package list
+    lineinfile:
+      path: "/tmp/frival_dbg"
+      line: "{{ pkg_install }}"
+      create: yes
+  rescue:
+    - name: Report Error
+      lineinfile:
+         path: "{{ results_file }}"
+         line: "status: failed"
+         create: yes
+  any_errors_fatal: true
+  when: config_info.os_vendor == "suse"
