@@ -112,8 +112,8 @@ for package in "${python_packages[@]}"; do
 done
 
 
-# install AWS collection for ansible
-ansible_collections=(amazon.aws)
+# install AWS collection and POSIX collection for ansible
+ansible_collections=(amazon.aws ansible.posix)
 for collection in "${ansible_collections[@]}"; do
         ansible-galaxy collection install "$collection" || {
                 exit 1
