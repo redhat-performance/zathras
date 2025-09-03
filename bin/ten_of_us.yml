@@ -311,12 +311,12 @@
   become_user: root
   become: true
   vars_files: ansible_vars.yml
-  gather_facts: no
+  gather_facts: yes
   tasks:
   - name: enable SLES legacy module
     block:
-    - name: Enable sle-module-legacy/15.7/x86_64
-      shell: "SUSEConnect -p sle-module-legacy/15.7/x86_64"
+    - name: Enable sle-module-legacy/{{ ansible_distribution_version }}/{{ ansible_architecture }}
+      shell: "SUSEConnect -p sle-module-legacy/{{ ansible_distribution_version }}/{{ ansible_architecture }}"
       register: suse_connect_result
       ignore_errors: yes
     - name: Record status of SUSEConnect success
@@ -330,6 +330,13 @@
         name: retrieve_status
       vars:
         status_file: "sles_legacy_status"
+    rescue:
+      - name: Report Error
+        lineinfile:
+          path: "{{ results_file }}"
+          line: "status: failed"
+          create: yes
+    any_errors_fatal: true
     when:
       - config_info.os_vendor == "suse"
 
