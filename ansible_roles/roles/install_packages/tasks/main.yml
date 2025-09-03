@@ -79,11 +79,6 @@
        path: "{{ results_file }}"
        line: "status: success"
        create: yes
-  - name: Log package list
-    lineinfile:
-      path: "/tmp/frival_dbg"
-      line: "{{ pkg_install }}"
-      create: yes
   rescue:
     - name: Report Error
       lineinfile:
