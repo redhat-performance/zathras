@@ -71,6 +71,9 @@ test_version_ops()
 			# Make sure the tag we want is present
 			#
 			version_fail=""
+			#
+			# We expect EPEL to be installed, which contains gh.
+			#
 			gh release view -R $repo $using_version --json tagName -q .tagName &> /dev/null
 			if [ $? -ne 0 ]; then
 				version_fail="$repo, version $using_version is not defined."
