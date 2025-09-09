@@ -67,17 +67,22 @@ test_version_ops()
 		location=`grep location: ${test_repo} | cut -d: -f2- | sed "s/ //g"`
 		if [[ $location == "https://github.com"* ]]; then
 			repo=`echo $location | cut -d'/' -f 1-5`
-			git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags $repo | rev | cut -d'/' -f1 | rev >  git_vers
 			#
 			# Make sure the tag we want is present
 			#
 			version_fail=""
-			grep ${using_version} git_vers > /dev/null
+			#
+			# We expect EPEL to be installed, which contains gh.
+			#
+			gh release view -R $repo $using_version --json tagName -q .tagName &> /dev/null
 			if [ $? -ne 0 ]; then
 				version_fail="$repo, version $using_version is not defined."
 				bail_out=1
 			fi
-			latest=`tail -1 git_vers`
+			#
+			# Now obtain the latest official version
+			#
+			latest=`gh release view -R $repo --json tagName -q .tagName`
 			if [[ $using_version != $latest ]]; then
 				version_ok="no"
 			else
