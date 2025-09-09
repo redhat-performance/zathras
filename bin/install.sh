@@ -51,6 +51,8 @@ else
 fi
 
 # check for and install system packages
+# We expect EPEL to be installed, which contains gh.
+#
 packages=(ansible-core git jq python python3-pip terraform unzip wget)
 
 for package in "${packages[@]}"; do 
