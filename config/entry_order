@@ -20,6 +20,7 @@
 ^    rhel_pkgs_8:
 ^    ubuntu_pkgs:
 ^    amazon_pkgs:
+^    suse_pkgs:
 ^    storage_required:
 ^    network_required:
 ^    java_required:
