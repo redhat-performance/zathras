@@ -21,6 +21,12 @@
       src: "/tmp/meta_data.yml"
       dest: "{{ working_dir }}/meta_data.yml"
       flat: yes
+  rescue:
+    - name: Report Error
+      lineinfile:
+        path: "{{ results_file }}"
+        line: "status: failed to grab metadata"
+        create: yes
   when:
     - config_info.system_type == "azure"
 

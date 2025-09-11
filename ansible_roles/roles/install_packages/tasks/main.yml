@@ -62,6 +62,8 @@
 #
 # Install packages on SUSE images.
 #
+# The zypper module comes from community.general.  If at any point we find a case it's not already installed we'll have to update the installer script.
+# 
 - name: install SUSE packages
   block:
   - name: Remove any existing status file.
