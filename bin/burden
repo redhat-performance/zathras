@@ -130,7 +130,7 @@ gl_git_timeout=60
 gl_git_timeout_set=0
 gl_archive_location=$value_not_set
 gl_error_repo_errors=1
-gl_valid_os_vendors="rhel ubuntu amazon private none"
+gl_valid_os_vendors="rhel ubuntu amazon suse private none"
 gl_valid_system_types="aws azure gcp local"
 gl_package_name=$value_not_set
 gl_show_tests=0
@@ -415,8 +415,10 @@ azure_image_lookup()
 		publisher=Canonical
 	elif [[ $gl_os_vendor == "rhel" ]]; then
 		publisher=RedHat
+	elif [[ $gl_os_vendor == "suse" ]]; then
+		publisher=SUSE
 	else
-		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel" 1 ${gl_system_type}
+		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, suse" 1 ${gl_system_type}
 	fi
 	if [[ $2 -eq  0 ]]; then
 		echo "Pulling requested Azure OS image information, may take a bit."
@@ -451,8 +453,10 @@ gcp_image_lookup()
 		project="ubuntu-os-cloud"
 	elif [[ $gl_os_vendor == "rhel" ]]; then
 		project="rhel-cloud"
+	elif [[ $gl_os_vendor == "suse" ]]; then
+		project="suse-cloud"
 	else
-		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel" 1 ${gl_system_type}
+		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, suse" 1 ${gl_system_type}
 	fi
 	echo "Pulling requested GCP OS image information, may take a bit."
 	end_date=`date +"%Y"`
@@ -483,8 +487,10 @@ show_aws_images()
 		filter="Name=name,Values=RHEL*"
 	elif [[ $gl_os_vendor == "amazon"  ]]; then
 		filter="Name=name,Values=amz*,al2023*"
+	elif [[ $gl_os_vendor == "suse" ]]; then
+		filter="Name=name,Values=suse*"
 	elif [[ $gl_os_vendor != "private"  ]]; then
-		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, amazon, private" 1 ${gl_system_type}
+		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, amazon, suse, private" 1 ${gl_system_type}
 	fi
 	end_date=`date +"%Y"`
 	let "start_date=$end_date-1"
@@ -1092,6 +1098,11 @@ determine_what_has_to_be_installed()
 	# Ensure we have a couple packages to install, keeps things nice and happy.
 	if [[ $gl_os_vendor == "ubuntu" ]]; then
 		echo "  - gzip" > install_choices
+	elif [[ $gl_os_vendor == "suse" ]]; then
+		echo "  - bc" > install_choices
+		echo "  - libnuma1" >> install_choices
+		echo "  - time" >> install_choices
+		echo "  - git" >> install_choices
 	else
 		echo "  - bc" > install_choices
 		echo "  - numactl" > install_choices
@@ -3387,7 +3398,7 @@ usage()
 	echo "    x86:ami-0fbec8a0a2beb6a71,arm64:ami-0cfa90ca3ebfc506e"
 	echo "    Burden will select the right ami for the designated host."
 	echo "  --create_only: Only do the VM creation and OS install action."
-	echo "  --os_vendor <os vendor>: currently rhel, ubuntu, amazon"
+	echo "  --os_vendor <os vendor>: currently rhel, ubuntu, amazon, suse"
 	echo "  --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running."
 	echo "      Default is to terminate"
 	echo "  --use_spot: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not"
