@@ -4,6 +4,7 @@ exec_dir: "specjbb-wrapper-1.26/specjbb"
 rhel_pkgs: bc,numactl,perf,git,unzip
 ubuntu_pkgs: libnuma-dev,unzip,zip
 amazon_pkgs: numactl,bc,git,zip,unzip
+suse_pkgs: numactl,bc,git,unzip
 java_required: "yes"
 test_script_to_run: specjbb_run
 upload_extra: "/home/exports/SPECjbb2005_kitv1.07.tar.gz"
