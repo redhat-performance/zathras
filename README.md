@@ -11,7 +11,7 @@
 ## About
 Zathras is a test automation framework for use with bare metal, cloud, and virtualized systems. Tests are defined by wrappers - external, self-contained scripts that enable easy extension of Zathras's functionality. 
 
-Currently, Zathras offers the following test wrappers:
+Currently (as of September 2025), Zathras offers the following test wrappers:
 
 | Test Name                                          | Description                                                                         | Wrapper URL                                                |
 |----------------------------------------------------|-------------------------------------------------------------------------------------|------------------------------------------------------------|
