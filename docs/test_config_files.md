@@ -3,6 +3,25 @@ The test configuration file is used to define a given test to Zathras, and speci
 
 Test config files are stored within the `config/` directory of your Zathras installation.
 
+## Pre-configured tests
+
+Zathras comes with a comprehensive set of pre-configured test definitions that are ready to use out of the box:
+
+- **test_defs.yml** - Contains 18+ pre-configured tests including linpack, streams, coremark, fio, uperf, and more
+- **Template files** - Individual configuration templates for each test wrapper (e.g., `linpack_template.yml`, `streams_template.yml`)
+- **default_template.yml** - Provides default settings that are applied to all tests
+- **java_pkg_def.yml** - Defines Java packages for different operating systems
+
+You can use these configurations as-is, or customize them for your specific requirements. To see all available tests, run:
+
+```bash
+./bin/burden --show_tests
+```
+
+## Customizing test configurations
+
+If you need to modify the existing configurations or create new ones, the following sections explain the structure and options available.
+
 ## Test config file contents
 The following shows all the possible options a test configuration file could contain (fields are explained below). In practice, a test config file does not require every field be included. 
 
@@ -79,7 +98,7 @@ We will drop the streams-wrapper on the end and have
 
 we drop everything but streams-wrapper and use "streams-wrapper"
 
-**os_supported**: What Operating Systems are supported. rhel, ubuntu, amazon or all.
+**os_supported**: What Operating Systems are supported. rhel, ubuntu, amazon, suse or all.
 
 **reboot_system**: This is for cloud systems, and will reboot the cloud system once it has been created.
 
@@ -91,7 +110,9 @@ we drop everything but streams-wrapper and use "streams-wrapper"
 
 **ubuntu_pkgs**: Ubuntu packages that are required to run the test; “none” if there aren’t any packaging requirements.
 
-**amazon_pkgs**: Amazon packages that are required to run the test; “none” if there aren’t any packaging requirements.
+**amazon_pkgs**: Amazon packages that are required to run the test; "none" if there aren't any packaging requirements.
+
+**suse_pkgs**: SUSE packages that are required to run the test; "none" if there aren't any packaging requirements.
 
 **pbench_required**: If set to yes, the test requires pbench to be installed to run. Zathras will install pbench on the test system for you. Only supported for RHEL/Fedora. Note: it is the responsibility of the user to make sure the pbench repos are set up properly.
 
@@ -126,9 +147,10 @@ e.g.
         test_run_from: "remote"
         os_supported: all
         repo_file: "v1.0.zip"
-        rhel_pkgs: gcc,bc
-        ubuntu_pkgs: gcc,build-essential,libnuma-dev,zip,unzip
-        amazon_pkgs: gcc,bc,git,unzip,zip
+    rhel_pkgs: gcc,bc
+    ubuntu_pkgs: gcc,build-essential,libnuma-dev,zip,unzip
+    amazon_pkgs: gcc,bc,git,unzip,zip
+    suse_pkgs: gcc,bc,git,unzip
         pbench_required: "no"
         pbench_local_results: "no"
         storage_required: "no"
