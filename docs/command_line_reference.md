@@ -38,7 +38,7 @@ If present we will ignore repo errors, default is to abort the run when a repo e
 Contains various burden settings. Takes precedence over the scenario file, but is overridden by the command line. Default is config zathras_specific_vals_def.
 
 ### --java_version
-Java version to install, java-8, java-11.
+Java version to install: java-8, java-11, java-17, or java-21.
 
 ### --kit_upload_directory
 Full path to directory uploading to. If not present, Zathras will locate the filesystem with the most space on it and use that location.
@@ -59,7 +59,7 @@ Do not install pbench. The default is 0 (install pbench).
 Do not recover from a spot system going away.
 
 ### --os_vendor \<os vendor>
-Currently rhel, ubuntu, amazon.
+Currently rhel, ubuntu, amazon, suse.
 
 ### --package_name \<name>
 Use this set of packages to override the default in the test config file instead of the default. Default format package name \<os>_pkg, new name \<os>_pkg_\<ver>.
@@ -176,3 +176,18 @@ If 1, terminate the cloud instance, if 0 leave the cloud image running. Default 
 
 ### --use_spot
 Uses spot pricing based on the contents of config/spot_price.cfg. Default is not to use spot_pricing
+
+### --ansible_noise_level \<level>
+How much information ansible is to output. Options: normal (standard ansible output), dense (just report the task executed), silence (nothing reported).
+
+### --force_upload
+Force upload of files even if they already exist on the target system.
+
+### --mode \<mode>
+Operating mode. Use 'image' for bootc-based hosts (skips packages, uses safe upload paths).
+
+### --test_user \<user>
+Name of the user to log into the system with. This setting will override the defaults based on cloud or local system.
+
+### --update_test_versions
+Will update the templates so we are using the latest versions of the test (git repos only).

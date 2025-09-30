@@ -6,7 +6,7 @@ This guide provides step-by-step instructions for getting started with Zathras t
 
 Before starting, ensure you have:
 1. Zathras installed on your controller system (see [Installation](../README.md#installation))
-2. Test configuration files set up (see [Test Config Files](test_config_files.md))
+2. Familiarity with available test configurations (Zathras comes with 18+ pre-configured tests - see [Test Config Files](test_config_files.md))
 3. Appropriate permissions and access to your target systems
 
 ## Testing on bare metal
@@ -26,14 +26,15 @@ Testing on bare metal systems requires direct SSH access to the target machines.
 
 2. **Create a local config file**
    
-   Create a file named `<hostname>.conf` in the `local_configs/` directory:
+   Create a file named `<hostname>.config` in the `local_configs/` directory:
    ```bash
-   # Example: local_configs/test-server.conf
-   host_ip=192.168.1.100
-   host_user=testuser
-   host_arch=x86_64
-   # Add any additional system-specific configurations
+   # Example: local_configs/test-server.config
+   storage: /dev/nvme0n1,/dev/nvme1n1
+   server_ips: 192.168.1.100
+   client_ips: 192.168.1.101
    ```
+   
+   For detailed information on local configuration files, see [Bare Metal Configuration](bare_metal_configuration.md).
 
 3. **Add the system to known hosts**
    ```bash
