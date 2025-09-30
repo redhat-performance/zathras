@@ -58,6 +58,9 @@ Do not install pbench. The default is 0 (install pbench).
 ### --no_spot_recover
 Do not recover from a spot system going away.
 
+### --os_vendor \<os vendor>
+Currently rhel, ubuntu, amazon.
+
 ### --package_name \<name>
 Use this set of packages to override the default in the test config file instead of the default. Default format package name \<os>_pkg, new name \<os>_pkg_\<ver>.
 
@@ -167,9 +170,6 @@ Burden will select the right ami for the designated host."
 
 ### --create_only
 Only do the VM creation and OS install action.
-
-### --os_vendor \<os vendor>
-Currently rhel, ubuntu, amazon.
 
 ### --terminate_cloud
 If 1, terminate the cloud instance, if 0 leave the cloud image running. Default is to terminate.
