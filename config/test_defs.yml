@@ -1,5 +1,124 @@
 test_defs:
   test1:
-    test_template: example.yml
-    test_name: example_test
-    test_description:  Example test instance.
+    test_template: linpack_template.yml
+    test_name: linpack
+    test_description: standard linpack test.
+    archive_results: "yes"
+
+  test2:
+    test_template: streams_template.yml
+    test_name: streams
+    test_specific: "--iterations 5"
+
+  test3:
+    test_template: pig_template.yml
+    test_name: pig
+    test_description: Bill Gray's pig test
+    archive_results: "yes"
+
+  test4:
+    test_template: specjbb_template.yml
+    test_name: specjbb
+    test_description: Standard specjbb test
+    archive_results: "yes"
+
+  test5:
+    test_template: uperf_template.yml
+    test_name: uperf
+    test_description: uperf
+    archive_results: "yes"
+    test_specific: " --client_ips {{ dyn_data.ct_uperf_server_ip }} --server_ips {{ dyn_data.ct_uperf_client_list }} --tests stream,rr --numb_jobs 1,8,16 --packet_type tcp --packet_sizes 64,16384 --time 60"
+
+  test6:
+    test_template: phoronix_template.yml
+    test_name: phoronix
+    test_description: phoronix ng test
+    test_specific: ""
+
+  test7:
+    test_template: hammerdb_template.yml
+    test_name: hammerdb_mariadb
+    test_description: hammerdb mariadb
+    test_specific: --disks {{ dyn_data.storage }} --sub_test mariadb
+    archive_results: "yes"
+
+  test8:
+    test_template: hammerdb_template.yml
+    test_name: hammerdb_postgres
+    test_description: hammerdb postgres
+    test_specific: --disks {{ dyn_data.storage }} --sub_test postgres
+    archive_results: "yes"
+
+  test9:
+    test_template: hammerdb_template.yml
+    test_name: hammerdb_mssql
+    test_description: hammerdb mssql
+    test_specific: --disks {{ dyn_data.storage }} --sub_test mssql
+    archive_results: "yes"
+
+  test10:
+    test_template: reboot_measure.yml
+    test_name: reboot_measure
+    test_description:  Measure reboot times.
+    reboot_system: "no"
+    test_run_from: "local"
+    os_supported: all
+    rhel_pkgs: bc
+    ubuntu_pkgs: none
+    amazon_pkgs: none
+    storage_required: "no"
+    network_required: "no"
+    java_required: "no"
+    archive_results: "no"
+    test_script_to_run: run_reboot.sh
+    test_specific: --working_dir {{ working_dir }}
+    upload_extra: "none"
+
+  test11:
+    test_template: autohpl.yml
+    test_name: auto_hpl
+    test_description:  High Performance LINPACK.
+
+  test12:
+    test_template: fio_template.yml
+    test_name: fio
+    test_description: straight fio
+    archive_results: "yes"
+    test_specific: "--disks {{ dyn_data.storage }} --regression"
+
+  test13:
+    test_template: speccpu2017_template.yml
+    test_name: speccpu2017
+    test_description: speccpu2017
+    test_specific: "--disks {{ dyn_data.storage }} --test intrate,fprate"
+
+  test14:
+    test_template: coremark_pro_template.yml
+    test_name: coremark_pro
+    test_description: core mark pro test
+    archive_results: "yes"
+    test_specific: "--no-overrides"
+
+  test15:
+    test_template: coremark_template.yml
+    test_name: coremark
+    test_description: coremark test
+    archive_results: "yes"
+
+  test16:
+    test_template: passmark_template.yml
+    test_name: passmark
+    test_description: passmark test
+    archive_results: "yes"
+
+  test17:
+    test_template: pyperformance_template.yml
+    test_name: pyperf
+    test_description: pyperfotmance test
+    archive_results: "yes"
+
+  test18:
+    test_template: iozone_template.yml
+    test_name: iozone
+    test_description: iozone
+    test_specific: "--devices_to_use {{ dyn_data.storage }} --filesys xfs,ext4,ext3 --all_test --mount_location /iozone/iozone0 --eatmem --auto"

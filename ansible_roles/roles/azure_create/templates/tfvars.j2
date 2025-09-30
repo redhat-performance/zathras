@@ -1,9 +1,11 @@
 resource_group = "{{ config_info.cloud_resource_group }}"
 
 machine_type = "{{ config_info.host_or_cloud_inst }}"
+location = "{{ config_info.cloud_region }}"
 
 cloud_os_version = "{{ config_info.cloud_os_version }}"
 cloud_placement = "{{ config_info.cloud_placement }}"
+az_subscription = "{{ config_info.az_subscription }}"
 
 run_label = "{{ config_info.user_running }}-{{ config_info.run_label | lower() | replace ('.','-',63) | replace('_','-',63) | replace('/','-')}}"
 
@@ -18,6 +20,7 @@ sku = "{{ config_info.cloud_sku }}"
 azversion = "{{ config_info.cloud_os_version }}"
 offer = "{{ config_info.cloud_offer }}"
 publisher = "{{ config_info.cloud_publisher }}"
+az_urn_sub = "{{ config_info.az_urn_sub }}"
 
 pb_disk_type = "Premium_LRS"
 pb_disk_count = 1

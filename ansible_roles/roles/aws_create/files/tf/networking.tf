@@ -12,6 +12,9 @@ provider "aws" {
         Environment = "${var.Environment}"
         Jirald = "${var.Jirald}"
         TicketID = "${var.TicketID}"
+        app-code = "${var.app_code}"
+        service-phase = "${var.service_phase}"
+        cost-center = "${var.cost_center}"
       }
     }
 }
@@ -28,9 +31,12 @@ resource "aws_vpc" "zathras_vpc" {
       Environment = "${var.Environment}"
       Jirald = "${var.Jirald}"
       TicketID = "${var.TicketID}"
+      app-code = "${var.app_code}"
+      service-phase = "${var.service_phase}"
+      cost-center = "${var.cost_center}"
     }
 #
-# Uncoment when using ipv6
+# Uncomment when using ipv6
 #
 #    assign_generated_ipv6_cidr_block = true
     cidr_block = "170.0.0.0/16"
@@ -43,7 +49,7 @@ resource "aws_subnet" "zathras_sn" {
     map_public_ip_on_launch = true
     availability_zone = "${var.avail_zone}"
 #
-# Uncoment when using ipv6
+# Uncomment when using ipv6
 #
 #    ipv6_cidr_block = "${cidrsubnet(aws_vpc.zathras_vpc.ipv6_cidr_block, 8, 1)}"
 #    assign_ipv6_address_on_creation = true
@@ -63,7 +69,7 @@ resource "aws_default_route_table" "zathras_df_rt_tbl" {
         gateway_id = "${aws_internet_gateway.zathras_gw.id}"
     }
 #
-# Uncoment when using ipv6
+# Uncomment when using ipv6
 #
 #    route {
 #        ipv6_cidr_block = "::/0"
@@ -88,7 +94,7 @@ resource "aws_security_group" "zathras_aws_sg" {
         cidr_blocks = ["0.0.0.0/0"]
     }
 #
-# Uncoment when using ipv6
+# Uncomment when using ipv6
 #
 #    ingress {
 #        from_port = 0
@@ -103,7 +109,7 @@ resource "aws_security_group" "zathras_aws_sg" {
       cidr_blocks = ["0.0.0.0/0"]
     }
 #
-# Uncoment when using ipv6
+# Uncomment when using ipv6
 #
 #    egress {
 #      from_port = 0
@@ -119,7 +125,7 @@ resource "aws_vpc" "zathras_prvt_vpc" {
     enable_dns_support = false
     enable_dns_hostnames = false
 #
-# Uncoment when using ipv6
+# Uncomment when using ipv6
 #
 #    assign_generated_ipv6_cidr_block = true
     cidr_block = "10.0.0.0/16"
@@ -132,7 +138,7 @@ resource "aws_subnet" "zathras_prvt_sn" {
     map_public_ip_on_launch = false
     availability_zone = "${var.avail_zone}"
 #
-# Uncoment when using ipv6
+# Uncomment when using ipv6
 #
 #    ipv6_cidr_block = "${cidrsubnet(aws_vpc.zathras_vpc.ipv6_cidr_block, 8, 1)}"
 #    assign_ipv6_address_on_creation = true

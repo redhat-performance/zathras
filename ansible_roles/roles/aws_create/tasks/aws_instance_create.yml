@@ -117,7 +117,7 @@
 #
 - name: Handle wrong cpu types
   block:
-  - name: Verfiy AWS CPU
+  - name: Verify AWS CPU
     include_role:
       name: verify_cpu
     vars:
@@ -198,46 +198,28 @@
       line: "aws_net_instance_id: none"
   when: config_info.cloud_numb_networks == 0
 
-- name: aws_post_pbench
-  include_role:
-    name: pbench_disk_set
-  vars:
-    tf_file: "{{ working_dir }}/tf/terraform.tfstate.d/{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}/terraform.tfstate"
-    sys_index: "0"
-  when: config_info.pbench_disk_required == "yes"
-
-- name: aws_post_pbench network
-  include_role:
-    name: pbench_disk_set
-  vars:
-    tf_file: "{{ working_dir }}/tf/terraform.tfstate.d/{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}/terraform.tfstate"
-    sys_index: "1"
-  when:
-   - config_info.pbench_disk_required == "yes"
-   - config_info.cloud_numb_networks != 0
-
 - name: Make sure python3 is installed
   become: no
-  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} ec2-user@{{ aws_tf_info.public_dns_host0 }} sudo yum install -y python3
+  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} {{ config_info.test_user }}@{{ aws_tf_info.public_dns_host0 }} sudo yum install -y python3
   when: config_info.os_vendor == "rhel"
 
 - name: Make sure python3 is installed
   become: no
-  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} ec2-user@{{ aws_tf_info.public_dns_host1 }} sudo yum install -y python3
+  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} {{ config_info.test_user }}@{{ aws_tf_info.public_dns_host1 }} sudo yum install -y python3
   when:
    - config_info.cloud_numb_networks != 0
    - config_info.os_vendor == "rhel"
 
 - name: Make sure python3 is installed
   become: no
-  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} ec2-user@{{ aws_tf_info.public_dns_host0 }} sudo yum install -y python38
+  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} {{ config_info.test_user }}@{{ aws_tf_info.public_dns_host0 }} sudo yum install -y python38
   when:
    - config_info.cloud_numb_networks == 0
    - config_info.os_vendor == "amazon"
 
 - name: Make sure python3 is installed
   become: no
-  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} ec2-user@{{ aws_tf_info.public_dns_host1 }} sudo yum install -y python38
+  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} {{ config_info.test_user }}@{{ aws_tf_info.public_dns_host1 }} sudo yum install -y python38
   when:
    - config_info.cloud_numb_networks != 0
    - config_info.os_vendor == "amazon"

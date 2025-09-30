@@ -39,7 +39,7 @@
 
   - name: Report mismatch on cpu.
     fail:
-      msg: "Abort: CPU mismtach {{ config_info.cpu_type_request }}"
+      msg: "Abort: CPU mismatch {{ config_info.cpu_type_request }}"
   when: cpu_check_results.rc != 0
 
 - name: Success, remove any tfs that had the wrong cpu type

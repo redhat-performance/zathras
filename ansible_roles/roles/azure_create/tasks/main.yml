@@ -11,12 +11,24 @@
     copy:
       src: "tf/main_no_net.tf"
       dest: "{{ working_dir }}/tf/main.tf"
-  - name: cat non spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
-    when: config_info.spot_start_price == 0
-  - name: cat non spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf" 
-    when: config_info.spot_start_price == 1
+  - name: Using urn for image.
+    block:
+    - name: cat non spot machine terraform
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set_urn.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
+      when: config_info.spot_start_price == 0
+    - name: cat spot machine terraform
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set_urn.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf" 
+      when: config_info.spot_start_price == 1
+    when: config_info.cloud_os_version != "none"
+  - name: Using subscription for image.
+    block:
+    - name: cat non spot machine terraform
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set_sub.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
+      when: config_info.spot_start_price == 0
+    - name: cat spot machine terraform
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/vm_spot_set_sub.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf" 
+      when: config_info.spot_start_price == 1
+    when: config_info.cloud_os_version == "none"
   - name: copy output.tf
     copy:
       src: "tf/output_no_net.tf"
@@ -27,8 +39,16 @@
   block:
   - name: copy main_net_p1.tf to tf/main_net.tf
     shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_p1.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\" >> {{ working_dir }}/tf/main.tf"
-  - name: copy main_net_p2.tf to work area for later use
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_p2.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\"  >> {{ working_dir }}/tf/main_net_p2.tf"
+  - name: copy main_net_p2_urn.tf to work area for later use
+    block:
+    - name: copy for urn image.
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_p2_urn.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\"  >> {{ working_dir }}/tf/main_net_p2.tf"
+    when: config_info.cloud_os_version != "none"
+  - name: copy main_net_p2_sub.tf to work area for later use
+    block:
+    - name: copy for subscription urn, private
+      shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/azure_create/files/tf/main_net_sub.tf | sed \"s/PRIORITYSPOT/priority              = \\\"Spot\\\"/g\" | sed \"s/EVICTIONPOLICY/eviction_policy       = \\\"Deallocate\\\"/g\"  >> {{ working_dir }}/tf/main_net_p2.tf"
+    when: config_info.cloud_os_version == "none"
   - name: copy output.tf to tf/output_net.tf
     copy:
       src: "tf/output_net.tf"
@@ -80,7 +100,6 @@
   include_role:
     name:  set_up_tf_vars
   vars:
-    pbench_ns_tf: none
     cloud_change_to: azure
 
 #
@@ -94,13 +113,6 @@
 
 - name: Add tag info in to main info, must be in the front.
   shell: "cat {{ working_dir }}/add_main_vars.tf  {{ working_dir }}/main_back.tf > {{ working_dir }}/tf/main.tf"
-
-- name: Set up terraform variables
-  include_role:
-    name: set_up_tf_vars
-  vars:
-    pbench_ns_tf: tf/pbench_disks.tf
-    pbench_spot_tf: tf/pbench_spot_disks.tf
 
 - name: grab azure create start time
   command: "date -u +%s"
@@ -126,7 +138,7 @@
 
 - name: Handle wrong cpu types
   block:
-  - name: Verfiy Azure CPU
+  - name: Verify Azure CPU
     include_role:
       name: verify_cpu
     vars:
@@ -144,13 +156,6 @@
   vars:
     ip_list: "{{ public_ip_address }}"
   when: config_info.cloud_numb_networks|int >= 1
-
-- name: Azure set up pbench disk
-  include_role:
-    name: pbench_disk_set
-  vars:
-    tf_file: "{{ working_dir }}/tf/terraform.tfstate.d/{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}/terraform.tfstate"
-  when: config_info.pbench_disk_required == "yes"
 
 - name: create end time
   command: "date -u +%s"

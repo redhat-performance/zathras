@@ -1,0 +1,23 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  containerize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Quay
+        if: github.event_name == 'push'
+        run: docker login quay.io -u ${{ secrets.QUAY_UNAME }} -p ${{ secrets.QUAY_PASSWD }}
+        
+      - name: Build container
+        run: docker build -t quay.io/zathras/jira-issue-tagging-ci:latest -f Containerfile .
+        working-directory: ci/issue-tagging-container
+
+      - name: Push container
+        if: github.event_name == 'push'
+        run: docker push quay.io/zathras/jira-issue-tagging-ci:latest

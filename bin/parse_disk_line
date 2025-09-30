@@ -4,7 +4,7 @@
 #
 # Input format
 # <system>:<config> 
-#     Note <config> can be more one field grouping, each grouping is seperated by '&'
+#     Note <config> can be more one field grouping, each grouping is separated by '&'
 # Output format:
 #  <system>:<disk size>:<disk type>:<number disks>
 #
@@ -24,49 +24,55 @@ set_disk_field()
 	value=`echo ${dfield} | cut -d'=' -f 2`
 	if [[ $dfield == *"number"* ]]; then
 		number_disks=$value
-	fi
-	if [[ $dfield == *"type"* ]]; then
+	elif [[ $dfield == *"type"* ]]; then
 		disk_type=$value
-	fi
-	if [[ $dfield == *"size"* ]]; then
+	elif [[ $dfield == *"size"* ]]; then
 		disk_size=$value
-	fi
-	if [[ $dfield == *"iops"* ]]; then
+	elif [[ $dfield == *"iops"* ]]; then
 		disk_iops=$value
-	fi
-	if [[ $dfield == *"througput"* ]]; then
+	elif [[ $dfield == *"throughput"* ]]; then
 		disk_tp=$value
+	else
+		echo echo "$dfield: Unknown field, bail out."
+		exit 1
 	fi
 }
 
 #
-# The argument being pased in will have an '&' as a seperator field.  To allow bash to work
-# with the stirng, we will replace it with a ' '
+# The argument being pased in will have an '&' as a separator field.  To allow bash to work
+# with the string, we will replace it with a ' '
 #
 instance_type=`echo $1 | cut -d: -f1`
 fields=`echo "$1" | sed "s/&/ /g"`
-
+index=0
 for i in $fields
 do
+	let "index=$index+1"
 	if [[ $i == *"Disks"* ]]; then
 		ct_config=$i
+		break
 	fi
 done
 
+lookup=0
 if [[ $ct_config == *"Disks"* ]]; then
-	index=1
 	let "index=$index+1"
 	field=`echo $ct_config | cut -d: -f${index}`
 	dindex=1
 	dfield=`echo $ct_config | cut -d';' -f${dindex}`
 	while [ $dfield != "" ]; do
-		set_disk_field
+		if [[ $lookup -eq 1 ]]; then
+			set_disk_field
+		fi
+		if [[ $dfield == *"Disk"* ]]; then
+			lookup=1
+		fi
 		let "dindex=$dindex+1"
 		new_dfield=`echo $ct_config | cut -d';' -f${dindex}`
-		if [ -z $new_dfield ] ; then
+		if [[ -z $new_dfield ]] ; then
 			break
 		fi
-		if [ $new_dfield == $dfield ]; then
+		if [[ $new_dfield == $dfield ]]; then
 			break
 		fi
 		dfield=$new_dfield
@@ -75,3 +81,4 @@ else
 	instance_type=$ct_config
 fi
 echo $instance_type:$disk_size:$disk_type:$number_disks:$disk_iops:${disk_tp}
+exit 0

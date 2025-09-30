@@ -8,6 +8,7 @@
 ^    test_name:
 ^    test_description:
 ^    repository_type:
+^    exec_dir
 ^    location:
 ^    test_grouping:
 ^    version:
@@ -16,10 +17,10 @@
 ^    os_supported:
 ^    repo_file:
 ^    rhel_pkgs:
+^    rhel_pkgs_8:
 ^    ubuntu_pkgs:
 ^    amazon_pkgs:
-^    pbench_required:
-^    pbench_local_results:
+^    suse_pkgs:
 ^    storage_required:
 ^    network_required:
 ^    java_required:

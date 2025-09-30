@@ -11,10 +11,18 @@
 # 
 # Determine location to uploads to.
 #
+- name: Set bootc-safe upload directory
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "kit_upload_directory: {{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/zathras_uploads"
+  when: 
+    - config_info.kit_upload_directory == "none"
+    - config_info.bootc_mode == 1
+
 - name: upload the extra file info, determine location
   block:
   - name: Get the free space
-    command: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} 'df --output=avail,target,source | grep -v Mounted | grep -v tmpfs | sort -n | tail -1 | xargs | sed \"s/ /:/g\" | cut -d: -f2'"
+    command: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} 'df --local --output=avail,target,source | grep -v Mounted | grep -v tmpfs | sort -n | tail -1 | xargs | sed \"s/ /:/g\" | cut -d: -f2'"
     register: largest_dir
 
   #
@@ -24,7 +32,9 @@
     lineinfile:
       path: "{{ working_dir }}/ansible_run_vars.yml"
       line: "kit_upload_directory: {{ largest_dir.stdout }}"
-  when: config_info.kit_upload_directory == "none"
+  when: 
+    - config_info.kit_upload_directory == "none"
+    - config_info.bootc_mode != 1
 
 - name: Designated upload directory to use
   lineinfile:

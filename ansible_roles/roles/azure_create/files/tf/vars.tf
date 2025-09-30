@@ -52,9 +52,19 @@ variable "vm_image" {
   default = "RedHat:RHEL:8_4:8.4.2021081003"
 }
 
+variable "az_subscription" {
+  type    = string
+  default = "none"
+}
+
 variable "publisher" {
   type    = string
   default = "RedHat"
+}
+
+variable "az_urn_sub" {
+  type    = string
+  default = "none"
 }
 
 variable "offer" {
@@ -80,11 +90,6 @@ variable "vm_count" {
 variable "network_count" {
   type    = number
   default = 1
-}
-
-variable "pbench_device" {
-  type    = string
-  default =   "/dev/sdd"
 }
 
 variable "pb_disk_count" {
