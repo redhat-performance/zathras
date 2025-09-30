@@ -72,14 +72,22 @@ Note: for most installations the install script should be run as a user, not roo
 ### Test config files
 Test config files, stored in the config/ directory of the Zathras installation, are the connective tissue between Zathras and the test wrappers. Currently this Zathras repo does not contain any defined test config files. Before you can use this tool, you will need to write your own test configs using the included example.yml, or add the configs from an external source if one is available to you.
 
-The process of creating test configuration files is further explained [here](https://github.com/redhat-performance/zathras/blob/documentation-rewrite/docs/test_config_files.md).
+The process of creating test configuration files is further explained [here](docs/test_config_files.md).
 
 ### Testing Quickstarts
 In general, testing with Zathras follows a similar set of steps across modalities: configure the tests to run, then run burden via the command line. 
 
-
 However, there are some aspects that are particular to the testing environment being used. Please refer to the following documentation that matches your use case:
 
-- [Testing on bare metal](https://github.com/redhat-performance/zathras/blob/documentation-rewrite/docs/test_config_files.md)
-- [Testing on cloud](https://github.com/redhat-performance/zathras/blob/documentation-rewrite/docs/test_config_files.md)
-- [Testing on virtualization](https://github.com/redhat-performance/zathras/blob/documentation-rewrite/docs/test_config_files.md)
+- [Testing on bare metal](docs/testing_quickstart.md#testing-on-bare-metal)
+- [Testing on cloud](docs/testing_quickstart.md#testing-on-cloud)
+- [Testing on virtualization](docs/testing_quickstart.md#testing-in-virtualization)
+
+## Additional Documentation
+
+For more detailed information, see:
+
+- **[Command Line Reference](docs/command_line_reference.md)** - Complete CLI options and usage
+- **[Test Configuration Files](docs/test_config_files.md)** - How to configure tests
+- **[Scenario Files](docs/scenario_files.md)** - Advanced scenario configuration
+- **[Testing Quickstart](docs/testing_quickstart.md)** - Step-by-step testing guides

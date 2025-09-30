@@ -24,7 +24,7 @@ aws, azure, gcp or local.
 ### --host_config \<config options>
 Specification of the system and configuration. Possible values are "cloud" and "local".
 
-If the --system_type option is local, then this is simply the system name to run on, and it will pull the config value from the file <hostname>.conf in the local_configs directory. For more information on local_configs, please see (TODO: add link). 
+If the --system_type option is local, then this is simply the system name to run on, and it will pull the config value from the file <hostname>.conf in the local_configs directory. For more information on local_configs, please see the [local_configs README](../local_configs/README). 
 
 If the --system_type option is cloud, then the following fields may be specified in the config file:
 - instance type: The cloud instance (ie i3en.xlarge). Inclusion of \[region=\<value>&zone=\<value>] is optional.
