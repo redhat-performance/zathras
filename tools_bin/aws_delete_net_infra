@@ -8,7 +8,7 @@
 #
 user=$1
 if [[ $user == "" ]]; then
-	echo "Need to designate the user deleteing, will be what User tag is set to"
+	echo "Need to designate the user deleting, will be what User tag is set to"
 	exit 1
 fi
 igw_delete=`aws ec2 describe-internet-gateways --filters Name=tag:User,Values=$user | grep igw | awk '{print $2}'`

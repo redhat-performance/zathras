@@ -44,6 +44,15 @@
 # - name: terraform apply tasks
 #   include_tasks: tf_apply.yml
 
+- name: Create and attach disks to instance
+  include_tasks: disks.yml
+  vars:
+    disk_params: "{{ disks }}"
+  loop: "{{ config_info.cloud_disks }}"
+  loop_control:
+    loop_var: disks
+  when: config_info.cloud_disks is defined
+
 - name: GCP, create instance
   include_role:
     name: tf_create
@@ -61,6 +70,23 @@
     state=started
     delay=10
     timeout=1200
+
+
+# User account validation with exponential backoff retry logic
+# This solves GCP race condition where SSH port becomes available before user accounts are created
+- name: Wait for GCP user account readiness with backoff
+  shell : |
+    ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    {{ config_info.test_user }}@{{ item.1 }} \
+    "id {{ config_info.test_user }} && echo 'User ready'"
+  register: user_ssh_ready
+  until: user_ssh_ready.rc == 0
+  retries: "{{ ansible_ssh_retries | default(5) }}"
+  delay: "{{ item.0 * 2 + 3 }}"  # exponential backoff: 3, 5, 7, 9...
+  with_indexed_items:
+    - "{{ public_ip_list }}" 
+
 
 - name: Create user's bin dir if it doesn't already exist
   delegate_to: "{{ item }}"
@@ -91,7 +117,6 @@
     - ssh_net_setup
     - ssh_net_copy
   when: config_info.cloud_numb_networks|int >= 1
-
 
 - name: Create root .ssh directory
   delegate_to: "{{ item }}"
@@ -130,11 +155,3 @@
 - name: Add host to test and install groups
   include_tasks: add_host_to_groups.yml
 
-- name: Create and attach disks to instance
-  include_tasks: disks.yml
-  vars:
-    disk_params: "{{ disks }}"
-  loop: "{{ config_info.cloud_disks }}"
-  loop_control:
-    loop_var: disks
-  when: config_info.cloud_disks is defined

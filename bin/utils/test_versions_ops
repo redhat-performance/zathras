@@ -1,0 +1,206 @@
+#!/bin/bash
+#                         License
+#
+# Copyright (C) 2022  David Valin dvalin@redhat.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+# Script to either verify the test versions designate the test in the designated
+# config directory is the latest, or update them to the latest.
+#
+if [[ $UTILS_DIR == "" ]]; then
+	UTILS_DIR=`echo $0 | rev | cut -d'/' -f2- | rev`
+fi
+
+test_version_check=0
+update_test_versions=0
+config_dir="config"
+
+usage()
+{
+	echo "Used to manipulate the test configuration files."
+        echo "Usage: $0"
+	echo "--config_dir <dir>: The configurtin directory to check.  Default is config."
+        echo "--test_version_check 0/1: Sees if the version of the test is the latest."
+	echo "  0=no verification 1=verify. 0 is the default"
+	echo "--update_test_versions 0/1:  Will update the test version to the latest."
+	echo "  0=do not upate 1=update.  0 is the default"
+        echo "--usage: this usage message"
+        echo "-h: this usage message"
+        exit 0
+}
+
+test_version_ops()
+{
+	pushd $config_dir > /dev/null
+	if [[ $test_version_check -eq 1 ]]; then
+		echo Git version check.
+		printf '%32s%10s%10s%6s\n' "Test" "Using" "latest" "Ok"
+	else
+		echo updating test versions
+	fi
+
+	for test_repo in `ls *yml`; do
+		#
+		# Skip entries we are not tracking.
+		#
+		if [[ $test_repo == "full_test_defs.yml" ]] ||
+	   	   [[ $test_repo == "java_pkg_def.yml" ]] ||
+	   	   [[ $test_repo == "default_template.yml" ]] ||
+	   	   [[ $test_repo = "test_defs.yml" ]] ||
+	   	   [[ $test_repo = "verify.yml" ]]; then
+			continue;
+		fi
+		using_version=`grep repo_file $test_repo | cut -d':' -f2 | sed "s/.zip//g" |cut -d'"' -f2`
+		location=`grep location: ${test_repo} | cut -d: -f2- | sed "s/ //g"`
+		if [[ $location == "https://github.com"* ]]; then
+			repo=`echo $location | cut -d'/' -f 1-5`
+			#
+			# Make sure the tag we want is present
+			#
+			version_fail=""
+			#
+			# We expect EPEL to be installed, which contains gh.
+			#
+			gh release view -R $repo $using_version --json tagName -q .tagName &> /dev/null
+			if [ $? -ne 0 ]; then
+				version_fail="$repo, version $using_version is not defined."
+				bail_out=1
+			fi
+			#
+			# Now obtain the latest official version
+			#
+			latest=`gh release view -R $repo --json tagName -q .tagName`
+			if [[ $using_version != $latest ]]; then
+				version_ok="no"
+			else
+				version_ok="yes"
+			fi
+			if [[ $update_test_versions -eq 0 ]]; then
+				printf '%32s%10s%10s%6s\n' $test_repo $using_version $latest $version_ok
+				if [[ $version_fail != "" ]]; then
+					echo Failure: $version_fail
+				fi
+			else
+				if [[ $version_ok == "no" ]]; then
+					#
+					# We have to walk the file instead of using a series of sed pipes.
+					# The reasons for this are:
+					#  1) We can not simply update the version number through the whole
+					#     file, we might change something we should not.  For example,
+					#     if an option passed to the test happens to match the current
+					#     version number in the file.
+					#       Example:
+					#         exec_dir: "test-wrapper-1.0/test"
+					#         repo_file: "v1.0.zip"
+					#         test_specific: "--option burden_version_1.0
+					#  2) If we do a full sed replacement, if there are extra spaces
+					#     in the line, we will not change it.
+					#  3) We could pull the required string via grep, and build the new
+					#     one.  However that will require reading the file 3 times (2
+					#     greps, and then one update), versus the one read if we simply
+					#     walk the file, and look for the line to replace.
+					#
+					echo Updating version for $test_repo from $using_version to $latest
+					while IFS= read -r replace_line
+					do
+						if [[ $replace_line == "repo_file:"* ]]; then
+							echo $replace_line | sed "s/$using_version/$latest/g" >> ${test_repo}.new
+							continue
+						fi
+						if [[ $replace_line == "exec_dir:"* ]]; then
+							replace_with=`echo $latest | sed "s/^v/-/g"`
+							replacing=`echo $using_version | sed "s/^v/-/g"`
+							echo $replace_line | sed "s/$replacing/$replace_with/g" >> ${test_repo}.new
+							continue
+						fi
+						echo $replace_line >> ${test_repo}.new
+					done < "${test_repo}"
+					mv $test_repo ${test_repo}.orig
+					mv ${test_repo}.new ${test_repo}
+				fi
+			fi
+			rm -rf $temp_dir 
+		else
+			#
+			# Does not return
+			#
+			source ${UTILS_DIR}/cleanup_and_exit_out --msg_string "Only github is supported." --rtc 1
+		fi
+	done
+	popd > /dev/null
+}
+
+ARGUMENT_LIST=(
+	"config_dir"
+	"test_version_check"
+	"update_test_versions"
+)
+
+NO_ARGUMENTS=(
+	"usage"
+)
+
+# read arguments
+opts=$(getopt \
+	--longoptions "$(printf "%s:," "${ARGUMENT_LIST[@]}")" \
+	--longoptions "$(printf "%s," "${NO_ARGUMENTS[@]}")" \
+	--name "$(basename "$0")" \
+	--options "h" \
+	-- "$@"
+)
+
+
+eval set --$opts
+if [[ $? -ne 0 ]]; then
+	usage $0
+fi
+
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--config_dir)
+			config_dir=$2
+			shift 2
+		;;
+		--test_version_check)
+			test_version_check=$2
+			shift 2
+		;;
+		--update_test_versions)
+			update_test_versions=$2
+			shift 2
+		;;
+		--usage)
+			usage $0
+		;;
+		--h)
+			usage $0
+		;;
+		--)
+			break;
+		;;
+		*)
+		echo "option not found ${1}"
+			usage $0
+		;;
+	esac
+done
+
+test_version_ops
+
+if [ $update_test_versions -eq 1 ]; then
+	source ${UTILS_DIR}/cleanup_and_exit_out --msg_string "Update of test versions completed" --rtc 0
+fi

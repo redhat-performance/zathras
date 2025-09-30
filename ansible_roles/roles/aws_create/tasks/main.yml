@@ -190,7 +190,6 @@
   include_role:
     name:  set_up_tf_vars
   vars:
-    pbench_ns_tf: pbench.tf
     cloud_change_to: aws_instance
 
 - name: grab aws create start time

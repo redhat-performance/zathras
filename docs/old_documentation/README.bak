@@ -153,7 +153,7 @@ General options
   -h --usage: condensed usage information
 Cloud options only
   --cloud_os_id <os id>: Image of the OS to install (example aws aminumber)
-  --create_only:  Only do the VM creation and OS installaction.
+  --create_only:  Only do the VM creation and OS installation.
   --os_vendor <os vendor>: currently rhel, ubuntu, amazon
   --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running.
       Default is to terminate
@@ -205,7 +205,7 @@ which those options are acquired.
    file, or the scenario file
 2) scenario vars file (--scenario_vars), these are overridden by the cli, but override the options
    designated in the scenario file.
-3) scenario file (--scenario), these are overriden by the options designated either via the cli or
+3) scenario file (--scenario), these are overridden by the options designated either via the cli or
    the scenario vars file.
 
 Execution example
@@ -224,5 +224,4 @@ systems:
     tests: linpack
     host_config: "m5.xlarge"
 
-
-# ./burden --scenario aws_sample --test_def_dir https://git.com/user/zathras_config
+# ./burden --scenario aws_sample --test_def_dir https://github.com/redhat-performance/zathras_test_configs

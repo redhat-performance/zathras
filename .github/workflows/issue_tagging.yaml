@@ -1,0 +1,60 @@
+name: Update parent issue
+
+permissions:
+  issues: write
+
+env:
+  ISSUE_STATE: pr_inprogress
+  REMOVE_ISSUES: --remove-label pr_approved --remove-label pr_review --remove-label pr_inprogress
+  GH_TOKEN: ${{ github.token }}
+
+on:
+  workflow_call:
+  pull_request:
+    types:
+      - review_requested
+  pull_request_review:
+    types:
+      - submitted
+jobs:
+  update_parent_issue:
+    runs-on: ubuntu-latest
+    container: quay.io/zathras/jira-issue-tagging-ci:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get PR number on issue type
+        if: github.event_name == 'pull_request_review'
+        run: echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> "$GITHUB_ENV"
+
+      - name: Get PR number on PR event
+        if: github.event_name == 'pull_request'
+        run: echo "PR_NUMBER=${{ github.event.number }}" >> "$GITHUB_ENV"
+
+      - name: Get parent issues
+        shell: bash
+        run: |
+          echo PARENT_ISSUES=$(
+            /opt/tools/get_parent_issue.sh ${{ github.repository }} $PR_NUMBER
+          ) >> "$GITHUB_ENV"
+
+
+      - name: Fail when unable to find a parent issue
+        if: env.PARENT_ISSUES == ''
+        run: echo "Could not find a parent issue" && exit 1
+
+      - name: Get PR Status
+        run: >
+          echo PR_STATUS=$(
+            gh -R ${{ github.repository }} pr view $PR_NUMBER --json reviewRequests,latestReviews | 
+            python /opt/tools/determine_status.py
+          ) >> "$GITHUB_ENV"
+
+      - name: Set parent issues state
+        run: > 
+          for issue in $PARENT_ISSUES; do
+            echo "Updating $issue to $PR_STATUS" &&
+            gh -R ${{ github.repository }} issue edit $issue $REMOVE_ISSUES && 
+            gh -R ${{ github.repository }} issue edit $issue --add-label=pr_$PR_STATUS
+          done
+        

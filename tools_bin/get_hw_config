@@ -30,7 +30,7 @@ NUMB_SOCKETS=`grep "Socket(s):" /tmp/lscpu | cut -d: -f 2`
 
 
 cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -nu > /tmp/hyper_list
-hyper=`egrep '(-|,)' /tmp/hyper_list`
+hyper=`grep -E '(-|,)' /tmp/hyper_list`
 
 echo numb_cpus: $NUMB_CPUS
 echo cores_per_socket: $CORES_PER_SOCKET
@@ -39,7 +39,7 @@ echo numb_sockets: $NUMB_SOCKETS
 
 cat /sys/devices/system/cpu/cpu*/topology/thread_siblings_list | sort -nu > /tmp/hyper_list
 
-hyper=`egrep '(-|,)' /tmp/hyper_list`
+hyper=`grep -E '(-|,)' /tmp/hyper_list`
 
 
 if [ -z "$hyper" ]; then
@@ -190,7 +190,7 @@ fi
 
 
 #
-# Get the cpus assoicated with each node
+# Get the cpus associated with each node
 grep "NUMA node" /tmp/lscpu | grep CPU | cut -d: -f2 > /tmp/cpu_mappings
 cpu_node_index=0
 input="/tmp/cpu_mappings"

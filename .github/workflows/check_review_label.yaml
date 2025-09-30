@@ -1,0 +1,21 @@
+name: Verify group review
+
+on:
+  workflow_call:
+  pull_request:
+    types:
+      - opened
+      - labeled
+
+env:
+  TARGET_LABEL: 'group_review_lgtm'
+
+jobs:
+  check_review_label:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "::error Missing review label" && exit 1
+        if: "!contains(github.event.pull_request.labels.*.name, env.TARGET_LABEL)"
+      
+      - run: echo "Has review label"
+      

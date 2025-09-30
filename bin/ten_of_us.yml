@@ -121,7 +121,7 @@
 
 #
 # Move meta data to its own role
-# Pull metada for azure
+# Pull metadata for azure
 #
 #
 - hosts: install_group
@@ -165,7 +165,7 @@
       cd_homedir: "{{ ansible_env.HOME }}"
 
 #
-# Upload the metadata for saving with pbench data
+# Upload the metadata
 #
 - hosts: install_group
   gather_facts: yes
@@ -218,31 +218,16 @@
 
   gather_facts: no
   tasks:
-  - name: install codready repo (if RHEL)
+  - name: install codeready repo (if RHEL)
     block:
-    - name: Enable CodeReady Builder for Azure
-      block:
-      - name: Enable CodeReady Builder for Azure
-        shell: "yum-config-manager --enable rhui-codeready-builder-for-rhel-8-x86_64-rhui-rpms"
-        register: yum_config
-        ignore_errors: yes
-      - name: Record status of yum config sucess
-        include_role:
-          name: record_status
-        vars:
-          results: "{{ yum_config }}"
-          status_file: "/tmp/cr_status"
-      when:
-        - config_info.system_type == "azure"
-
-    - name: Enable CodeReady Builder for AWS
+    - name: Enable CodeReady Builder for AWS/Azure
       block:
       - name: get codeready repo name
         shell:
           cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
         register: repo_name
         ignore_errors: yes
-      - name: Record status of yum config sucess
+      - name: Record status of yum config success
         include_role:
           name: record_status
         vars:
@@ -252,14 +237,14 @@
         shell: "yum-config-manager --enable {{ repo_name.stdout }}"
         register: yum_config
         ignore_errors: yes
-      - name: Record status of yum config sucess
+      - name: Record status of yum config success
         include_role:
           name: record_status
         vars:
           results: "{{ yum_config }}"
           status_file: "/tmp/cr_status"
       when:
-        - config_info.system_type == "aws"
+        - config_info.system_type == "aws" or config_info.system_type == "azure"
 
     - name: Enable CodeReady Builder for GCP
       block:
@@ -274,7 +259,7 @@
         #    warn: false
         #    register: repo_name
         #    ignore_errors: yes
-        #- name: Record status of yum config sucess
+        #- name: Record status of yum config success
         #  include_role:
         #    name: record_status
         #  vars:
@@ -287,7 +272,7 @@
           register: yum_config
           ignore_errors: yes
 
-        - name: Record status of yum config sucess
+        - name: Record status of yum config success
           include_role:
             name: record_status
           vars:
@@ -317,6 +302,56 @@
       status_file: "cr_status"
       exit_msg: "Code repo installation failure"
     when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
+
+#
+# Enable SLES legacy module
+#
+- hosts: install_group
+  user: config_info.test_user
+  become_user: root
+  become: true
+  vars_files: ansible_vars.yml
+  gather_facts: yes
+  tasks:
+  - name: enable SLES legacy module
+    block:
+    - name: Enable sle-module-legacy/{{ ansible_distribution_version }}/{{ ansible_architecture }}
+      shell: "SUSEConnect -p sle-module-legacy/{{ ansible_distribution_version }}/{{ ansible_architecture }}"
+      register: suse_connect_result
+      ignore_errors: yes
+    - name: Record status of SUSEConnect success
+      include_role:
+        name: record_status
+      vars:
+        results: "{{ suse_connect_result }}"
+        status_file: "/tmp/sles_legacy_status"
+    - name: retrieve sles legacy module status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "sles_legacy_status"
+    rescue:
+      - name: Report Error
+        lineinfile:
+          path: "{{ results_file }}"
+          line: "status: failed"
+          create: yes
+    any_errors_fatal: true
+    when:
+      - config_info.os_vendor == "suse"
+
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Terminate on SLES legacy module failure
+    include_role:
+      name: terminate_on_error
+    vars:
+      status_file: "sles_legacy_status"
+      exit_msg: "SLES legacy module installation failure"
+    when: config_info.os_vendor == "suse"
+
 
  #
  # Determine where to upload from, assumption is all test systems have the same
@@ -368,18 +403,15 @@
         name: install_packages
       vars:
         results_file: "/tmp/install_status"
-    - name: Gather the rpm package facts
-      package_facts:
-        manager: auto
-    - name: pbench prep
-      include_role:
-        name: pbench_prep
-    - name: retrieve pbench prep status
+    - name: retrieve install package status
       include_role:
         name: retrieve_status
       vars:
-        status_file: "pbench_prep_status"
-    - name: dev environment for uperf
+        status_file: "install_status"
+    - name: Gather the rpm package facts
+      package_facts:
+        manager: auto
+    - name: Install the dev environment
       include_role:
         name: install_dev_environment
     - name: retrieve dev env status
@@ -398,12 +430,6 @@
   tasks:
   - name : Terminate on repo or dev env failure
     block:
-    - name: Terminate on repo failure
-      include_role:
-        name: terminate_on_error
-      vars:
-        status_file: "pbench_prep_status"
-        exit_msg: "pbench prep failure"
     - name: Terminate on dev env failure
       include_role:
         name: terminate_on_error
@@ -413,41 +439,7 @@
     when:
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
-      - config_info.system_type != "local"
       - config_info.do_not_install_packages == 0
-
-#
-# Install pbench
-#
-- hosts: install_group
-  vars_files:
-    - ansible_vars.yml
-
-  gather_facts: no
-  tasks:
-  - name: pbench_installation
-    block:
-    - name: Read in dynamic information
-      include_vars:
-        file: "{{ working_dir }}/ansible_run_vars.yml"
-        name: dyn_data
-    - name: install pbench on server
-      include_role:
-        name: install_pbench
-        apply:
-          become: yes
-      vars:
-        target_sys: "{{ dyn_data.test_hostname }}"
-    - name: install pbench on client
-      include_role:
-        name: install_pbench
-      vars:
-        target_sys: "{{ dyn_data.net_hostname }}"
-      when:
-        - config_info.network_required == "yes"
-    when:
-      - config_info.pbench_install != 0
-      - config_info.system_type != "local"
 
 - hosts: install_group
   user: config_info.test_user
@@ -462,49 +454,6 @@
       name: install_rpms
     vars:
       results_file: "/tmp/rpm_installs"
-
-#
-# Install the packages.
-# 
-- hosts: install_group
-  user: config_info.test_user
-  become_user: root
-  become: true
-  vars_files:
-    - ansible_vars.yml
-
-  gather_facts: yes
-  tasks:
-  - name: pbench test install
-    block:
-    - name: pbench install tests
-      block:
-      - name: install pbench tests
-        include_role:
-          name: install_pbench_tests
-    - name: retrieve pbench test install status
-      include_role:
-        name: retrieve_status
-      vars:
-        status_file: "pbench_test_inst_status"
-    when:
-      - config_info.pbench_install != 0
-      - config_info.do_not_install_packages == 0
-
-- hosts: local
-  vars_files: ansible_vars.yml
-  gather_facts: no
-  tasks:
-  - name: Terminate on pbench test install failure
-    block:
-    - name: Check results
-      include_role:
-        name: terminate_on_error
-      vars:
-        status_file: "pbench_test_inst_status"
-        exit_msg: "Failure on pbench test installation."
-    when:
-      - config_info.pbench_install != 0
 
 # Install packages for other OSes
 - hosts: install_group
@@ -553,6 +502,18 @@
       - config_info.os_vendor == "amazon"
       - config_info.init_system == "yes"
       - config_info.do_not_install_packages == 0
+  - name: suse
+    block:
+    - name: install_pkgs
+      include_role:
+        name: install_packages
+      vars:
+        results_file: "/tmp/install_status"
+    when:
+      - config_info.os_vendor == "suse"
+      - config_info.init_system == "yes"
+      - config_info.do_not_install_packages == 0
+
 #
 # Terminate if told to.
 # 
@@ -560,30 +521,15 @@
   vars_files: ansible_vars.yml
   gather_facts: no
   tasks:
-  - name: retrieve install status
-    include_role:
-      name: retrieve_status
-    vars:
-      status_file: "install_status"
-    when:
-      - config_info.system_type != "local"
-      - config_info.do_not_install_packages == 0
-
-- hosts: local
-  vars_files: ansible_vars.yml
-  gather_facts: no
-  tasks:
-  - name: Terminate on repo failure
+  - name: Handle package install errors
     block:
-    - name: determine pack failure
+    - name: retrieve install status
       include_role:
-        name: terminate_on_error
+        name: retrieve_status
       vars:
         status_file: "install_status"
-        exit_msg: "Package installation failure."
-    when:
-      - config_info.do_not_install_packages == 0
-      - config_info.system_type != "local"
+      when:
+        - config_info.do_not_install_packages == 0
 
 #
 # Reboot the system if we did an update.
@@ -751,18 +697,9 @@
     - name: obtain various stats
       shell: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/tools_bin/gather_boot_info initial"
 
-    - name: obtain system config info
-      shell: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/tools_bin/data_gather > /tmp/system_config"
-
     - name: retrieve boot time stats
       fetch:
         src: "/tmp/initial_boot_info.tar"
-        dest: "{{ working_dir }}/boot_info/"
-        flat: yes
-
-    - name: retrieve system config info
-      fetch:
-        src: "/tmp/system_config"
         dest: "{{ working_dir }}/boot_info/"
         flat: yes
 
@@ -833,31 +770,6 @@
       type: "workloads"
       real_dir: "{{ dyn_data.kit_upload_directory }}"
 
-- hosts: test_group
-  vars_files: ansible_vars.yml
-  gather_facts: no
-  tasks:
-  - name: retrieve install status
-    include_role:
-      name: retrieve_status
-    vars:
-      status_file: "install_status"
-    when:
-      - config_info.system_type != "local"
-
-- hosts: local
-  vars_files: ansible_vars.yml
-  gather_facts: no
-  tasks:
-  - name: Terminate on repo failure
-    include_role:
-      name: terminate_on_error
-    vars:
-      status_file: "install_status"
-      exit_msg: "Package installation failure."
-    when:
-      - config_info.do_not_install_packages == 0
-      - config_info.system_type != "local"
 #
 # retrieve the test
 #

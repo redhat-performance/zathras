@@ -23,11 +23,3 @@ systems:
     system_type: local
     test_iter: 5
     tests: specjbb
-  system3:
-    test_iter: 1
-    tests: uperf_via_pbench
-    host_config: "D32s_v3:Netowrks;number=4"
-    cloud_os_id: RedHat:RHEL:8-LVM:8.1.2020031
-    os_vendor: rhel
-    system_type: azure
-    terminate_cloud: 1

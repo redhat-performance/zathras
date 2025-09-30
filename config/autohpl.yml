@@ -1,0 +1,7 @@
+location: https://github.com/redhat-performance/autohpl-wrapper/archive/refs/tags
+exec_dir: "autohpl-wrapper-1.24/auto_hpl"
+repo_file: "v1.24.zip"
+rhel_pkgs: gcc,make,gcc-gfortran,openblas-openmp,openmpi,openmpi-devel,wget,bc,perf,git,unzip
+ubuntu_pkgs: gcc,make,g++,python3-pip,mpi,libopenblas-base,mpi-default-bin,mpi-default-dev,mpi-specs,libmkl-intel-thread,libmkl-intel-ilp64,libmkl-intel-lp64,libmkl-core,libmkl-gnu-thread,zip,unzip
+amazon_pkgs: git,gcc,make,gcc-gfortran,blas,openmpi,openmpi-devel,wget,bc,zip,unzip
+test_script_to_run: build_run_hpl.sh
