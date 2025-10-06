@@ -115,7 +115,7 @@ done
 
 
 # install AWS collection and POSIX collection for ansible
-ansible_collections=(amazon.aws ansible.posix community.aws)
+ansible_collections=(amazon.aws ansible.posix community.aws community.general)
 for collection in "${ansible_collections[@]}"; do
         ansible-galaxy collection install "$collection" || {
                 exit 1
