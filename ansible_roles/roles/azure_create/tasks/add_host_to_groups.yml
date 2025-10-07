@@ -3,11 +3,9 @@
 
 - name: set_test_host
   add_host:
-    name: "{{ item }}"
+    name: "{{ public_ip_address[0] }}"
     groups: test_group
     ansible_user: "{{ config_info.test_user }}"
-  with_items:
-    - "{{ public_ip_address }}"
 
 - name: now add it to the test_group file
   include_role:
