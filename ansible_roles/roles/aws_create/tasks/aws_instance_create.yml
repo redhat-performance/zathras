@@ -198,28 +198,3 @@
       line: "aws_net_instance_id: none"
   when: config_info.cloud_numb_networks == 0
 
-- name: Make sure python3 is installed
-  become: no
-  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} {{ config_info.test_user }}@{{ aws_tf_info.public_dns_host0 }} sudo yum install -y python3
-  when: config_info.os_vendor == "rhel"
-
-- name: Make sure python3 is installed
-  become: no
-  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} {{ config_info.test_user }}@{{ aws_tf_info.public_dns_host1 }} sudo yum install -y python3
-  when:
-   - config_info.cloud_numb_networks != 0
-   - config_info.os_vendor == "rhel"
-
-- name: Make sure python3 is installed
-  become: no
-  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} {{ config_info.test_user }}@{{ aws_tf_info.public_dns_host0 }} sudo yum install -y python38
-  when:
-   - config_info.cloud_numb_networks == 0
-   - config_info.os_vendor == "amazon"
-
-- name: Make sure python3 is installed
-  become: no
-  local_action: shell ssh -q -oStrictHostKeyChecking=no -i {{ config_info.ssh_key }} {{ config_info.test_user }}@{{ aws_tf_info.public_dns_host1 }} sudo yum install -y python38
-  when:
-   - config_info.cloud_numb_networks != 0
-   - config_info.os_vendor == "amazon"
