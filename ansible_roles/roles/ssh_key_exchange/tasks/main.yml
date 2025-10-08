@@ -1,4 +1,30 @@
 ---
+#
+# Ubuntu is a bit of a pain with netplan.  Issue ifconfig here in hopes
+# of having the ip stick.
+#
+- name: ubuntu net config
+  block:
+  - name: make sure ifconfig is installed on host 0
+    delegate_to: "{{ ip_list[0] }}"
+    become: yes
+    shell: "apt -y install net-tools"
+  - name: make sure ifconfig is installed on host 1
+    delegate_to: "{{ ip_list[1] }}"
+    become: yes
+    shell: "apt -y install net-tools"
+
+  - name: ifconfig host 0
+    delegate_to: "{{ ip_list[0] }}"
+    become: yes
+    shell: "ifconfig ens6 10.0.25.100 netmask 255.255.255.0"
+
+  - name: ifconfig host 1
+    delegate_to: "{{ ip_list[1] }}"
+    become: yes
+    shell: "ifconfig ens6 10.0.25.101 netmask 255.255.255.0"
+  when: config_info.os_vendor == "ubuntu"
+
 # tasks file for roles/ssh_key_exchange
 - name: SSH KeyGen command
   delegate_to: "{{ item }}"
@@ -61,15 +87,20 @@
   with_items:
     - "{{ ip_list }}"
 
-
+#
+# If we restart the sshd service with ubuntu, we lose connectivty.
+#
 - name: restart sshd service
-  delegate_to: "{{ item }}"
-  become: yes
-  systemd:
-    name: sshd
-    state: restarted
-  with_items:
-    - "{{ ip_list }}"
+  block:
+  - name:  restart sshd service if not ubuntu.
+    delegate_to: "{{ item }}"
+    become: yes
+    systemd:
+      name: sshd
+      state: restarted
+    with_items:
+      - "{{ ip_list }}"
+  when: config_info.os_vendor != "ubuntu"
 
 - name: Make sure we can ssh in to net1 from net2
   delegate_to: "{{ ip_list[1] }}"
