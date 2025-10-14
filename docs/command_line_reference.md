@@ -52,9 +52,6 @@ Do not cleanup at the end of the test.
 ### --no_packages
 Do not install any packages, default is no.
 
-### --no_pbench_install
-Do not install pbench. The default is 0 (install pbench).
-
 ### --no_spot_recover
 Do not recover from a spot system going away.
 
