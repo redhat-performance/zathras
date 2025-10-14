@@ -50,7 +50,7 @@ The following shows all the possible options a test configuration file could con
         upload_extra: 
 
 ## Field definitions
-test<n>: is a unique numerical value from the other tests. Other than for creation of the yml file, it has no bearing on the test execution.
+**test<n>**: is a unique numerical value from the other tests. Other than for creation of the yml file, it has no bearing on the test execution.
 
 **test_template**: Is a pointer to a specific test template that will be brought in. Purpose is that when we need to make changes for a specifc test, we update the test_template file not the test_defs.yml.
 
