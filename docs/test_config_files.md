@@ -41,8 +41,6 @@ The following shows all the possible options a test configuration file could con
         rhel_pkgs: 
         ubuntu_pkgs: 
         amazon_pkgs: 
-        pbench_required: 
-        pbench_local_results: 
         storage_required: 
         network_required: 
         java_required: 
@@ -114,15 +112,6 @@ we drop everything but streams-wrapper and use "streams-wrapper"
 
 **suse_pkgs**: SUSE packages that are required to run the test; "none" if there aren't any packaging requirements.
 
-**pbench_required**: If set to yes, the test requires pbench to be installed to run. Zathras will install pbench on the test system for you. Only supported for RHEL/Fedora. Note: it is the responsibility of the user to make sure the pbench repos are set up properly.
-
-**pbench_local_result**: If set to yes, will tell the various wrapper scripts to consolidate the pbench results into a results tarball in /tmp with the format:
-
-    results_<workload>_<tuned_setting>.tar
-e.g.
-    
-    results_pbench_linpack_tuned_virtual-guest_sys_file_none.tar
-
 **storage_required**: If set to yes, Zathras will check to make sure storage has been designated for the system before provisioning it.
 
 **network_required**: If set to yes, Zathras will check to make sure a network (other than the defaults) has been designated for the system before provisioning it.
@@ -151,8 +140,6 @@ e.g.
     ubuntu_pkgs: gcc,build-essential,libnuma-dev,zip,unzip
     amazon_pkgs: gcc,bc,git,unzip,zip
     suse_pkgs: gcc,bc,git,unzip
-        pbench_required: "no"
-        pbench_local_results: "no"
         storage_required: "no"
         network_required: "no"
         java_required: "no"
