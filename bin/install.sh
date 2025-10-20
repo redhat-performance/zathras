@@ -72,10 +72,12 @@ for package in "${packages[@]}"; do
         # HashiCorp repo urls are case-sensitive
         if [[ "$os_release_clean" == "rhel" ]]; then
             release='RHEL'
+        elif [[ "$os_release_clean" == "centos" ]]; then
+            release='RHEL'
         elif [[ "$os_release_clean" == "fedora" ]]; then
             release='fedora'
         else
-            echo "Error: Terraform installation is only supported on RHEL and Fedora distributions."
+            echo "Error: Terraform installation is only supported on RHEL, CentOS, and Fedora distributions."
             echo "Detected OS: $os_release_clean"
             echo "Please install Terraform manually from https://developer.hashicorp.com/terraform/install"
             exit 1
@@ -83,6 +85,13 @@ for package in "${packages[@]}"; do
 
         # repo URL for terraform
         repo_url="https://rpm.releases.hashicorp.com/${release}/hashicorp.repo"
+
+        # Validate repo URL format before attempting to add it
+        if [[ ! "$repo_url" =~ ^https://rpm\.releases\.hashicorp\.com/(RHEL|fedora)/hashicorp\.repo$ ]]; then
+            echo "Error: Invalid HashiCorp repository URL format: $repo_url"
+            echo "Please verify the OS detection or install Terraform manually"
+            exit 1
+        fi
 
         # run dnf config-manager
         sudo dnf config-manager --add-repo "$repo_url" || {
