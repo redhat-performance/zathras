@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/linpack-wrapper/archive/refs/tags
-exec_dir: "linpack-wrapper-2.5/linpack"
-repo_file: "v2.5.zip"
+exec_dir: "linpack-wrapper-3.0/linpack"
+repo_file: "v3.0.zip"
 os_supported: all
 rhel_pkgs: bc,numactl,perf,git,unzip
 ubuntu_pkgs: unzip,zip,numactl
