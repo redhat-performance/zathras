@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/fio-wrapper/archive/refs/tags
-exec_dir: "fio-wrapper-1.31/fio"
-repo_file: "v1.31.zip"
+exec_dir: "fio-wrapper-2.0/fio"
+repo_file: "v2.0.zip"
 rhel_pkgs: gcc,numactl,python3,bc,fio,perf,git,unzip
 ubuntu_pkgs: fio,unzip,zip
 amazon_pkgs: fio,bc,git,zip,unzip
