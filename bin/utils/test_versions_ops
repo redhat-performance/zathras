@@ -63,7 +63,7 @@ test_version_ops()
 	   	   [[ $test_repo = "verify.yml" ]]; then
 			continue;
 		fi
-		using_version=`grep repo_file $test_repo | cut -d':' -f2 | sed "s/.zip//g" |cut -d'"' -f2`
+		using_version=`grep repo_file $test_repo | cut -d':' -f2 | sed "s/.tar.gz//g" |cut -d'"' -f2`
 		location=`grep location: ${test_repo} | cut -d: -f2- | sed "s/ //g"`
 		if [[ $location == "https://github.com"* ]]; then
 			repo=`echo $location | cut -d'/' -f 1-5`
