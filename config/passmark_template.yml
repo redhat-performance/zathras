@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/passmark-wrapper/archive/refs/tags
 exec_dir: "passmark-wrapper-2.0/passmark"
-repo_file: "v2.0.zip"
+repo_file: "v2.0.tar.gz"
 rhel_pkgs: bc,numactl,perf,git,unzip
 ubuntu_pkgs: unzip,zip
 amazon_pkgs: bc,git,zip,unzip

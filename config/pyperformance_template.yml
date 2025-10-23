@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/pyperf-wrapper/archive/refs/tags
 exec_dir: "pyperf-wrapper-2.0/pyperf"
-repo_file: "v2.0.zip"
+repo_file: "v2.0.tar.gz"
 rhel_pkgs: bc,numactl,perf,pip,python3-devel,git,unzip,wget
 ubuntu_pkgs: unzip,zip,,python3-dev
 amazon_pkgs: bc,git,zip,unzip

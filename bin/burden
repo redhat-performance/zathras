@@ -114,6 +114,7 @@ gl_retry_failed_tests=1
 gl_base_cost=0
 gl_host_uses_nvme=0
 gl_cloud_net_type="default"
+gl_version_check_only=0
 #
 # We will default to eastus
 #
@@ -3061,6 +3062,9 @@ verify_test_configuration()
 	if [ $bail_out -eq 1 ]; then
 		cleanup_and_exit "Error: At least one get tag is not known." 1
 	fi
+	if [[ $gl_version_check_only -eq 1 ]]; then
+		cleanup_and_exit "" 0
+	fi
 }
 #
 # We read in the template file for the test, and for each line that is not
@@ -3685,6 +3689,7 @@ set_general_value()
 			shift_by=2
 		;;
 		--test_version_check)
+			gl_version_check_only=1
 			shift_by=1
 		;;
 		--test_user)

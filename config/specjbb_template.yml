@@ -1,5 +1,5 @@
 location: https://github.com/redhat-performance/specjbb-wrapper/archive/refs/tags
-repo_file: "v2.0.zip"
+repo_file: "v2.0.tar.gz"
 exec_dir: "specjbb-wrapper-2.0/specjbb"
 rhel_pkgs: bc,numactl,perf,git,unzip
 ubuntu_pkgs: libnuma-dev,unzip,zip

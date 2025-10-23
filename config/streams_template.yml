@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/streams-wrapper/archive/refs/tags
 exec_dir: "streams-wrapper-2.0/streams"
-repo_file: "v2.0.zip"
+repo_file: "v2.0.tar.gz"
 os_supported: all
 rhel_pkgs: gcc,bc,perf,git,unzip,numactl
 ubuntu_pkgs: gcc,build-essential,libnuma-dev,zip,unzip
