@@ -118,12 +118,16 @@
       block:
       - name: What we are looking for
         debug:
-          msg: "/tmp/results_{{ test_data.test_name }}.zip"
+          msg: "/tmp/results_{{ test_data.test_name }}*.tar"
+      - name: get a list of the results tars
+        shell: "ls /tmp/results_{{ test_data.test_name }}*tar"
+        register: found_files
       - name: retrieve data
         fetch:
-          src: "/tmp/results_{{ test_data.test_name }}.zip"
+          src: "{{ item }}"
           dest: "{{ working_dir }}/"
           flat: yes
+        loop: "{{ found_files.stdout_lines }}"
         ignore_errors: yes
       when: (test_data.archive_results == "yes")
 
