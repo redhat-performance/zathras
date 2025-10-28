@@ -19,6 +19,12 @@
 
 set -eu
 
+# Arrays to track what gets installed during script execution
+# Format: "package_name:version"
+installed_system_packages=()
+installed_python_packages=()
+installed_ansible_collections=()
+
 # Check if dnf package manager is available
 # Note: [[ ]] brackets are NOT needed here because:
 # - 'if' statements work directly with command exit codes (0 = success, non-zero = failure)
@@ -104,11 +110,15 @@ for package in "${packages[@]}"; do
             echo "Error: Failed to install Terraform"
             exit 1
         }
+        installed_system_packages+=("terraform:1.9.8-1")
     else
         echo "Installing $package..."
         sudo dnf install -y "$package" || {
             exit 1
         }
+        # Get the installed version
+        package_version=$(dnf list installed "$package" 2>/dev/null | tail -n 1 | awk '{print $2}' || echo "unknown")
+        installed_system_packages+=("$package:$package_version")
     fi
 
 done
@@ -120,6 +130,11 @@ for package in "${python_packages[@]}"; do
     pip3 install "$package" --user || {
         exit 1
     }
+    # Extract package name (remove version specifier if present)
+    package_name=$(echo "$package" | sed 's/[<>=!].*//')
+    # Get the installed version
+    package_version=$(pip3 show "$package_name" 2>/dev/null | grep "Version:" | awk '{print $2}' || echo "unknown")
+    installed_python_packages+=("$package_name:$package_version")
 done
 
 
@@ -129,8 +144,62 @@ for collection in "${ansible_collections[@]}"; do
         ansible-galaxy collection install "$collection" || {
                 exit 1
         }
+        # Get the installed version
+        collection_version=$(ansible-galaxy collection list "$collection" 2>/dev/null | grep "$collection" | awk '{print $2}' || echo "unknown")
+        installed_ansible_collections+=("$collection:$collection_version")
 done
 
+# Function to write installation record
+write_installation_record() {
+    local install_log="zathras_install_$(date +%Y%m%d_%H%M%S).log"
+    
+    echo "=== Zathras Installation Record ===" > "$install_log"
+    echo "Installation Date: $(date)" >> "$install_log"
+    echo "User: $(whoami)" >> "$install_log"
+    echo "Hostname: $(hostname)" >> "$install_log"
+    echo "" >> "$install_log"
+    
+    echo "=== System Packages Installed ===" >> "$install_log"
+    if [ ${#installed_system_packages[@]} -eq 0 ]; then
+        echo "No new system packages were installed (all were already present)" >> "$install_log"
+    else
+        for package_info in "${installed_system_packages[@]}"; do
+            package_name=$(echo "$package_info" | cut -d':' -f1)
+            package_version=$(echo "$package_info" | cut -d':' -f2)
+            echo "  - $package_name (version: $package_version)" >> "$install_log"
+        done
+    fi
+    echo "" >> "$install_log"
+    
+    echo "=== Python Packages Installed ===" >> "$install_log"
+    if [ ${#installed_python_packages[@]} -eq 0 ]; then
+        echo "No Python packages were installed" >> "$install_log"
+    else
+        for package_info in "${installed_python_packages[@]}"; do
+            package_name=$(echo "$package_info" | cut -d':' -f1)
+            package_version=$(echo "$package_info" | cut -d':' -f2)
+            echo "  - $package_name (version: $package_version)" >> "$install_log"
+        done
+    fi
+    echo "" >> "$install_log"
+    
+    echo "=== Ansible Collections Installed ===" >> "$install_log"
+    if [ ${#installed_ansible_collections[@]} -eq 0 ]; then
+        echo "No Ansible collections were installed" >> "$install_log"
+    else
+        for collection_info in "${installed_ansible_collections[@]}"; do
+            collection_name=$(echo "$collection_info" | cut -d':' -f1)
+            collection_version=$(echo "$collection_info" | cut -d':' -f2)
+            echo "  - $collection_name (version: $collection_version)" >> "$install_log"
+        done
+    fi
+    echo "" >> "$install_log"
+    
+    echo "Installation record saved to: $install_log"
+}
+
+# Write installation record
+write_installation_record
 
 echo "Before you can run Zathras:"
 echo "****Ensure ~/.local/bin is in your path"
