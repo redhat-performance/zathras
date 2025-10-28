@@ -3,28 +3,39 @@
 # Ubuntu is a bit of a pain with netplan.  Issue ifconfig here in hopes
 # of having the ip stick.
 #
-- name: ubuntu net config
+
+- name: Ubuntu net config
   block:
-  - name: make sure ifconfig is installed on host 0
+  - name: Ensure net-tools is installed host 0
     delegate_to: "{{ ip_list[0] }}"
     become: yes
-    shell: "apt -y install net-tools"
-  - name: make sure ifconfig is installed on host 1
+    apt:
+      name: net-tools
+      state: present
+  - name: Ensure net-tools is installed host 1
     delegate_to: "{{ ip_list[1] }}"
     become: yes
-    shell: "apt -y install net-tools"
+    apt:
+      name: net-tools
+      state: present
 
+  #
+  # Get the network interface, and then assign the ip to it.
+  # Notes
+  # 
+  # Assumption is only one unconfigured network
   - name: ifconfig host 0
     delegate_to: "{{ ip_list[0] }}"
     become: yes
-    shell: "ifconfig ens6 10.0.25.100 netmask 255.255.255.0"
+    shell: "ifconfig `ifconfig -a | grep flags | grep -v UP | cut -d: -f1` 10.0.25.100 netmask 255.255.255.0"
 
   - name: ifconfig host 1
     delegate_to: "{{ ip_list[1] }}"
     become: yes
-    shell: "ifconfig ens6 10.0.25.101 netmask 255.255.255.0"
+    shell: "ifconfig `ifconfig -a | grep flags | grep -v UP | cut -d: -f1` 10.0.25.101 netmask 255.255.255.0"
   when: config_info.os_vendor == "ubuntu"
 
+  # tasks file for roles/ssh_key_exchange
 # tasks file for roles/ssh_key_exchange
 - name: SSH KeyGen command
   delegate_to: "{{ item }}"
