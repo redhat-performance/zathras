@@ -19,6 +19,11 @@
 
 set -eu
 
+# Arrays to track what gets installed during script execution
+installed_system_packages=()
+installed_python_packages=()
+installed_ansible_collections=()
+
 # Check if dnf package manager is available
 # Note: [[ ]] brackets are NOT needed here because:
 # - 'if' statements work directly with command exit codes (0 = success, non-zero = failure)
@@ -104,11 +109,13 @@ for package in "${packages[@]}"; do
             echo "Error: Failed to install Terraform"
             exit 1
         }
+        installed_system_packages+=("terraform-1.9.8-1")
     else
         echo "Installing $package..."
         sudo dnf install -y "$package" || {
             exit 1
         }
+        installed_system_packages+=("$package")
     fi
 
 done
@@ -120,6 +127,7 @@ for package in "${python_packages[@]}"; do
     pip3 install "$package" --user || {
         exit 1
     }
+    installed_python_packages+=("$package")
 done
 
 
@@ -129,8 +137,54 @@ for collection in "${ansible_collections[@]}"; do
         ansible-galaxy collection install "$collection" || {
                 exit 1
         }
+        installed_ansible_collections+=("$collection")
 done
 
+# Function to write installation record
+write_installation_record() {
+    local install_log="zathras_install_$(date +%Y%m%d_%H%M%S).log"
+    
+    echo "=== Zathras Installation Record ===" > "$install_log"
+    echo "Installation Date: $(date)" >> "$install_log"
+    echo "User: $(whoami)" >> "$install_log"
+    echo "Hostname: $(hostname)" >> "$install_log"
+    echo "" >> "$install_log"
+    
+    echo "=== System Packages Installed ===" >> "$install_log"
+    if [ ${#installed_system_packages[@]} -eq 0 ]; then
+        echo "No new system packages were installed (all were already present)" >> "$install_log"
+    else
+        for package in "${installed_system_packages[@]}"; do
+            echo "  - $package" >> "$install_log"
+        done
+    fi
+    echo "" >> "$install_log"
+    
+    echo "=== Python Packages Installed ===" >> "$install_log"
+    if [ ${#installed_python_packages[@]} -eq 0 ]; then
+        echo "No Python packages were installed" >> "$install_log"
+    else
+        for package in "${installed_python_packages[@]}"; do
+            echo "  - $package" >> "$install_log"
+        done
+    fi
+    echo "" >> "$install_log"
+    
+    echo "=== Ansible Collections Installed ===" >> "$install_log"
+    if [ ${#installed_ansible_collections[@]} -eq 0 ]; then
+        echo "No Ansible collections were installed" >> "$install_log"
+    else
+        for collection in "${installed_ansible_collections[@]}"; do
+            echo "  - $collection" >> "$install_log"
+        done
+    fi
+    echo "" >> "$install_log"
+    
+    echo "Installation record saved to: $install_log"
+}
+
+# Write installation record
+write_installation_record
 
 echo "Before you can run Zathras:"
 echo "****Ensure ~/.local/bin is in your path"
