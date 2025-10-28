@@ -20,6 +20,7 @@
 set -eu
 
 # Arrays to track what gets installed during script execution
+# Format: "package_name:version"
 installed_system_packages=()
 installed_python_packages=()
 installed_ansible_collections=()
@@ -109,13 +110,15 @@ for package in "${packages[@]}"; do
             echo "Error: Failed to install Terraform"
             exit 1
         }
-        installed_system_packages+=("terraform-1.9.8-1")
+        installed_system_packages+=("terraform:1.9.8-1")
     else
         echo "Installing $package..."
         sudo dnf install -y "$package" || {
             exit 1
         }
-        installed_system_packages+=("$package")
+        # Get the installed version
+        package_version=$(dnf list installed "$package" 2>/dev/null | tail -n 1 | awk '{print $2}' || echo "unknown")
+        installed_system_packages+=("$package:$package_version")
     fi
 
 done
@@ -127,7 +130,11 @@ for package in "${python_packages[@]}"; do
     pip3 install "$package" --user || {
         exit 1
     }
-    installed_python_packages+=("$package")
+    # Extract package name (remove version specifier if present)
+    package_name=$(echo "$package" | sed 's/[<>=!].*//')
+    # Get the installed version
+    package_version=$(pip3 show "$package_name" 2>/dev/null | grep "Version:" | awk '{print $2}' || echo "unknown")
+    installed_python_packages+=("$package_name:$package_version")
 done
 
 
@@ -137,7 +144,9 @@ for collection in "${ansible_collections[@]}"; do
         ansible-galaxy collection install "$collection" || {
                 exit 1
         }
-        installed_ansible_collections+=("$collection")
+        # Get the installed version
+        collection_version=$(ansible-galaxy collection list "$collection" 2>/dev/null | grep "$collection" | awk '{print $2}' || echo "unknown")
+        installed_ansible_collections+=("$collection:$collection_version")
 done
 
 # Function to write installation record
@@ -154,8 +163,10 @@ write_installation_record() {
     if [ ${#installed_system_packages[@]} -eq 0 ]; then
         echo "No new system packages were installed (all were already present)" >> "$install_log"
     else
-        for package in "${installed_system_packages[@]}"; do
-            echo "  - $package" >> "$install_log"
+        for package_info in "${installed_system_packages[@]}"; do
+            package_name=$(echo "$package_info" | cut -d':' -f1)
+            package_version=$(echo "$package_info" | cut -d':' -f2)
+            echo "  - $package_name (version: $package_version)" >> "$install_log"
         done
     fi
     echo "" >> "$install_log"
@@ -164,8 +175,10 @@ write_installation_record() {
     if [ ${#installed_python_packages[@]} -eq 0 ]; then
         echo "No Python packages were installed" >> "$install_log"
     else
-        for package in "${installed_python_packages[@]}"; do
-            echo "  - $package" >> "$install_log"
+        for package_info in "${installed_python_packages[@]}"; do
+            package_name=$(echo "$package_info" | cut -d':' -f1)
+            package_version=$(echo "$package_info" | cut -d':' -f2)
+            echo "  - $package_name (version: $package_version)" >> "$install_log"
         done
     fi
     echo "" >> "$install_log"
@@ -174,8 +187,10 @@ write_installation_record() {
     if [ ${#installed_ansible_collections[@]} -eq 0 ]; then
         echo "No Ansible collections were installed" >> "$install_log"
     else
-        for collection in "${installed_ansible_collections[@]}"; do
-            echo "  - $collection" >> "$install_log"
+        for collection_info in "${installed_ansible_collections[@]}"; do
+            collection_name=$(echo "$collection_info" | cut -d':' -f1)
+            collection_version=$(echo "$collection_info" | cut -d':' -f2)
+            echo "  - $collection_name (version: $collection_version)" >> "$install_log"
         done
     fi
     echo "" >> "$install_log"
