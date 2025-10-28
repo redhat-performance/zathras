@@ -124,12 +124,17 @@ done
 
 
 # install AWS collection and POSIX collection for ansible
-ansible_collections=(amazon.aws ansible.posix community.aws community.general)
+ansible_collections=(ansible.posix community.aws community.general)
 for collection in "${ansible_collections[@]}"; do
         ansible-galaxy collection install "$collection" || {
                 exit 1
         }
 done
+
+# Pin amazon.aws to version 9.1.0 for compatibility reasons
+ansible-galaxy collection install "amazon.aws:==9.1.0" || {
+        exit 1
+}
 
 
 echo "Before you can run Zathras:"
