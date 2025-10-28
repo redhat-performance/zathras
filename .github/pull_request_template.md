@@ -7,6 +7,7 @@ of the program.
 
 # Documentation Check
 Does this change require any updates to user-facing or internal documentation?
+If "yes", were those updates made?
 
 # Clerical Stuff
 Mention the issue this PR works toward resolving.  If the 
