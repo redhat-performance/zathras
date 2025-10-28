@@ -5,6 +5,10 @@ What does this PR do?  Give a short summary
 Give some examples of the before/after behavior
 of the program.
 
+# Documentation Check
+Does this change require any updates to user-facing or internal documentation?
+If "yes", were those updates made?
+
 # Clerical Stuff
 Mention the issue this PR works toward resolving.  If the 
 PR completely solves the issue, use "This closes #x"
