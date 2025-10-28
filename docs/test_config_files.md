@@ -102,7 +102,7 @@ we drop everything but streams-wrapper and use "streams-wrapper"
 
 **test_run_from**: Some tests need to run from the local system, not the cloud system (boot timing test is one example). If local is specified, the test will run locally, if remote is specified the test will run on the test system.
 
-**repo_file**: The archive file to be downloaded. In the case of git repos, it will be <tag>.zip
+**repo_file**: The archive file to be downloaded. In the case of git repos, it will be <tag>.tar.gz
 
 **rhel_pkgs**: RHEL packages that are required to run the test; “none” if there aren’t any packaging requirements
 
@@ -135,7 +135,7 @@ we drop everything but streams-wrapper and use "streams-wrapper"
         reboot_system: "no"
         test_run_from: "remote"
         os_supported: all
-        repo_file: "v1.0.zip"
+        repo_file: "v1.0.tar.gz"
     rhel_pkgs: gcc,bc
     ubuntu_pkgs: gcc,build-essential,libnuma-dev,zip,unzip
     amazon_pkgs: gcc,bc,git,unzip,zip
