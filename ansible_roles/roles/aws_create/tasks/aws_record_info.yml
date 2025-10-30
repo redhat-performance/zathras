@@ -36,7 +36,7 @@
         public_dns_host0: "{{ aws_data.outputs.public_dns_host0.value }}"
         aws_instance_id0: "{{ aws_data.outputs.aws_instance_id0.value }}"
   - name: Record the zone id for spot system
-    shell: "echo aws_zone_id0: `aws ec2 describe-instances  --instance-id {{ aws_data.outputs.aws_instance_id0.value }} | grep PLACEMENT  | cut -d' ' -f 2 > aws_tf_info.aws_instance_id0` >> {{ working_dir }}/tf_results"
+    shell: "echo aws_zone_id0: `aws ec2 describe-instances  --instance-id {{ aws_data.outputs.aws_instance_id0.value }} | grep PLACEMENT  | cut -d' ' -f 2` >> {{ working_dir }}/tf_results"
   - name: AWS non-spot terraform file, network
     block:
     - name: Add network lines
