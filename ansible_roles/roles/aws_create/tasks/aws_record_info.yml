@@ -48,6 +48,6 @@
           public_dns_host1: "{{ aws_data.outputs.public_dns_host1.value }}"
           aws_instance_id1: "{{ aws_data.outputs.aws_instance_id1.value }}"
     - name: Record zone for spot network
-      shell: "echo aws_zone_id1: `aws ec2 describe-instances  --instance-id {{ aws_data.outputs.aws_instance_id1.value }} | grep PLACEMENT  | cut -d'  ' -f 2 > aws_tf_info.aws_instance_id0` >> {{ working_dir }}/tf_results"
+      shell: "echo aws_zone_id1: `aws ec2 describe-instances  --instance-id {{ aws_data.outputs.aws_instance_id1.value }} | grep PLACEMENT  | cut -d'  ' -f 2` >> {{ working_dir }}/tf_results"
     when: config_info.cloud_numb_networks != 0
   when: config_info.spot_range != 0
