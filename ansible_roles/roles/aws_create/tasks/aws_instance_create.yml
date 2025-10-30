@@ -171,10 +171,6 @@
     lineinfile:
       path: "{{ working_dir }}/ansible_run_vars.yml"
       line: "net_hostname: {{ aws_tf_info.public_dns_host1 }}"
-  - name: record network instance id
-    lineinfile:
-      path: "{{ working_dir }}/ansible_run_vars.yml"
-      line: "aws_net_instance_id: {{ aws_tf_info.aws_instance_id1 }}"
   - name: save network dns information
     include_tasks: aws_save_dns_info.yml
     vars:
