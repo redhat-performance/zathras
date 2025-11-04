@@ -31,9 +31,9 @@ test_defs:
 
   test6:
     test_template: phoronix_template.yml
-    test_name: phoronix
-    test_description: phoronix ng test
-    test_specific: ""
+    test_name: phoronix_stress-ng
+    test_description: phoronix stress ng test
+    test_specific: "--sub_test stress-ng"
 
   test7:
     test_template: hammerdb_template.yml
@@ -122,3 +122,45 @@ test_defs:
     test_name: iozone
     test_description: iozone
     test_specific: "--devices_to_use {{ dyn_data.storage }} --filesys xfs,ext4,ext3 --all_test --mount_location /iozone/iozone0 --eatmem --auto"
+
+  test19:
+    test_template: phoronix_template.yml
+    test_name: phoronix_phpbench
+    test_description: phoronix phpbench_test
+    test_specific: "--sub_test phpbench"
+
+  test20:
+    test_template: phoronix_template.yml
+    test_name: phoronix_cassandra
+    test_description: phoronix cassandra test
+    test_specific: "--sub_test cassandra"
+
+  test21:
+    test_template: phoronix_template.yml
+    test_name: phoronix_openssl
+    test_description: phoronix openssl test
+    test_specific: "--sub_test openssl"
+
+  test22:
+    test_template: phoronix_template.yml
+    test_name: phoronix_sqlite
+    test_description: phoronix sqlite test
+    test_specific: "--sub_test sqlite"
+
+  test23:
+    test_template: phoronix_template.yml
+    test_name: phoronix_nginx
+    test_description: phoronix nginx test
+    test_specific: "--sub_test nginx"
+
+  test24:
+    test_template: phoronix_template.yml
+    test_name: phoronix_cockroach
+    test_description: phoronix cockroach test
+    test_specific: "--sub_test cockroach"
+
+  test25:
+    test_template: phoronix_template.yml
+    test_name: phoronix_redis
+    test_description: phoronix redis test
+    test_specific: "--sub_test redis"
