@@ -140,6 +140,7 @@ gl_spot_recover=1
 gl_cloud_placement=${value_not_set}
 gl_cloud_networks_sys="duplicate"
 gl_preflight=0
+gl_pcp_state="--use_pcp"
 #
 # Global values
 #   gl_sys_file: sysctl files to use.
@@ -1930,6 +1931,7 @@ create_ansible_options()
 			echo "  test_exec_location: none"  >> ansible_vars_main.yml
 		fi
 
+		echo "  pcp_state: ${gl_pcp_state}" >> ansible_vars_main.yml
 		#
 		# More differences in the cloud space that has to be addressed here.
 		#
@@ -3330,6 +3332,8 @@ usage()
 	echo "  --no_spot_recover: Do not recover from a spot system going away."
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
+	echo "  --pcp_state 0/1:  If set to 0, pcp will not be used by the wrappers.  If set to 1, pcp will be"
+	echo "    used by the wrappers.  Default is 1."
 	echo "  --persistent_log: enable persistent logging"
 	echo "  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits"
 	echo "  --results_prefix <prefix>: Run directory prefix"
@@ -3559,6 +3563,14 @@ set_general_value()
 			if [[ $gl_package_name == $value_not_set ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
 				gl_package_name=$2
+			fi
+			shift_by=2
+		;;
+		--pcp_state)
+			if [[ $2 -eq 1 ]]; then
+				gl_pcp_state="--use_pcp"
+			else
+				gl_pcp_state=""
 			fi
 			shift_by=2
 		;;
@@ -3801,6 +3813,7 @@ grab_cli_data()
 		"mode"
 		"os_vendor"
 		"package_name"
+		"pcp_state"
 		"results_prefix"
 		"retry_failed_tests"
 		"run_file"
