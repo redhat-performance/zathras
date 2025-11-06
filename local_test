@@ -1,0 +1,10 @@
+global:
+  os_vendor: rhel
+  results_prefix: coremark
+  os_vendor: rhel
+  system_type: local
+
+systems:
+  system10:
+    tests: coremark
+    host_config: "n42-h08-000-r960.rdu3.labs.perfscale.redhat.com"
