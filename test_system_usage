@@ -1,8 +1,0 @@
-      User                                          Run label   Instance                     Date  Price         Test   Time     Cost
-    dvalin                                      coremark_rhel n42-h08-000-r960.rdu3.labs.perfscale.redhat.com      2025.11.06-06.48.29      0     coremark    270        0
-    dvalin                                      coremark_rhel n42-h08-000-r960.rdu3.labs.perfscale.redhat.com      2025.11.06-06.59.51      0     coremark    274        0
-    dvalin                                     rhel_c8gn_rhel m6g.xlarge      2025.11.06-07.11.25 streams           79                
-    dvalin                                     rhel_c8gn_rhel m6g.xlarge      2025.11.06-07.20.41 streams           80                
-    dvalin                                     rhel_c8gn_rhel m6g.xlarge      2025.11.06-07.29.46 coremark          241                
-    dvalin                                     rhel_c8gn_rhel m6g.xlarge      2025.11.06-07.50.46 specjbb           16                
-    dvalin                                     rhel_c8gn_rhel m6g.xlarge      2025.11.06-08.03.34 specjbb          256                
