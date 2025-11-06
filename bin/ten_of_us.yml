@@ -930,7 +930,7 @@
       - name: Restore the original workloads
         command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads_back_zathras /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
       when: stat_result.stat.exists
-    when: dir_stat_result.stat.isdir is defined and dir_stat_result.stat.isdir
+    when: stat_result.stat.isdir is defined and stat_result.stat.isdir
 
 #
 # Terminate the systems
