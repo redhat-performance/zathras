@@ -1,0 +1,17 @@
+#
+# Uperf test definitions.  Broken up to prevent issues with pipes.
+#
+global:
+  ssh_key_file: +++home+++dvalin+++permissions+++aws_region_2_ssh_key
+# Use spot by default
+  terminate_cloud: 0
+  os_vendor: rhel
+  results_prefix: rhel_c8gn
+  os_vendor: rhel
+  system_type: aws
+  cloud_os_id: ami-0f30d89f374734974
+systems:
+  system1:
+    tests: specjbb
+    java_version: java-21
+    host_config: "m6g.xlarge"
