@@ -1,0 +1,263 @@
+{
+  "index_patterns": ["zathras-results*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "index": {
+        "refresh_interval": "5s",
+        "max_result_window": 50000,
+        "mapping": {
+          "total_fields": {
+            "limit": 5000
+          }
+        }
+      }
+    },
+    "mappings": {
+      "dynamic": false,
+      "dynamic_templates": [
+        {
+          "run_objects": {
+            "path_match": "results.runs.*",
+            "mapping": {
+              "type": "object",
+              "properties": {
+                "run_number": {"type": "integer"},
+                "status": {"type": "keyword"},
+                "start_time": {"type": "date"},
+                "end_time": {"type": "date"},
+                "duration_seconds": {"type": "float"},
+                "configuration": {"type": "object", "enabled": true},
+                "metrics": {"type": "object", "enabled": true},
+                "validation": {"type": "object", "enabled": true}
+              }
+            }
+          }
+        },
+        {
+          "timeseries_objects": {
+            "path_match": "results.runs.*.timeseries.*",
+            "mapping": {
+              "type": "object",
+              "properties": {
+                "timestamp": {"type": "date"},
+                "metrics": {"type": "object", "enabled": true}
+              }
+            }
+          }
+        },
+        {
+          "numa_nodes": {
+            "path_match": "system_under_test.hardware.numa.*",
+            "mapping": {
+              "type": "object",
+              "properties": {
+                "node_id": {"type": "integer"},
+                "cpus": {"type": "keyword"},
+                "memory_gb": {"type": "float"}
+              }
+            }
+          }
+        },
+        {
+          "storage_devices": {
+            "path_match": "system_under_test.hardware.storage.*",
+            "mapping": {
+              "type": "object",
+              "enabled": true
+            }
+          }
+        },
+        {
+          "network_interfaces": {
+            "path_match": "system_under_test.hardware.network.*",
+            "mapping": {
+              "type": "object",
+              "enabled": true
+            }
+          }
+        },
+        {
+          "cpu_flags": {
+            "path_match": "system_under_test.hardware.cpu.flags.*",
+            "mapping": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "validation_threads": {
+            "path_match": "results.runs.*.validation.threads",
+            "mapping": {
+              "type": "nested",
+              "properties": {
+                "thread": {"type": "integer"},
+                "crcfinal": {"type": "keyword"},
+                "crclist": {"type": "keyword"},
+                "crcmatrix": {"type": "keyword"},
+                "crcstate": {"type": "keyword"}
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "metadata": {
+          "properties": {
+            "document_id": {"type": "keyword"},
+            "document_type": {"type": "keyword"},
+            "zathras_version": {"type": "keyword"},
+            "test_timestamp": {"type": "date"},
+            "processing_timestamp": {"type": "date"},
+            "collection_timestamp": {"type": "date"},
+            "os_vendor": {"type": "keyword"},
+            "cloud_provider": {"type": "keyword"},
+            "instance_type": {"type": "keyword"},
+            "scenario_name": {"type": "keyword"},
+            "iteration": {"type": "integer"}
+          }
+        },
+        "test": {
+          "properties": {
+            "name": {"type": "keyword"},
+            "version": {"type": "keyword"},
+            "wrapper_version": {"type": "keyword"},
+            "description": {"type": "text"},
+            "url": {"type": "keyword"}
+          }
+        },
+        "system_under_test": {
+          "properties": {
+            "hardware": {
+              "properties": {
+                "cpu": {
+                  "properties": {
+                    "vendor": {"type": "keyword"},
+                    "model": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "architecture": {"type": "keyword"},
+                    "cores": {"type": "integer"},
+                    "threads_per_core": {"type": "integer"},
+                    "sockets": {"type": "integer"},
+                    "numa_nodes": {"type": "integer"},
+                    "frequency_mhz": {"type": "float"},
+                    "cache_l1d": {"type": "keyword"},
+                    "cache_l1i": {"type": "keyword"},
+                    "cache_l2": {"type": "keyword"},
+                    "cache_l3": {"type": "keyword"},
+                    "flags": {
+                      "type": "object",
+                      "dynamic": true
+                    }
+                  }
+                },
+                "memory": {
+                  "properties": {
+                    "total_gb": {"type": "float"},
+                    "total_kb": {"type": "long"},
+                    "available_kb": {"type": "long"},
+                    "speed_mhz": {"type": "integer"},
+                    "type": {"type": "keyword"}
+                  }
+                },
+                "numa": {
+                  "type": "object",
+                  "dynamic": true
+                },
+                "storage": {
+                  "type": "object",
+                  "dynamic": true
+                },
+                "network": {
+                  "type": "object",
+                  "dynamic": true
+                }
+              }
+            },
+            "operating_system": {
+              "properties": {
+                "distribution": {"type": "keyword"},
+                "version": {"type": "keyword"},
+                "kernel_version": {"type": "keyword"},
+                "hostname": {"type": "keyword"},
+                "boot_time": {"type": "date", "ignore_malformed": true},
+                "uptime_seconds": {"type": "long"}
+              }
+            },
+            "configuration": {
+              "properties": {
+                "tuned_profile": {"type": "keyword"},
+                "selinux_status": {"type": "keyword"},
+                "transparent_hugepages": {"type": "keyword"},
+                "kernel_parameters": {
+                  "type": "object",
+                  "enabled": true
+                },
+                "sysctl_parameters": {
+                  "type": "object",
+                  "enabled": true
+                }
+              }
+            }
+          }
+        },
+        "test_configuration": {
+          "properties": {
+            "iterations_requested": {"type": "integer"},
+            "parameters": {
+              "type": "object",
+              "enabled": true
+            },
+            "environment": {
+              "type": "object",
+              "enabled": true
+            },
+            "tuning": {
+              "type": "object",
+              "enabled": true
+            }
+          }
+        },
+        "results": {
+          "properties": {
+            "status": {"type": "keyword"},
+            "execution_time_seconds": {"type": "float"},
+            "total_runs": {"type": "integer"},
+            "primary_metric": {
+              "properties": {
+                "name": {"type": "keyword"},
+                "value": {"type": "float"},
+                "unit": {"type": "keyword"}
+              }
+            },
+            "overall_statistics": {
+              "properties": {
+                "mean": {"type": "float"},
+                "median": {"type": "float"},
+                "min": {"type": "float"},
+                "max": {"type": "float"},
+                "stddev": {"type": "float"},
+                "sample_count": {"type": "integer"}
+              }
+            },
+            "runs": {
+              "type": "object",
+              "dynamic": true
+            }
+          }
+        },
+        "runtime_info": {
+          "properties": {
+            "start_time": {"type": "date"},
+            "end_time": {"type": "date"},
+            "duration_seconds": {"type": "float"},
+            "command": {"type": "text"},
+            "working_directory": {"type": "keyword"},
+            "user": {"type": "keyword"}
+          }
+        }
+      }
+    }
+  }
+}
+

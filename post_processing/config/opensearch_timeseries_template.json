@@ -1,0 +1,110 @@
+{
+  "index_patterns": ["zathras-timeseries*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "index": {
+        "refresh_interval": "5s",
+        "max_result_window": 100000,
+        "mapping": {
+          "total_fields": {
+            "limit": 5000
+          }
+        }
+      }
+    },
+    "mappings": {
+      "dynamic": false,
+      "properties": {
+        "metadata": {
+          "properties": {
+            "document_id": {"type": "keyword"},
+            "timeseries_id": {"type": "keyword"},
+            "timestamp": {"type": "date"},
+            "sequence": {"type": "integer"},
+            "test_timestamp": {"type": "date"},
+            "processing_timestamp": {"type": "date"},
+            "os_vendor": {"type": "keyword"},
+            "cloud_provider": {"type": "keyword"},
+            "instance_type": {"type": "keyword"},
+            "scenario_name": {"type": "keyword"},
+            "iteration": {"type": "integer"}
+          }
+        },
+        "test": {
+          "properties": {
+            "name": {"type": "keyword"},
+            "version": {"type": "keyword"},
+            "wrapper_version": {"type": "keyword"},
+            "description": {"type": "text"},
+            "url": {"type": "keyword"}
+          }
+        },
+        "system_under_test": {
+          "properties": {
+            "hardware": {
+              "properties": {
+                "cpu": {
+                  "properties": {
+                    "vendor": {"type": "keyword"},
+                    "model": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "architecture": {"type": "keyword"},
+                    "cores": {"type": "integer"},
+                    "threads_per_core": {"type": "integer"},
+                    "sockets": {"type": "integer"},
+                    "numa_nodes": {"type": "integer"},
+                    "frequency_mhz": {"type": "float"}
+                  }
+                },
+                "memory": {
+                  "properties": {
+                    "total_gb": {"type": "float"},
+                    "total_kb": {"type": "long"}
+                  }
+                }
+              }
+            },
+            "operating_system": {
+              "properties": {
+                "distribution": {"type": "keyword"},
+                "version": {"type": "keyword"},
+                "kernel_version": {"type": "keyword"},
+                "hostname": {"type": "keyword"}
+              }
+            },
+            "configuration": {
+              "properties": {
+                "tuned_profile": {"type": "keyword"},
+                "selinux_status": {"type": "keyword"}
+              }
+            }
+          }
+        },
+        "results": {
+          "properties": {
+            "run": {
+              "properties": {
+                "run_key": {"type": "keyword"},
+                "run_number": {"type": "integer"},
+                "status": {"type": "keyword"},
+                "benchmark_name": {"type": "keyword"},
+                "benchmark_description": {"type": "text"},
+                "configuration": {
+                  "type": "object",
+                  "enabled": true
+                }
+              }
+            },
+            "value": {"type": "float"},
+            "unit": {"type": "keyword"},
+            "point_metrics": {
+              "type": "object",
+              "enabled": true
+            }
+          }
+        }
+      }
+    }
+  }
+}
