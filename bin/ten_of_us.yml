@@ -125,7 +125,7 @@
 #
 #
 - hosts: install_group
-  user: config_info.test_user
+  remote_user: config_info.test_user
   become_user: root
   become: true
   vars_files: ansible_vars.yml
@@ -179,7 +179,7 @@
 # install tools
 # 
 - hosts: install_group
-  user: config_info.test_user
+  remote_user: config_info.test_user
   vars_files: ansible_vars.yml
   gather_facts: no
   tasks:
@@ -211,7 +211,7 @@
 # Make sure CodeReady Builder repo is enabled, thanks inconsistent clouds
 #
 - hosts: install_group
-  user: config_info.test_user
+  remote_user: config_info.test_user
   become_user: root
   become: true
   vars_files: ansible_vars.yml
@@ -307,7 +307,7 @@
 # Enable SLES legacy module
 #
 - hosts: install_group
-  user: config_info.test_user
+  remote_user: config_info.test_user
   become_user: root
   become: true
   vars_files: ansible_vars.yml
@@ -369,7 +369,7 @@
 # Install the packages.
 # 
 - hosts: install_group
-  user: config_info.test_user
+  remote_user: config_info.test_user
   become_user: root
   become: true
   vars_files:
@@ -428,7 +428,7 @@
       - config_info.do_not_install_packages == 0
 
 - hosts: install_group
-  user: config_info.test_user
+  remote_user: config_info.test_user
   become_user: root
   become: true
   vars_files:
@@ -443,7 +443,7 @@
 
 # Install packages for other OSes
 - hosts: install_group
-  user: config_info.test_user
+  remote_user: config_info.test_user
   become_user: root
   become: true
   vars_files:
@@ -468,7 +468,7 @@
 
 # Install packages for other OSes
 - hosts: install_group
-  user: config_info.test_user
+  remote_user: config_info.test_user
   become_user: root
   become: true
   vars_files:
@@ -521,7 +521,7 @@
 # Reboot the system if we did an update.
 # 
 - hosts: install_group
-  user: config_info.test_user
+  remote_user: config_info.test_user
   become_user: root
   become: true
   vars_files: ansible_vars.yml
@@ -603,7 +603,7 @@
 # Set the test_group
 #
 - hosts: local
-  user: config_info.test_user
+  remote_user: config_info.test_user
   become_user: root
   become: true
   vars_files: 
