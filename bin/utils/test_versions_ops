@@ -32,11 +32,11 @@ usage()
 {
 	echo "Used to manipulate the test configuration files."
         echo "Usage: $0"
-	echo "--config_dir <dir>: The configurtin directory to check.  Default is config."
+	echo "--config_dir <dir>: The configuration directory to check.  Default is config."
         echo "--test_version_check 0/1: Sees if the version of the test is the latest."
 	echo "  0=no verification 1=verify. 0 is the default"
 	echo "--update_test_versions 0/1:  Will update the test version to the latest."
-	echo "  0=do not upate 1=update.  0 is the default"
+	echo "  0=do not update 1=update.  0 is the default"
         echo "--usage: this usage message"
         echo "-h: this usage message"
         exit 0
@@ -132,7 +132,6 @@ test_version_ops()
 					mv ${test_repo}.new ${test_repo}
 				fi
 			fi
-			rm -rf $temp_dir 
 		else
 			#
 			# Does not return
@@ -162,11 +161,10 @@ opts=$(getopt \
 	-- "$@"
 )
 
-
-eval set --$opts
 if [[ $? -ne 0 ]]; then
 	usage $0
 fi
+eval set -- "$opts"
 
 
 while [[ $# -gt 0 ]]; do
@@ -186,7 +184,7 @@ while [[ $# -gt 0 ]]; do
 		--usage)
 			usage $0
 		;;
-		--h)
+		-h)
 			usage $0
 		;;
 		--)
