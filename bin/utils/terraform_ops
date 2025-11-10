@@ -31,13 +31,11 @@ tf_terminate()
 		dirs=`find . -type d | grep terraform.tfstate.d | rev  | cut -d'/' -f3- | rev | grep tf`
 	else
 		dirs=`echo $tf_term_list | sed "s/,/ /g"`
-		echo $tf_term_list
-		echo $dirs
 	fi
 	for tf_del in $dirs; do
 		if [[ -d $tf_del ]]; then
 			pushd $tf_del > /dev/null
-			terraform show | grep -q "No resources" > /dev/null
+			terraform show | grep -q "No resources"
 			if [[ $? -ne 0 ]]; then
 				terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
 				if [ $? -eq 0 ]; then
@@ -52,7 +50,7 @@ tf_terminate()
 				fi
 			fi
 			#
-			# Get arid of the tf directory
+			# Get rid of the tf directory
 			#
 			cd ..
 			rm -rf tf
@@ -99,7 +97,7 @@ tf_list_func()
 				printf "\tname_tag: %s\n" $name_tag
 			fi
 		fi
-		rm tf_list_info
+		rm -f tf_list_info
 		popd > /dev/null
 	done
 }
@@ -134,12 +132,12 @@ opts=$(getopt \
 	-- "$@"
 )
 
-tf_list=0
 if [[ $? -ne 0 ]]; then
 	usage $0
 fi
+tf_list=0
 
-eval set --$opts
+eval set -- "$opts"
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -154,7 +152,7 @@ while [[ $# -gt 0 ]]; do
 		--usage)
 			usage $0
 		;;
-		--h)
+		-h)
 			usage $0
 		;;
 		--)
