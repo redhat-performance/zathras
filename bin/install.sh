@@ -139,7 +139,7 @@ done
 
 
 # install AWS collection and POSIX collection for ansible
-ansible_collections=(amazon.aws ansible.posix community.aws community.general)
+ansible_collections=(ansible.posix community.aws community.general)
 for collection in "${ansible_collections[@]}"; do
         ansible-galaxy collection install "$collection" || {
                 exit 1
@@ -148,6 +148,14 @@ for collection in "${ansible_collections[@]}"; do
         collection_version=$(ansible-galaxy collection list "$collection" 2>/dev/null | grep "$collection" | awk '{print $2}' || echo "unknown")
         installed_ansible_collections+=("$collection:$collection_version")
 done
+
+# Pin amazon.aws to version 9.1.0 for compatibility reasons
+ansible-galaxy collection install "amazon.aws:==9.1.0" || {
+        exit 1
+}
+# Get the installed version for amazon.aws
+amazon_aws_version=$(ansible-galaxy collection list "amazon.aws" 2>/dev/null | grep "amazon.aws" | awk '{print $2}' || echo "unknown")
+installed_ansible_collections+=("amazon.aws:$amazon_aws_version")
 
 # Function to write installation record
 write_installation_record() {
