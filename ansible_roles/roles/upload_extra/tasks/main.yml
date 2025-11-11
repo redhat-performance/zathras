@@ -27,3 +27,10 @@
 - name: Upload extra files
   include_role:
     name: upload_extra_files
+
+#
+# Link uploads to /uploads if need be.
+#
+- name: upload the extra file info
+  shell: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} \"sudo ln -sf {{ dyn_data.kit_upload_directory }}/uploads /uploads\""
+
