@@ -88,7 +88,7 @@ opts=$(getopt \
 	-- "$@"
 )
 
-eval set --$opts
+eval set -- "$opts"
 if [[ $? -ne 0 ]]; then
 	cle_usage $0
 fi
@@ -131,7 +131,7 @@ while [[ $# -gt 0 ]]; do
 		--usage)
 			cle_usage $0
 		;;
-		--h)
+		-h)
 			cle_usage $0
 		;;
 		--)
@@ -170,11 +170,9 @@ if [[ $msg_string != "" ]] && [[ $msg_string != "No Message" ]]; then
 		# to the file.
 		#
 		flock -x $top_dir/$fail_report echo -e "${error_string}" >> $top_dir/$fail_report
-	else
-		if [[ $msg_string != "" ]] && [[ $msg_string != "No Message" ]]; then
-			echo $msg_string
-		fi
 	fi
+else
+	echo $msg_string
 fi
 #
 # Restore the requested files.
