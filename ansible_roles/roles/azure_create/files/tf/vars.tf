@@ -49,7 +49,7 @@ variable "ssh_key_path" {
 
 variable "vm_image" {
   type    = string
-  default = "RedHat:RHEL:8_4:8.4.2021081003"
+  default = "none"
 }
 
 variable "az_subscription" {
