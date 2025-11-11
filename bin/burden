@@ -114,6 +114,7 @@ gl_retry_failed_tests=1
 gl_base_cost=0
 gl_host_uses_nvme=0
 gl_cloud_net_type="default"
+gl_version_check_only=0
 #
 # We will default to eastus
 #
@@ -517,13 +518,13 @@ show_aws_images()
 			ami_arch=""
 		fi
 		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}" | grep "${ami_check}"`
-		if [[ $ami_value != "" ]]; then
+		if [[ $ami_value == "" ]]; then
 			#
-			# check_for_private_amis
+			# Not found in public images, check_for_private_amis
 			#
 			get_cloud_acct_id
 			ami_value=`aws ec2 describe-images --owners $gl_cloud_acct_id --output table --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' | grep "${ami_check}"`
-			if [[ $ami_value != "" ]]; then
+			if [[ $ami_value == "" ]]; then
 				cleanup_and_exit  "Error: ${gl_cloud_os_version}: unknown ami" 1 ${gl_system_type}
 			fi
 		fi
@@ -1577,7 +1578,6 @@ generate_tags()
 		echo "}" >> add_vars_tf
 		if [[ $gl_system_type == "azure" ]]; then
 			val1=`echo $value | sed "s/_/-/g"`
-			echo $value $val1 >> /tmp/dave
 		else
 			val1=$value
 		fi
@@ -1733,7 +1733,7 @@ create_ansible_options()
 		# Azure, we have a limit on resource group name, need the test_index.
 		#
 		source $UTILS_DIR/gl_lock_exclusive
-		if [[ $gl_sys_type == "azure" ]]; then
+		if [[ $gl_system_type == "azure" ]]; then
 			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${host_or_cloud_inst}
 		else
 			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${host_or_cloud_inst}_${test_index}
@@ -1747,7 +1747,7 @@ create_ansible_options()
 		while [ $rc -eq 0 ]
 		do
 			let "test_index=$test_index+1"
-			if [[ $gl_sys_type == "azure" ]]; then
+			if [[ $gl_system_type == "azure" ]]; then
 				run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${host_or_cloud_inst}
 			else
 				run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${host_or_cloud_inst}_${test_index}
@@ -1860,7 +1860,7 @@ create_ansible_options()
 		else
 			spot_start=0
 		fi
-		if [[ $gl_system_type == "azure" ]] && [[ gl_use_spot -eq 1 ]]; then
+		if [[ $gl_system_type == "azure" ]] && [[ $gl_use_spot -eq 1 ]]; then
 			gl_spot_price=1
 		fi
 		echo "  spot_start_price: ${gl_spot_price}" >> ansible_vars_main.yml
@@ -2079,7 +2079,7 @@ create_ansible_options()
 		worker=`echo $gl_test_list_out | cut -d' ' -f2- | sed "s/,/ /g"`
 		if [ -d "tests_to_run" ]; then
 			echo "========================================" > results_info
-			if [[ $gl_sys_type != "local" ]]; then
+			if [[ $gl_system_type != "local" ]]; then
 				test_sys=`grep host_or_cloud_ins ansible_vars.yml | cut -d':' -f 2 | sed "s/ //g"`
 			else
 				test_sys=${gl_host_config}
@@ -2389,7 +2389,7 @@ verify_force_upload_value()
 #
 verify_selinux_state()
 {
-	if [[ $1 -ne "enabled" ]] && [[ $1 -ne "disabled" ]]; then
+	if [[ $1 != "enabled" ]] && [[ $1 != "disabled" ]]; then
 		cleanup_and_exit "Error: $1, is an unrecognized selinux state value.  Valid values are enabled/disabled" 1
 	fi
 }
@@ -2399,7 +2399,7 @@ verify_selinux_state()
 #
 verify_selinux_level()
 {
-	if [[ $1 -ne "enforcing" ]] && [[ $1 -ne "disabled" ]] && [[ $1 -ne "permissive" ]]; then
+	if [[ $1 != "enforcing" ]] && [[ $1 != "disabled" ]] && [[ $1 != "permissive" ]]; then
 		cleanup_and_exit "Error: $1, is an unrecognized selinux level value.  Valid values are enforcing/permissive/disabled" 1
 	fi
 }
@@ -2421,7 +2421,7 @@ verify_selinux()
 #
 verify_bootc_mode()
 {
-	if [[ $gl_mode == "image" ]] && [[ $gl_no_packages -eq 0 ]]; then
+	if [[ $gl_bootc_mode -eq 1 ]] && [[ $gl_no_packages -eq 0 ]]; then
 		cleanup_and_exit "Error: mode \"image\" is not supported with package installation" 1
 	fi
 }
@@ -3061,6 +3061,9 @@ verify_test_configuration()
 	if [ $bail_out -eq 1 ]; then
 		cleanup_and_exit "Error: At least one get tag is not known." 1
 	fi
+	if [[ $gl_version_check_only -eq 1 ]]; then
+		cleanup_and_exit "" 0
+	fi
 }
 #
 # We read in the template file for the test, and for each line that is not
@@ -3647,7 +3650,7 @@ set_general_value()
 				echo "$1 $2" >> $gl_cli_supplied_options
 				gl_cloud_terminate_instance=$2
 				verify_data verify_terminate_value $2
-				gl_cloud_terminate_instance_set=0
+				gl_cloud_terminate_instance_set=1
 			fi
 			shift_by=2
 		;;
@@ -3685,6 +3688,7 @@ set_general_value()
 			shift_by=2
 		;;
 		--test_version_check)
+			gl_version_check_only=1
 			shift_by=1
 		;;
 		--test_user)
