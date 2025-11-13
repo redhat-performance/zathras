@@ -708,25 +708,27 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
-  - name: include dynamic info
-    include_vars:
-      file: "{{ working_dir }}/ansible_run_vars.yml"
-      name: dyn_data
-  - name: handle_existing_uploads
-    include_role:
-      name: existing_uploads_dir
-    vars:
-      type: "uploads"
-      real_dir: "{{ dyn_data.kit_upload_directory }}"
+  - name: upload to existing uplaods dir
+    block:
+    - name: include dynamic info
+      include_vars:
+        file: "{{ working_dir }}/ansible_run_vars.yml"
+        name: dyn_data
+    - name: handle_existing_uploads
+      include_role:
+        name: existing_uploads_dir
+      vars:
+        type: "uploads"
+        real_dir: "{{ dyn_data.kit_upload_directory }}"
+    when: config_info.kit_upload_directory != "none"
 
- #
- # Now upload the file.  Due to Ansible copying the file first to ~/.ans* we need to do an ssh.
- #
- #
+#
+# Now upload the file.  Due to Ansible copying the file first to ~/.ans* we need to do an ssh.
+#
 - hosts: localhost
   vars_files:
     - ansible_vars.yml
@@ -736,6 +738,7 @@
   - name: upload extra files
     include_role:
       name: upload_extra
+    when: config_info.kit_upload_directory != "none"
 
 - hosts: test_group
   vars_files:
@@ -745,16 +748,20 @@
   become: true
   gather_facts: no
   tasks:
-  - name: include dynamic info
-    include_vars:
-      file: "{{ working_dir }}/ansible_run_vars.yml"
-      name: dyn_data
-  - name: handle existing workloads dir
-    include_role:
-      name: existing_uploads_dir
-    vars:
-      type: "workloads"
-      real_dir: "{{ dyn_data.kit_upload_directory }}"
+
+  - name: Handle uploads
+    block:
+    - name: include dynamic info
+      include_vars:
+        file: "{{ working_dir }}/ansible_run_vars.yml"
+        name: dyn_data
+    - name: handle existing workloads dir
+      include_role:
+        name: existing_uploads_dir
+      vars:
+        type: "workloads"
+        real_dir: "{{ dyn_data.kit_upload_directory }}"
+    when: config_info.kit_upload_directory != "none"
 
 #
 # retrieve the test
