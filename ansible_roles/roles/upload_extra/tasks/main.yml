@@ -21,16 +21,21 @@
     line: "status: success"
     create: yes
 
+- name: include dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+- name: make the uploads directory
+  shell: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} mkdir -p {{ dyn_data.kit_upload_directory }}"
+
+- name: Now link to /
+  shell: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} ln -s {{ dyn_data.kit_upload_directory }}/uploads /uploads"
+
+
 #
 # If we are pulling a file
 #
 - name: Upload extra files
   include_role:
     name: upload_extra_files
-
-#
-# Link uploads to /uploads if need be.
-#
-- name: upload the extra file info
-  shell: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} \"sudo ln -sf {{ dyn_data.kit_upload_directory }}/uploads /uploads\""
-
