@@ -1,7 +1,4 @@
 location: https://github.com/redhat-performance/phoronix-wrapper/archive/refs/tags
-exec_dir: "phoronix-wrapper-3.0/phoronix"
-repo_file: "v3.0.tar.gz"
-rhel_pkgs: gcc,graphviz,python3,lksctp-tools-devel,php-cli,php-xml,php-json,bc,perf,git,unzip
-ubuntu_pkgs: zip,gcc,graphviz,python3,php-cli,php-xml,php-json,unzip,bc
-amazon_pkgs: git build-essential,gcc,graphviz,python3,bc,git,zip,unzip,php-cli,php-xml
+exec_dir: "phoronix-wrapper-3.2/phoronix"
+repo_file: "v3.2.tar.gz"
 test_script_to_run: run_phoronix.sh

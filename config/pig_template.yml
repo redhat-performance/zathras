@@ -1,7 +1,4 @@
 location: https://github.com/redhat-performance/pig-wrapper/archive/refs/tags
-exec_dir: "pig-wrapper-2.0/pig"
-repo_file: "v2.0.tar.gz"
-rhel_pkgs: gcc,numactl-devel,bc,git,unzip,perf
-ubuntu_pkgs: libnuma-dev,gcc,unzip,zip
-amazon_pkgs: numactl,bc,git,zip,unzip
+exec_dir: "pig-wrapper-2.1/pig"
+repo_file: "v2.1.tar.gz"
 test_script_to_run: run_pig.sh

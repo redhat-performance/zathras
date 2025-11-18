@@ -1,10 +1,6 @@
 location: https://github.com/redhat-performance/passmark-wrapper/archive/refs/tags
-exec_dir: "passmark-wrapper-2.0/passmark"
-repo_file: "v2.0.tar.gz"
-rhel_pkgs: bc,numactl,perf,git,unzip
-ubuntu_pkgs: unzip,zip
-amazon_pkgs: bc,git,zip,unzip
-suse_pkgs: bc,libnuma1,perf,git,unzip,libncurses5
+exec_dir: "passmark-wrapper-2.1/passmark"
+repo_file: "v2.1.tar.gz"
 test_script_to_run: passmark_run
 test_specific: "--iterations 5"
 upload_extra: "/home/exports/pt_linux_x64.zip /home/exports/pt_linux_arm64.zip"
