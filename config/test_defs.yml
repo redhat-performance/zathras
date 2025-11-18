@@ -21,6 +21,7 @@ test_defs:
     test_name: specjbb
     test_description: Standard specjbb test
     archive_results: "yes"
+    test_specific: " --java_version {{ config_info.java_version }}"
 
   test5:
     test_template: uperf_template.yml
