@@ -1,9 +1,6 @@
 location: https://github.com/redhat-performance/fio-wrapper/archive/refs/tags
 exec_dir: "fio-wrapper-2.1/fio"
 repo_file: "v2.1.tar.gz"
-rhel_pkgs: gcc,numactl,python3,bc,fio,perf,git,unzip
-ubuntu_pkgs: fio,unzip,zip
-amazon_pkgs: fio,bc,git,zip,unzip
 storage_required: "yes"
 test_script_to_run: fio_run
 test_specific: "--disks {{ dyn_data.storage }}"
