@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/speccpu2017-wrapper/archive/refs/tags
-exec_dir: "speccpu2017-wrapper-2.0/speccpu2017"
-repo_file: "v2.0.tar.gz"
+exec_dir: "speccpu2017-wrapper-2.1/speccpu2017"
+repo_file: "v2.1.tar.gz"
 rhel_pkgs_9: bc,libnsl,gcc-gfortran,nvme-cli,perf,libxcrypt-compat,git,unzip
 rhel_pkgs: bc,libnsl,gcc-gfortran,perf,git,unzip,libxcrypt-compat
 ubuntu_pkgs: gcc,bc,gfortran,g++,unzip,zip
