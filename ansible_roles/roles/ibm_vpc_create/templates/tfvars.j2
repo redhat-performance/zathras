@@ -1,0 +1,35 @@
+resource_group = "{{ config_info.cloud_resource_group }}"
+
+machine_type = "{{ config_info.host_or_cloud_inst }}"
+region = "{{ config_info.cloud_region }}"
+zone = "{{ config_info.cloud_zone | default(config_info.cloud_region + '-1') }}"
+
+cloud_os_version = "{{ config_info.cloud_os_version }}"
+cloud_placement = "{{ config_info.cloud_placement }}"
+ibmcloud_api_key = "{{ config_info.ibmcloud_api_key }}"
+
+run_label = "{{ config_info.user_running }}-{{ config_info.run_label | lower() | replace ('.','-',63) | replace('_','-',63) | replace('/','-')}}"
+
+ssh_key_name = "{{ config_info.ssh_key_name }}"
+
+test_user = "{{ config_info.test_user }}"
+
+image_name = "{{ config_info.cloud_os_version }}"
+
+pb_disk_profile = "general-purpose"
+pb_disk_count = 1
+pb_vol_size = 500
+
+# Check "cloud_numb_networks", default value is "1" for both vars
+{% if config_info.cloud_numb_networks >= 1 %}
+vm_count = 2
+network_count = "{{ config_info.cloud_numb_networks }}"
+{% endif %}
+
+{% if config_info.vpc_tags is defined and config_info.vpc_tags|length > 0 %}
+vpc_tags = [
+{% for tag in config_info.vpc_tags %}
+  "{{ tag }}",
+{% endfor %}
+]
+{% endif %}

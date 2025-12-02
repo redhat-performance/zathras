@@ -1,0 +1,7 @@
+disk_profile = "general-purpose"
+disk_count = {{ disk_count }}
+disk_size = {{ disk_size }}
+
+{% if disk_type == "gp3" %}
+disk_profile = "custom"
+{% endif %}

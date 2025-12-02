@@ -1,0 +1,32 @@
+machine_type = "{{ config_info.host_or_cloud_inst }}"
+
+cloud_os_version = "{{ config_info.cloud_os_version }}"
+
+run_label = "{{ config_info.user_running }}-{{ config_info.run_label | lower() | replace ('.','-',63) | replace('_','-',63) | replace('/','-',63) }}"
+
+region = "{{ config_info.cloud_region }}"
+
+zone = "{{ config_info.cloud_zone }}"
+
+test_user = "{{ config_info.test_user }}"
+
+ssh_key_name = "{{ ibm_ssh_key_name_value }}"
+
+vm_image = "{{ config_info.cloud_os_version }}"
+
+{% if resource_group_id is defined and resource_group_id.stdout is defined and resource_group_id.stdout != "" %}
+resource_group_id = "{{ resource_group_id.stdout }}"
+{% endif %}
+
+{% if config_info.vpc_name is defined and config_info.vpc_name != "" %}
+vpc_name = "{{ config_info.vpc_name }}"
+{% endif %}
+
+# Check "cloud_numb_networks", default value is "1" for both vars
+{% if config_info.cloud_numb_networks is defined and config_info.cloud_numb_networks >= 1 %}
+vm_count = 2
+network_count = {{ config_info.cloud_numb_networks }}
+{% else %}
+vm_count = 1
+network_count = 0
+{% endif %}
