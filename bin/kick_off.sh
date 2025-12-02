@@ -173,6 +173,16 @@ do
 done
 
 #
+# If we created the permission file, remove it when done.
+#
+remove_perm_file()
+{
+	if [[ $ssh_key_file != "" ]]; then
+		rm -f config/user.pem_test
+	fi
+}
+
+#
 # Cycle through all the files setting system values.
 #
 export ANSIBLE_HOST_KEY_CHECKING=False
@@ -227,12 +237,14 @@ do
 				if [[ $sp_check != "0" ]]; then
 					touch spot_failure
 					spot_recover=0
+					remove_perm_file
 					exit 1
 				fi
 			else
 				#
 				# Not spot, test started, system died.
 				#
+				remove_perm_file
 				echo Error: test started, system died.
 				exit 1
 			fi
@@ -241,6 +253,7 @@ do
 			# Rarely will happen.
 			#
 			if [[ ! -f test_returned ]]; then
+				remove_perm_file
 				echo Error: test started, system died.
 				exit 1
 			fi
@@ -271,6 +284,7 @@ do
 	$top_dir/bin/remove_wrong_cpus $top_dir/$direct
 	init_system=\""no\""
 done
+remove_perm_file
 
 #
 # Only if the test actually ran.
