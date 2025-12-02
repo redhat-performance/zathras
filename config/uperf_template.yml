@@ -1,6 +1,9 @@
 location: https://github.com/redhat-performance/uperf-wrapper/archive/refs/tags
 exec_dir: "uperf-wrapper-2.1/uperf"
-repo_file: "v2.1.tar.gz"
+repo_file: "v2.1.zip"
+rhel_pkgs: python3,gcc,lksctp-tools-devel,bc,perf,git,unzip,perf
+ubuntu_pkgs: gcc,python3,libsctp-dev,lksctp-tools,libusrsctp-dev,make,net-tools,dh-autoreconf,zip,unzip
+amazon_pkgs: git,python3,gcc,lksctp-tools-devel,xorg-x11-xauth
 network_required: "yes"
 test_script_to_run: uperf_run
 test_specific: --client_ips {{ dyn_data.ct_uperf_server_ip }} --server_ips {{ dyn_data.ct_uperf_client_list }} --tests stream --numb_jobs 1 --packet_type tcp --packet_sizes 64 --time 60

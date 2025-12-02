@@ -132,7 +132,7 @@ gl_git_timeout_set=0
 gl_archive_location=$value_not_set
 gl_error_repo_errors=1
 gl_valid_os_vendors="rhel ubuntu amazon suse private none"
-gl_valid_system_types="aws azure gcp local"
+gl_valid_system_types="aws azure gcp ibm local"
 gl_package_name=$value_not_set
 gl_show_tests=0
 gl_create_attempts=5
@@ -466,6 +466,25 @@ gcp_image_lookup()
 	cleanup_and_exit "" 0
 }
 
+#
+# Show the OS versions available for IBM Cloud for a specific OS vendor.
+#
+ibm_image_lookup()
+{
+	if [[ $gl_os_vendor == "ubuntu" ]]; then
+		os_filter="ubuntu"
+	elif [[ $gl_os_vendor == "rhel" ]]; then
+		os_filter="red"
+	elif [[ $gl_os_vendor == "suse" ]]; then
+		os_filter="suse"
+	else
+		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, suse" 1 ${gl_system_type}
+	fi
+	echo "Pulling requested IBM Cloud OS image information, may take a bit."
+	ibmcloud is images --visibility public --output json | jq -r '.[] | select(.operating_system.name | contains("'$os_filter'")) | [.name, .id, .operating_system.name, .status] | @tsv' | column -t
+	cleanup_and_exit "" 0
+}
+
 get_cloud_acct_id()
 {
 	if [[ $gl_cloud_acct_id == "" ]]; then
@@ -570,6 +589,10 @@ cloud_image_lookup()
 
 	if [ "$gl_system_type" == "gcp" ]; then
 		gcp_image_lookup $gl_os_vendor
+	fi
+
+	if [ "$gl_system_type" == "ibm" ]; then
+		ibm_image_lookup $gl_os_vendor
 	fi
 	cleanup_and_exit  "Unknown cloud type $gl_system_type" 1 ${gl_system_type}
 }
@@ -929,6 +952,19 @@ obtain_zone()
 		# Note that Azure doesn't always use zones unlike AWS
 		# but we'll set it here anyway.
 		gl_cloud_region_zone=`echo ${azure_zones[${index_in}]}`
+	elif  [[ $gl_system_type == "ibm" ]]; then
+		#
+		# IBM Cloud zones within region
+		# Format: region-zone (e.g., us-south-1, us-south-2, us-south-3)
+		#
+		if [[ "$gl_cloud_region" == "" ]]; then
+			gl_cloud_region="us-south"
+		fi
+		# IBM Cloud typically has 3 zones per region
+		declare -a ibm_zones=("1" "2" "3")
+		ibm_num_zones=3
+		index_in=`echo $RANDOM % $ibm_num_zones | bc`
+		gl_cloud_region_zone=`echo ${ibm_zones[${index_in}]}`
 	fi
 }
 
@@ -955,6 +991,13 @@ set_region_zone_defaults()
 			cleanup_and_exit "Unable to retrieve the gcp region" 1
 		fi
 		gl_cloud_region_zone=`gcloud config list compute/zone --quiet | grep zone | awk '{ print $3 }'`
+	elif [[ $gl_system_type == "ibm" ]]; then
+		gl_cloud_region=`ibmcloud target --output json | jq -r '.region.name' 2>/dev/null`
+		if [ $? -eq 1 ] || [ -z "$gl_cloud_region" ]; then
+			echo "Warning: Unable to retrieve IBM Cloud region, using default us-south"
+			gl_cloud_region="us-south"
+		fi
+		obtain_zone
 	fi
 }
 
@@ -1354,6 +1397,9 @@ set_user_name()
 			gl_test_user=${user_name}
 		elif [[ $gl_system_type == "gcp" ]]; then
 			gl_test_user=${user_name}
+		elif [[ $gl_system_type == "ibm" ]]; then
+			# IBM Cloud defaults to root
+			gl_test_user=root
 		else
 			#
 			# Default to root
@@ -1453,6 +1499,17 @@ aws_specific_os_version()
 	if [[ $ami_found -eq 0 ]]; then
 		cleanup_and_exit "Error: no ami in the list ${gl_cloud_os_version} that matches the architecture $architecture" 1
 	fi
+}
+
+#
+# IBM Cloud specific OS version handling
+# IBM Cloud uses image IDs for OS versions
+#
+ibm_specific_os_version()
+{
+	# For IBM Cloud, we just pass through the image ID
+	# The image ID should be validated by the user via --show_os_versions
+	echo "  cloud_os_version: ${gl_cloud_os_version}" >> ansible_vars_main.yml
 }
 
 #
@@ -1878,6 +1935,8 @@ create_ansible_options()
 			azure_specific_os_version
 		elif [[ $gl_system_type = "aws" ]]; then
 			aws_specific_os_version $system_name
+		elif [[ $gl_system_type = "ibm" ]]; then
+			ibm_specific_os_version
 		else
 			echo "  cloud_os_version: ${gl_cloud_os_version}" >> ansible_vars_main.yml
 		fi
@@ -1897,12 +1956,6 @@ create_ansible_options()
 		# local system type, user is expected to be root. cloud systems are expected
 		# to be non-root.
 		#
-		if [[ $gl_system_type == "local" ]]; then
-			echo "  user_parent_home_dir: /" >> ansible_vars_main.yml
-		else
-			echo "  user_parent_home_dir: /home" >> ansible_vars_main.yml
-		fi
-
 		echo "  java_version: ${gl_java_version}" >> ansible_vars_main.yml
 		if [[ ${gl_rhel_tuned_setting} == "none" ]]; then
 			echo "  rhel_tuned_setting: ${gl_rhel_tuned_setting}" >> ansible_vars_main.yml
@@ -1937,9 +1990,13 @@ create_ansible_options()
 		elif [[ $gl_system_type == "azure" ]]; then
 			# Azure does not put the zone in the region name
 			echo "  cloud_region: ${gl_cloud_region}" >> ansible_vars_main.yml
-		elif [ $gl_system_type == "gcp" ]; then
+		elif [[ $gl_system_type == "gcp" ]]; then
 			echo "  cloud_region: ${gl_cloud_region}" >> ansible_vars_main.yml
 			echo "  cloud_zone: ${gl_cloud_region_zone}" >> ansible_vars_main.yml
+		elif [[ $gl_system_type == "ibm" ]]; then
+			# IBM Cloud uses region-zone format (e.g., us-south-1)
+			echo "  cloud_region: ${gl_cloud_region}" >> ansible_vars_main.yml
+			echo "  cloud_zone: ${gl_cloud_region}-${gl_cloud_region_zone}" >> ansible_vars_main.yml
 		fi
 		#
 		# Record items that we need to do.
@@ -1975,6 +2032,17 @@ create_ansible_options()
 		echo "  test_iterations: ${gl_test_iterations}" >> ansible_vars_main.yml
 		echo "  user_running: ${user_name}" >> ansible_vars_main.yml
 		set_user_name $user_name
+		#
+		# Set user_parent_home_dir based on test_user (must be AFTER set_user_name)
+		#
+		if [[ $gl_test_user == "root" ]]; then
+			# Root user's home is /root, not /home/root
+			echo "  user_parent_home_dir: /" >> ansible_vars_main.yml
+		elif [[ $gl_system_type == "local" ]]; then
+			echo "  user_parent_home_dir: /" >> ansible_vars_main.yml
+		else
+			echo "  user_parent_home_dir: /home" >> ansible_vars_main.yml
+		fi
 		generate_tags $user_name
 
 		#

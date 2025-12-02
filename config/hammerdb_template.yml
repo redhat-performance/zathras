@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/hammerdb-wrapper/archive/refs/tags
 exec_dir: "hammerdb-wrapper-2.1/hammerdb"
-repo_file: "v2.1.tar.gz"
+repo_file: "v2.1.zip"
 os_supported: all
 storage_required: "yes"
 test_script_to_run: hammerdb

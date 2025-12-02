@@ -1,0 +1,53 @@
+---
+# Add created hosts to Ansible groups
+- name: reload dynamic vars
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+- name: Add primary host to test_group
+  add_host:
+    name: "{{ public_ip_list[0] }}"
+    groups: test_group
+    ansible_user: "{{ config_info.test_user }}"
+    ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
+
+- name: Add primary host to install_group
+  add_host:
+    name: "{{ public_ip_list[0] }}"
+    groups: install_group
+    ansible_user: "{{ config_info.test_user }}"
+    ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
+
+- name: Add host to test_group file
+  include_role:
+    name: add_to_host_group
+  vars:
+    working_group_file: "{{ working_dir }}/ansible_test_group"
+    group_name: "test_group_list"
+    host_to_add: "{{ public_ip_list[0] }}"
+
+- name: Add secondary host to groups (if exists)
+  block:
+    - name: Add secondary host to test_group
+      add_host:
+        name: "{{ public_ip_list[1] }}"
+        groups: test_group
+        ansible_user: "{{ config_info.test_user }}"
+        ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
+
+    - name: Add secondary host to install_group
+      add_host:
+        name: "{{ public_ip_list[1] }}"
+        groups: install_group
+        ansible_user: "{{ config_info.test_user }}"
+        ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
+
+    - name: Add secondary host to test_group file
+      include_role:
+        name: add_to_host_group
+      vars:
+        working_group_file: "{{ working_dir }}/ansible_test_group"
+        group_name: "test_group_list"
+        host_to_add: "{{ public_ip_list[1] }}"
+  when: public_ip_list | length > 1

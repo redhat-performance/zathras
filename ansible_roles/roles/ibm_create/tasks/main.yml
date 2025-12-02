@@ -1,0 +1,173 @@
+---
+# tasks file for ibm_create
+
+# Validate IBM Cloud API key is set
+- name: Check for IBM Cloud API key
+  shell: |
+    if [ -z "$IC_API_KEY" ] && [ -z "$IBMCLOUD_API_KEY" ]; then
+      echo "MISSING"
+    else
+      echo "OK"
+    fi
+  register: api_key_check
+  changed_when: false
+
+- name: Fail if IBM Cloud API key not set
+  fail:
+    msg: |
+      IBM Cloud API key is not set. Terraform requires an API key to authenticate.
+
+      Please set one of these environment variables:
+        export IC_API_KEY="your-api-key"
+      OR
+        export IBMCLOUD_API_KEY="your-api-key"
+
+      To create an API key:
+        ibmcloud iam api-key-create zathras-key -d "Zathras Terraform key"
+
+      Then export the key value shown in the output.
+  when: api_key_check.stdout == "MISSING"
+
+- name: include info
+  include_vars:
+    file: "{{ working_dir }}/ansible_vars.yml"
+
+- name: move terraform files
+  copy:
+    src: "tf/{{ item }}"
+    dest: "{{ working_dir }}/tf/"
+  loop:
+    - main.tf
+    - vars.tf
+    - output.tf
+    - network.tf
+
+- name: append custom vars to vars.tf
+  shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf/vars.tf"
+
+- name: Get IBM Cloud resource group
+  shell: ibmcloud resource groups --output json | jq -r '.[0].id'
+  register: resource_group_id
+  ignore_errors: yes
+
+- name: Get IBM Cloud SSH key name
+  shell: |
+    # Try to find a key with "zathras" in the name first (most specific)
+    zathras_key=$(ibmcloud is keys --output json | jq -r '.[] | select(.name | contains("zathras")) | .name' | head -1)
+    if [ -n "$zathras_key" ]; then
+      echo "$zathras_key"
+      exit 0
+    fi
+    # Try to find a key matching the username pattern
+    user_key=$(ibmcloud is keys --output json | jq -r '.[] | select(.name | contains("'{{ config_info.user_running }}'")) | .name' | head -1)
+    if [ -n "$user_key" ]; then
+      echo "$user_key"
+      exit 0
+    fi
+    # Fall back to first available key
+    ibmcloud is keys --output json | jq -r '.[0].name'
+  register: ibm_ssh_key_name
+  ignore_errors: yes
+
+- name: Set default SSH key name if lookup failed
+  set_fact:
+    ibm_ssh_key_name_value: "{{ ibm_ssh_key_name.stdout if ibm_ssh_key_name.rc == 0 and ibm_ssh_key_name.stdout != '' else 'zathras-key' }}"
+
+- name: Verify SSH key exists in IBM Cloud
+  shell: ibmcloud is keys --output json | jq -r '.[].name' | grep -q "{{ ibm_ssh_key_name_value }}"
+  register: ssh_key_check
+  ignore_errors: yes
+  failed_when: false
+
+- name: Fail if SSH key not found
+  fail:
+    msg: |
+      SSH key '{{ ibm_ssh_key_name_value }}' not found in IBM Cloud.
+      Please create an SSH key first:
+        ibmcloud is key-create {{ ibm_ssh_key_name_value }} @~/.ssh/id_rsa.pub
+      Or list existing keys:
+        ibmcloud is keys
+  when: ssh_key_check.rc != 0
+
+- name: create private copy of tfvars template
+  copy:
+    src: "../templates/tfvars.j2"
+    dest: "{{ working_dir }}/tfvars.j2"
+
+- name: Add tag vars info
+  shell: "cat {{ working_dir }}/add_main_tf_vars >> {{ working_dir }}/tfvars.j2"
+
+- name: Substitute terraform vars
+  template:
+    src: "{{ working_dir }}/tfvars.j2"
+    dest: "{{ working_dir }}/tf/env.tfvars"
+
+- name: grab create start time
+  command: "date -u +%s"
+  register: create_time_start
+
+- name: IBM Cloud create instance
+  include_role:
+    name: tf_create
+  vars:
+    tf_var_file: "env.tfvars"
+
+- name: Record ip addresses in ansible_run_vars.yml
+  include_tasks: record_ip_info.yml
+
+- name: Fail if public IP not retrieved
+  fail:
+    msg: |
+      Failed to retrieve public IP addresses from Terraform.
+      This usually means the Terraform outputs are not available.
+      Check the Terraform state and ensure the infrastructure was created successfully.
+  when: public_ip_list is not defined or public_ip_list | length == 0
+
+- name: wait for ssh to come up
+  local_action: wait_for
+    host={{ public_ip_list[0] }}
+    port=22
+    state=started
+    delay=10
+    timeout=1200
+
+- name: Wait for IBM Cloud user account readiness with backoff
+  shell: |
+    ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    -i {{ config_info.ssh_key }} \
+    {{ config_info.test_user }}@{{ item.1 }} \
+    "id {{ config_info.test_user }} && echo 'User ready'"
+  register: user_ssh_ready
+  until: user_ssh_ready.rc == 0
+  retries: "{{ ansible_ssh_retries | default(5) }}"
+  delay: "{{ item.0 * 2 + 3 }}"
+  with_indexed_items:
+    - "{{ public_ip_list }}"
+
+- name: grab create end time
+  command: "date -u +%s"
+  register: create_time_end
+
+- name: Report creation time
+  lineinfile:
+    path: "{{ working_dir }}/cloud_timings"
+    line: "instance start_time: {{ create_time_end.stdout | int - (create_time_start.stdout) | int }}"
+    create: yes
+
+- name: Create metadata file for later use
+  copy:
+    content: |
+      ---
+      ibm_cloud_metadata:
+        instance_id: "{{ instance_id_list[0] }}"
+        public_ip: "{{ public_ip_list[0] }}"
+        private_ip: "{{ private_ip_list[0] }}"
+        zone: "{{ config_info.cloud_zone }}"
+        region: "{{ config_info.cloud_region }}"
+        profile: "{{ config_info.host_or_cloud_inst }}"
+        image: "{{ config_info.cloud_os_version }}"
+    dest: "{{ working_dir }}/meta_data.yml"
+
+- name: Add host to test and install groups
+  include_tasks: add_host_to_groups.yml
