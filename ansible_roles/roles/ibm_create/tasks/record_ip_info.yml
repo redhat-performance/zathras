@@ -1,0 +1,77 @@
+---
+# Record IP information from Terraform outputs
+- name: Get public IPs from terraform
+  shell: |
+    terraform workspace select {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }} > /dev/null 2>&1
+    terraform output -json public_ip
+  args:
+    chdir: "{{ working_dir }}/tf"
+  register: public_ips_raw
+  ignore_errors: yes
+
+- name: Get private IPs from terraform
+  shell: |
+    terraform workspace select {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }} > /dev/null 2>&1
+    terraform output -json private_ip
+  args:
+    chdir: "{{ working_dir }}/tf"
+  register: private_ips_raw
+  ignore_errors: yes
+
+- name: Get instance IDs from terraform
+  shell: |
+    terraform workspace select {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }} > /dev/null 2>&1
+    terraform output -json instance_id
+  args:
+    chdir: "{{ working_dir }}/tf"
+  register: instance_ids_raw
+  ignore_errors: yes
+
+- name: Debug terraform output results
+  debug:
+    msg: |
+      Public IP command result: rc={{ public_ips_raw.rc }}, stdout={{ public_ips_raw.stdout }}, stderr={{ public_ips_raw.stderr }}
+      Private IP command result: rc={{ private_ips_raw.rc }}, stdout={{ private_ips_raw.stdout }}, stderr={{ private_ips_raw.stderr }}
+      Instance ID command result: rc={{ instance_ids_raw.rc }}, stdout={{ instance_ids_raw.stdout }}, stderr={{ instance_ids_raw.stderr }}
+  when: public_ips_raw.rc != 0 or private_ips_raw.rc != 0 or instance_ids_raw.rc != 0
+
+- name: set IP lists and instance IDs
+  set_fact:
+    public_ip_list: "{{ public_ips_raw.stdout | from_json }}"
+    private_ip_list: "{{ private_ips_raw.stdout | from_json }}"
+    instance_id_list: "{{ instance_ids_raw.stdout | from_json }}"
+  when: public_ips_raw.rc == 0 and private_ips_raw.rc == 0 and instance_ids_raw.rc == 0
+
+- name: Record primary public IP as test hostname
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^test_hostname:"
+    line: "test_hostname: {{ public_ip_list[0] }}"
+  when: public_ip_list is defined and public_ip_list | length > 0
+
+- name: Record IBM instance ID
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^ibm_instance_id:"
+    line: "ibm_instance_id: {{ instance_id_list[0] }}"
+  when: instance_id_list is defined and instance_id_list | length > 0
+
+- name: Record public IPs
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^public_ips:"
+    line: "public_ips: {{ public_ip_list }}"
+  when: public_ip_list is defined
+
+- name: Record private IPs
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^private_ips:"
+    line: "private_ips: {{ private_ip_list }}"
+  when: private_ip_list is defined and private_ip_list | length > 0
+
+- name: Record ssh connection option
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^ssh_i_option:"
+    line: "ssh_i_option: -i {{ config_info.ssh_key }}"
