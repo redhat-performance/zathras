@@ -178,7 +178,7 @@ done
 remove_perm_file()
 {
 	if [[ $ssh_key_file != "" ]]; then
-		rm -rf config/user.pem_test
+		rm -f config/user.pem_test
 	fi
 }
 
