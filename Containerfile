@@ -14,3 +14,5 @@ COPY . /zathras
 
 ENV PATH="/root/.local/bin:$PATH"
 ENV AWS_DEFAULT_OUTPUT="json"
+
+ENTRYPOINT ["./burden"]
