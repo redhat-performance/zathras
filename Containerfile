@@ -12,4 +12,5 @@ RUN dnf clean all && rm -rf /var/cache/dnf/
 
 COPY . /zathras
 
-ENV PATH "/root/.local/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
+ENV AWS_DEFAULT_OUTPUT="json"
