@@ -708,7 +708,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -723,10 +723,9 @@
       type: "uploads"
       real_dir: "{{ dyn_data.kit_upload_directory }}"
 
- #
- # Now upload the file.  Due to Ansible copying the file first to ~/.ans* we need to do an ssh.
- #
- #
+#
+# Now upload the file.  Due to Ansible copying the file first to ~/.ans* we need to do an ssh.
+#
 - hosts: localhost
   vars_files:
     - ansible_vars.yml
@@ -745,6 +744,7 @@
   become: true
   gather_facts: no
   tasks:
+
   - name: include dynamic info
     include_vars:
       file: "{{ working_dir }}/ansible_run_vars.yml"
