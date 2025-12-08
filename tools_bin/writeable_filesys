@@ -1,0 +1,73 @@
+#!/bin/bash
+
+most_free_space=0
+usage()
+{
+	echo "Usage $1:"
+	echo "No option, shows the following for all writeable filesystems (not tmpfs)"
+	echo " <free_space> <mount point> <device>"
+	echo "  --most_free_space:  provide the mount point of the filesystem with the most free space"A
+	echo "  -h --usage: this usage message"
+        exit 0
+}
+
+NO_ARGUMENTS=(
+	"most_free_space"
+	"usage"
+)
+
+opts=$(getopt \
+        --longoptions "$(printf "%s," "${NO_ARGUMENTS[@]}")" \
+        --name "$(basename "$0")" \
+        --options "h" \
+        -- "$@"
+)
+
+eval set --$opts
+
+while [[ $# -gt 0 ]]; do
+        case "$1" in
+		--most_free_space)
+			most_free_space=1
+			shift 1
+		;;
+		--usage)
+			usage $0
+		;;
+		-h)
+			usage $0
+		;;
+		--)
+			break
+		;;
+		*)
+			echo option not found $1
+			usage $0
+		;;
+        esac
+done
+
+
+worker_mnt=`mktemp /tmp/zathras_fs.XXXXX`
+worker_fsys=`mktemp /tmp/zathras_fs.XXXXX`
+out_file=`mktemp /tmp/zathras_fs.XXXXX`
+mount | grep ' (rw,' > $worker_mnt
+
+df --local --output=avail,target,source | grep -ve 'mounted\|tmpfs\|boot' | grep -v "Mounted on" > $worker_fsys
+
+while IFS= read -r mnt_data
+do
+	device=`echo $mnt_data | awk '{print $3}'`
+	grep -q "^${device} " $worker_mnt
+	if [[ $? -eq 0 ]]; then
+		echo $mnt_data  >> $out_file
+	fi
+done < "$worker_fsys"
+
+if [[ $most_free_space -eq 1 ]]; then
+	sort -n $out_file | tail -1 | awk '{print $2}'
+else
+	sort -n $out_file
+fi
+rm -f $worker_fsys $worker_mnt $out_file
+exit 0
