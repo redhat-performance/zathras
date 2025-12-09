@@ -1,0 +1,38 @@
+# Zathras Post-Processing Export Configuration
+# Copy this file to export_config.yml and customize with your settings
+
+# OpenSearch Configuration
+opensearch:
+  url: "https://opensearch.example.com"
+  summary_index: "zathras-results"
+  timeseries_index: "zathras-timeseries"
+  
+  # Authentication
+  username: "your-username"
+  password: "your-password"
+  
+  # SSL verification (set to false for self-signed certificates)
+  verify_ssl: false
+
+# Horreum Configuration
+horreum:
+  url: "http://localhost:8080"
+  
+  # Authentication
+  username: "your-horreum-username"
+  password: "your-horreum-password"
+  
+  # Test name in Horreum
+  test_name: "Zathras Benchmarks"
+
+# Processing Options
+processing:
+  # Batch size for time series export
+  batch_size: 500
+  
+  # Skip benchmarks with errors
+  continue_on_error: true
+  
+  # Verbose logging
+  verbose: false
+
