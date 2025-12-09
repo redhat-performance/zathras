@@ -941,7 +941,10 @@ set_region_zone_defaults()
 	if [[ $gl_system_type == "aws" ]]; then
 		gl_cloud_region=`aws configure get region`
 		if [ $? -eq 1 ]; then
-			cleanup_and_exit "Unable to retrieve the AWS region" 1
+			if [[ -z "$AWS_DEFAULT_REGION" ]]; then
+				cleanup_and_exit "Unable to retrieve the AWS region" 1
+			fi
+			gl_cloud_region="$AWS_DEFAULT_REGION"
 		fi
 		obtain_zone
 	elif [[ $gl_system_type == "azure" ]]; then
