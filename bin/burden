@@ -1128,14 +1128,6 @@ determine_what_has_to_be_installed()
 		create_test_run_file $local_test_name
 	done
 	make_list_of_rpms_to_upload
-#
-#  Now java packages if need be.
-#
-	if [[ $gl_java_version != $value_not_set ]]; then
-		java_package=$(find_test_def_field "${gl_top_dir}/java_info" "java_version" $gl_java_version $gl_os_vendor)
-		echo "  - ${java_package}" >> install_choices
-	fi
-
 	echo "---" >> install_opts.yml
 	echo "pkg_install:" >> install_opts.yml
 	sort -u install_choices >> install_opts.yml
@@ -2442,29 +2434,6 @@ verify_iterations()
 	fi
 }
 
-#
-# Verify that the java version provided is a valid value.
-#
-verify_java_version()
-{
-	java_vers=`grep java_version java_info  | cut -d\" -f 4`
-
-	for ask_for in $1;
-	do
-		found=0
-		for version in $java_vers; 
-		do
-			if [[ $version == $ask_for ]]; then
-				found=1
-			fi
-		done
-		if [[ $found -eq 0 ]]; then
-			cleanup_and_exit "Error: unknown java version $1, known versions are: $java_vers" 1
-		fi
-	done
-	
-}
-
 obtain_network_info()
 {
 	entry=$1
@@ -3511,8 +3480,7 @@ set_general_value()
 		--java_version)
 			if [[ $gl_java_version == $value_not_set ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
-				gl_java_version=$2
-				verify_data verify_java_version $2
+				gl_java_version=`echo $2 | sed "s/java-//g"`
 			fi
 			shift_by=2
 		;; 
@@ -4150,7 +4118,6 @@ first_invocation()
 	if [[ ! -f test_info ]] || [[ $gl_test_version_check -eq 1 ]] || [[ $gl_update_test_versions -eq 1 ]]; then
 		integrate_templates ${gl_test_def_dir}/test_defs.yml
 		cat $gl_test_def_dir/full_test_defs.yml | yq . > test_info
-		cat $gl_test_def_dir/java_pkg_def.yml | yq . > java_info
 	fi
 	source $UTILS_DIR/gl_unlock_exclusive
 }
