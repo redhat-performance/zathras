@@ -10,7 +10,6 @@ Zathras comes with a comprehensive set of pre-configured test definitions that a
 - **test_defs.yml** - Contains 18+ pre-configured tests including linpack, streams, coremark, fio, uperf, and more
 - **Template files** - Individual configuration templates for each test wrapper (e.g., `linpack_template.yml`, `streams_template.yml`)
 - **default_template.yml** - Provides default settings that are applied to all tests
-- **java_pkg_def.yml** - Defines Java packages for different operating systems
 
 You can use these configurations as-is, or customize them for your specific requirements. To see all available tests, run:
 
