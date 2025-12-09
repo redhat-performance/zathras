@@ -1,0 +1,60 @@
+#
+# Record the ip information for the instance.
+#
+- name: read in tf values
+  include_vars:
+    file: "{{ working_dir }}/tf_results"
+    name: tf_info
+
+- name: set host
+  set_fact:
+    public_ip_address: "{{ [ tf_info.public_ip0 ] }}"
+    test_hostname: "{{ tf_info.public_ip0 }}"
+    vm_host: "{{ config_info.test_user }}@{{ tf_info.public_ip0 }}"
+    private_ip_address: "{{ [ tf_info.private_ip0 ] }}"
+    hostname: "{{ tf_info.instance_name0 }}"
+    vpc_instance_id: "{{ tf_info.instance_id0 }}"
+  when: config_info.cloud_numb_networks|int == 0 or config_info.cloud_network_type == "public"
+
+- name: set host
+  set_fact:
+    public_ip_address: "{{ [ tf_info.public_ip0, tf_info.public_ip1 ] }}"
+    test_hostname: "{{ tf_info.public_ip0 }}"
+    vm_host: "{{ config_info.test_user }}@{{ tf_info.public_ip0 }}"
+    private_ip_address: "{{ [ tf_info.private_ip0, tf_info.private_ip1 ] }}"
+    hostname: "{{ tf_info.instance_name0 }}"
+    vpc_instance_id: "{{ tf_info.instance_id0 }}"
+  when: config_info.cloud_numb_networks|int > 0 and config_info.cloud_network_type != "public"
+
+- name: set ssh options up
+  set_fact:
+    ssh_i_option: "-i {{ config_info.ssh_key }}"
+
+- name: recording test hostname
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "test_hostname: {{ test_hostname }}"
+    create: yes
+
+- name: recording ssh i option
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "ssh_i_option: {{ ssh_i_option }}"
+
+- name: recording ibm vpc instance id
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "ibm_vpc_instance_id: {{ vpc_instance_id }}"
+
+#
+# Save off the info in the inventory file
+#
+- name: ansible config for hosts
+  copy:
+    dest: "{{ working_dir }}/inventory"
+    content: |
+      [test_group]
+      {{ test_hostname }} ansible_user={{ config_info.test_user }} ansible_ssh_private_key_file={{ config_info.ssh_key }}
+
+      [install_group]
+      {{ test_hostname }} ansible_user={{ config_info.test_user }} ansible_ssh_private_key_file={{ config_info.ssh_key }}
