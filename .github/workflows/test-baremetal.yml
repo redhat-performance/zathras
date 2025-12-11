@@ -1,0 +1,218 @@
+name: Test Bare Metal
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      target_host:
+        description: 'Target bare metal hostname (must have local config file)'
+        required: true
+      ssh_user:
+        description: 'SSH username (leave empty for default)'
+        required: false
+
+  # Automatic trigger on PR to main (only if self-hosted runner is available)
+  # Disabled by default - uncomment when runner is configured
+  # pull_request:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'bin/**'
+  #     - 'ansible_roles/**'
+  #     - 'config/**'
+  #     - 'ci/test_scenarios/baremetal_ci_test.yml'
+  #     - '.github/workflows/test-baremetal.yml'
+  #     - '.github/actions/**'
+
+permissions:
+  contents: read
+  pull-requests: write  # Required for commenting on PRs
+
+env:
+  SCENARIO_FILE: ci/test_scenarios/baremetal_ci_test.yml
+  TARGET_HOST: ${{ inputs.target_host }}
+
+jobs:
+  test-baremetal:
+    name: Test on Bare Metal
+    # IMPORTANT: This requires a self-hosted runner with label 'baremetal'
+    # See documentation for setup instructions
+    runs-on: self-hosted
+    # Alternatively, use specific labels for different bare metal systems:
+    # runs-on: [self-hosted, linux, baremetal]
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify runner has Zathras dependencies
+        run: |
+          echo "Checking for required dependencies..."
+
+          # Check for required commands
+          for cmd in ansible-galaxy terraform python3 pip3 git jq; do
+            if ! command -v $cmd &> /dev/null; then
+              echo "❌ Required command not found: $cmd"
+              echo "Please install dependencies on the self-hosted runner"
+              exit 1
+            fi
+            echo "✅ Found: $cmd ($(command -v $cmd))"
+          done
+
+          # Check Python packages
+          echo "Checking Python packages..."
+          pip3 list | grep -E "(boto|boto3|yq)" || true
+
+          # Check Ansible collections
+          echo "Checking Ansible collections..."
+          ansible-galaxy collection list | grep -E "(amazon.aws|ansible.posix|community)" || true
+
+      - name: Verify local config exists
+        run: |
+          CONFIG_FILE="local_configs/${{ env.TARGET_HOST }}.config"
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "❌ Local config file not found: $CONFIG_FILE"
+            echo "Available configs:"
+            ls -1 local_configs/ || echo "No local_configs directory found"
+            exit 1
+          fi
+          echo "✅ Found local config: $CONFIG_FILE"
+          cat "$CONFIG_FILE"
+
+      - name: Verify SSH access to target host
+        run: |
+          echo "Testing SSH connection to ${{ env.TARGET_HOST }}..."
+
+          # Use SSH key from secrets if provided, otherwise use runner's default
+          if [ -n "${{ secrets.BAREMETAL_SSH_PRIVATE_KEY }}" ]; then
+            mkdir -p ~/.ssh
+            echo "${{ secrets.BAREMETAL_SSH_PRIVATE_KEY }}" > ~/.ssh/zathras_baremetal_key
+            chmod 600 ~/.ssh/zathras_baremetal_key
+            SSH_KEY_ARG="-i ~/.ssh/zathras_baremetal_key"
+          else
+            SSH_KEY_ARG=""
+          fi
+
+          # Determine SSH user
+          SSH_USER="${{ inputs.ssh_user }}"
+          if [ -z "$SSH_USER" ]; then
+            SSH_USER=$(whoami)
+          fi
+
+          # Test SSH connection
+          if ssh $SSH_KEY_ARG -o BatchMode=yes -o ConnectTimeout=10 \
+              ${SSH_USER}@${{ env.TARGET_HOST }} "echo 'SSH connection successful'"; then
+            echo "✅ SSH connection successful"
+          else
+            echo "❌ SSH connection failed"
+            echo "Ensure the runner has SSH access to ${{ env.TARGET_HOST }}"
+            exit 1
+          fi
+
+      - name: Prepare scenario file for bare metal
+        id: prepare
+        run: |
+          # Copy scenario and inject target hostname
+          SCENARIO_TEMP="/tmp/zathras_baremetal_${{ github.run_id }}.yml"
+          cp "${{ env.SCENARIO_FILE }}" "$SCENARIO_TEMP"
+
+          # Inject target hostname into scenario
+          python3 << 'EOF'
+          import yaml
+          scenario_file = "$SCENARIO_TEMP"
+          target_host = "${{ env.TARGET_HOST }}"
+
+          with open(scenario_file, 'r') as f:
+              data = yaml.safe_load(f)
+
+          # Set host_config to target hostname
+          if 'systems' in data and 'ci_test_system' in data['systems']:
+              data['systems']['ci_test_system']['host_config'] = target_host
+
+          with open(scenario_file, 'w') as f:
+              yaml.dump(data, f, default_flow_style=False)
+
+          print(f"Updated scenario file with host: {target_host}")
+          EOF
+
+          echo "scenario_path=$SCENARIO_TEMP" >> $GITHUB_OUTPUT
+          echo "Scenario file:"
+          cat "$SCENARIO_TEMP"
+
+      - name: Run Zathras test on bare metal
+        id: test
+        run: |
+          echo "Starting Zathras test on bare metal..."
+          echo "Target host: ${{ env.TARGET_HOST }}"
+          echo "Scenario: ${{ steps.prepare.outputs.scenario_path }}"
+
+          # Run burden and capture output
+          set +e
+          ./bin/burden --scenario "${{ steps.prepare.outputs.scenario_path }}"
+          BURDEN_EXIT_CODE=$?
+          set -e
+
+          # Find results directory
+          RESULTS_DIR=$(find . -maxdepth 1 -type d -name "zathras_*" -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)
+          if [ -z "$RESULTS_DIR" ]; then
+            RESULTS_DIR="./results"
+          fi
+          echo "results_path=$RESULTS_DIR" >> $GITHUB_OUTPUT
+
+          # Validate results
+          if [ "$BURDEN_EXIT_CODE" -ne 0 ]; then
+            echo "❌ Burden failed with exit code: $BURDEN_EXIT_CODE"
+            echo "test_status=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          if [ -d "$RESULTS_DIR" ]; then
+            echo "✅ Test completed successfully"
+            echo "Results:"
+            ls -lah "$RESULTS_DIR"
+            echo "test_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Results directory not found"
+            echo "test_status=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zathras-baremetal-results-${{ github.run_id }}
+          path: ${{ steps.test.outputs.results_path }}
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Post results to PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ steps.test.outputs.test_status }}';
+            const emoji = status === 'success' ? '✅' : '❌';
+            const body = `## ${emoji} Bare Metal Test Results
+
+            **Status:** ${status}
+            **Target Host:** ${{ env.TARGET_HOST }}
+            **Runner:** ${process.env.RUNNER_NAME || 'self-hosted'}
+            **Workflow:** [Run #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ${status === 'success' ? 'All tests passed successfully!' : 'Tests failed. Check workflow logs for details.'}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail workflow if tests failed
+        if: steps.test.outputs.test_status != 'success'
+        run: |
+          echo "❌ Bare metal tests failed"
+          exit 1

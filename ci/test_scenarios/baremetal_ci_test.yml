@@ -1,0 +1,33 @@
+# Bare Metal CI Test Scenario
+# This scenario is used by GitHub Actions to validate Zathras on bare metal/local systems
+# Runs a standard test suite: linpack, streams, and fio benchmarks
+#
+# REQUIREMENTS:
+# - Self-hosted GitHub Actions runner with SSH access to target systems
+# - Local config file in local_configs/<hostname>.config
+# - SSH key configured for passwordless access
+
+global:
+  system_type: local
+  # No cloud_os_id needed for local systems
+  # SSH key file path (set in workflow)
+  # ssh_key_file: /path/to/key
+  terminate_cloud: 0  # Not applicable for bare metal
+
+systems:
+  ci_test_system:
+    # Hostname should be set via environment variable or passed as parameter
+    # This should match a config file in local_configs/<hostname>.config
+    # host_config: <hostname> (set in workflow or use runner hostname)
+    tests: linpack,streams,fio
+
+    # Test-specific overrides for faster CI runs
+    linpack:
+      linpack_run_time: 300  # 5 minutes instead of default
+
+    streams:
+      streams_run_time: 180  # 3 minutes
+
+    fio:
+      fio_runtime: 60  # 1 minute per test
+      fio_test_types: "read,write,randread,randwrite"  # Standard I/O patterns

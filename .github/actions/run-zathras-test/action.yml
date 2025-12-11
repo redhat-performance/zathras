@@ -1,0 +1,135 @@
+name: 'Run Zathras Test'
+description: 'Execute Zathras benchmark test and validate results'
+
+inputs:
+  scenario-file:
+    description: 'Path to the test scenario file'
+    required: true
+  cloud-os-id:
+    description: 'Cloud OS ID (AMI, image, etc.)'
+    required: false
+  additional-args:
+    description: 'Additional arguments to pass to burden'
+    required: false
+    default: ''
+
+outputs:
+  test-status:
+    description: 'Test execution status (success/failure)'
+    value: ${{ steps.validate.outputs.status }}
+  results-path:
+    description: 'Path to test results directory'
+    value: ${{ steps.run.outputs.results_path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare scenario file
+      id: prepare
+      shell: bash
+      env:
+        SCENARIO_FILE: ${{ inputs.scenario-file }}
+        CLOUD_OS_ID: ${{ inputs.cloud-os-id }}
+      run: |
+        # Copy scenario file to temporary location and inject runtime values
+        SCENARIO_TEMP="/tmp/zathras_ci_scenario_${{ github.run_id }}.yml"
+        cp "$SCENARIO_FILE" "$SCENARIO_TEMP"
+
+        # Inject cloud_os_id if provided
+        if [ -n "$CLOUD_OS_ID" ]; then
+          # Use yq to add cloud_os_id to global section
+          python3 -c "
+        import yaml
+        import sys
+        with open('$SCENARIO_TEMP', 'r') as f:
+            data = yaml.safe_load(f)
+        if 'global' not in data:
+            data['global'] = {}
+        data['global']['cloud_os_id'] = '$CLOUD_OS_ID'
+        data['global']['ssh_key_file'] = '$ZATHRAS_SSH_KEY'
+        with open('$SCENARIO_TEMP', 'w') as f:
+            yaml.dump(data, f, default_flow_style=False)
+        "
+        fi
+
+        echo "scenario_path=$SCENARIO_TEMP" >> $GITHUB_OUTPUT
+        echo "Using scenario file: $SCENARIO_TEMP"
+        cat "$SCENARIO_TEMP"
+
+    - name: Run Zathras test
+      id: run
+      shell: bash
+      env:
+        SCENARIO_PATH: ${{ steps.prepare.outputs.scenario_path }}
+        ADDITIONAL_ARGS: ${{ inputs.additional-args }}
+      run: |
+        # Execute burden with scenario file
+        echo "Starting Zathras test..."
+        echo "Scenario: $SCENARIO_PATH"
+        echo "Additional args: $ADDITIONAL_ARGS"
+
+        # Run burden and capture output
+        set +e  # Don't exit on error, we want to capture the exit code
+        ./bin/burden --scenario "$SCENARIO_PATH" $ADDITIONAL_ARGS
+        BURDEN_EXIT_CODE=$?
+        set -e
+
+        echo "burden_exit_code=$BURDEN_EXIT_CODE" >> $GITHUB_OUTPUT
+
+        # Find results directory (burden creates timestamped directories)
+        RESULTS_DIR=$(find . -maxdepth 1 -type d -name "zathras_*" -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)
+        if [ -z "$RESULTS_DIR" ]; then
+          RESULTS_DIR="./results"
+        fi
+        echo "results_path=$RESULTS_DIR" >> $GITHUB_OUTPUT
+
+        exit $BURDEN_EXIT_CODE
+
+    - name: Validate test results
+      id: validate
+      shell: bash
+      env:
+        RESULTS_PATH: ${{ steps.run.outputs.results_path }}
+        BURDEN_EXIT_CODE: ${{ steps.run.outputs.burden_exit_code }}
+      run: |
+        echo "Validating test results..."
+        echo "Results directory: $RESULTS_PATH"
+        echo "Burden exit code: $BURDEN_EXIT_CODE"
+
+        # Check if burden succeeded
+        if [ "$BURDEN_EXIT_CODE" -ne 0 ]; then
+          echo "❌ Burden failed with exit code: $BURDEN_EXIT_CODE"
+          echo "status=failure" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        # Check if results directory exists
+        if [ ! -d "$RESULTS_PATH" ]; then
+          echo "❌ Results directory not found: $RESULTS_PATH"
+          echo "status=failure" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        # Check if any result files were generated
+        RESULT_FILES=$(find "$RESULTS_PATH" -type f -name "*.json" -o -name "*.csv" -o -name "*.txt" | wc -l)
+        if [ "$RESULT_FILES" -eq 0 ]; then
+          echo "⚠️  Warning: No result files found in $RESULTS_PATH"
+        else
+          echo "✅ Found $RESULT_FILES result files"
+        fi
+
+        # List results
+        echo "Results directory contents:"
+        ls -lah "$RESULTS_PATH" || true
+
+        echo "✅ Test completed successfully"
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: zathras-results-${{ github.run_id }}-${{ strategy.job-index || '0' }}
+        path: ${{ steps.run.outputs.results_path }}
+        retention-days: 30
+        if-no-files-found: warn
