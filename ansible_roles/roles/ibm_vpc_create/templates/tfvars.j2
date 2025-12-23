@@ -6,7 +6,6 @@ zone = "{{ config_info.cloud_zone | default(config_info.cloud_region + '-1') }}"
 
 cloud_os_version = "{{ config_info.cloud_os_version }}"
 cloud_placement = "{{ config_info.cloud_placement }}"
-ibmcloud_api_key = "{{ config_info.ibmcloud_api_key }}"
 
 run_label = "{{ config_info.user_running }}-{{ config_info.run_label | lower() | replace ('.','-',63) | replace('_','-',63) | replace('/','-')}}"
 

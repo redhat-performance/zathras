@@ -10,7 +10,7 @@ terraform {
 
 provider "ibm" {
   region = var.region
-  ibmcloud_api_key = var.ibmcloud_api_key
+  # API key authentication via environment variables (IC_API_KEY or IBMCLOUD_API_KEY)
 }
 
 locals {

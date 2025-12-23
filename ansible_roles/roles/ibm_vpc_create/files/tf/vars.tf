@@ -42,11 +42,8 @@ variable "ssh_key_name" {
   default = "none"
 }
 
-variable "ibmcloud_api_key" {
-  type = string
-  description = "IBM Cloud API key"
-  sensitive = true
-}
+# API key authentication via environment variables (IC_API_KEY or IBMCLOUD_API_KEY)
+# No need to pass as Terraform variable
 
 variable "image_name" {
   type = string
