@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/coremark-wrapper/archive/refs/tags
 exec_dir: "coremark-wrapper-2.1/coremark"
-repo_file: "v2.1.zip"
+repo_file: "v2.1.tar.gz"
 rhel_pkgs: bc,numactl,perf,git,unzip
 ubuntu_pkgs: unzip,zip
 amazon_pkgs: bc,git,zip,unzip
