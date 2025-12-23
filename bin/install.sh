@@ -209,6 +209,38 @@ write_installation_record() {
 # Write installation record
 write_installation_record
 
+# Validate kit directories specified in templates
+echo ""
+echo "Validating kit directories..."
+python3 << 'EOF'
+import yaml, os, glob, sys
+missing = []
+config_dir = os.path.abspath('config')
+for f in sorted(glob.glob('config/*_template.yml')):
+    try:
+        with open(f) as file:
+            cfg = yaml.safe_load(file)
+            if cfg and (upload := cfg.get('upload_extra', 'none')) != 'none':
+                paths = upload.split() if isinstance(upload, str) else upload
+                for p in paths:
+                    if p != 'none' and not os.path.exists(p):
+                        missing.append((os.path.basename(f), p))
+    except: pass
+
+if missing:
+    print("\n" + "="*70)
+    print("WARNING: Missing Kit Directories")
+    print("="*70)
+    print("\nThe following kit files/directories specified in templates do not exist:\n")
+    for template, path in missing:
+        print(f"  - {template}: {path}")
+    print("\nThese kits are required for certain benchmarks to run properly.")
+    print("Wrappers depending on these kits may fail until they are provided.")
+    print(f"\nPlease ensure the required kits are placed at the specified locations")
+    print(f"or update the template files in {config_dir} to reflect the correct paths.")
+    print("="*70 + "\n")
+EOF
+
 echo "Before you can run Zathras:"
 echo "****Ensure ~/.local/bin is in your path"
 echo "****Set up a scenario file"
