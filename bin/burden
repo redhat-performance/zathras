@@ -1533,6 +1533,28 @@ generate_tags()
   		echo "  Jirald: ${1}" >> tags_defaults
 	fi
 	#
+	# If ~/.config/zathras/cloud_tags exists, replace the various tags.
+	# 
+
+	rm -f tag_temp
+	if [[ -f "${HOME}/.config/zathras/cloud_tags" ]]; then
+		while IFS= read -r line
+		do
+			name=`echo "$line" | cut -d':'  -f 1`
+			while IFS= read -r tag_value
+			do
+				field=`echo "$tag_value" | cut -d':' -f 1`
+				echo $field | grep -q "$name"
+				if [[ $? -eq 0 ]]; then
+					echo "$line"  >>  tag_temp
+				else
+					echo "$tag_value" >> tag_temp
+				fi
+			done < "tags_defaults"
+			mv tag_temp tags_defaults
+		done < "${HOME}/.config/zathras/cloud_tags"
+	fi
+	#
 	# OK now add the variable information into the various files
 	# This sets them up to be set  when the system is created or
 	# shortly after it is created via terraform.  The various
@@ -1608,6 +1630,7 @@ generate_tags()
 	fi
 	echo "}" >> add_main_vars.tf
 }
+
 #
 #  Using all the options entered, create the working directory for the configuration and it's
 #  associated files.
