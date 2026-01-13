@@ -21,9 +21,9 @@
 
 - name: upload the extra file info, determine location
   block:
-  - name: Get the free space
-    command: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} 'df --local --output=avail,target,source | grep -v Mounted | grep -v tmpfs | sort -n | tail -1 | xargs | sed \"s/ /:/g\" | cut -d: -f2'"
-    register: largest_dir
+  - name: Find largest writable filesystem
+    shell: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} \"tools_bin/writeable_filesys --most_free_space\""
+    register: largest_writable_fs
 
   #
   # Record the location to upload to
@@ -31,7 +31,7 @@
   - name: Write upload dir to  ansible_run_vars.yml
     lineinfile:
       path: "{{ working_dir }}/ansible_run_vars.yml"
-      line: "kit_upload_directory: {{ largest_dir.stdout }}"
+      line: "kit_upload_directory: {{ largest_writable_fs.stdout }}"
   when: 
     - config_info.kit_upload_directory == "none"
     - config_info.bootc_mode != 1
