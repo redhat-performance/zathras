@@ -1540,10 +1540,10 @@ generate_tags()
 	if [[ -f "${HOME}/.config/zathras/cloud_tags" ]]; then
 		while IFS= read -r line
 		do
-			name=`echo $line | cut -d':'  -f 1`
+			name=`echo "$line" | cut -d':'  -f 1`
 			while IFS= read -r tag_value
 			do
-				field=`echo $tag_value | cut -d':' -f 1`
+				field=`echo "$tag_value" | cut -d':' -f 1`
 				echo $field | grep -q $name
 				if [[ $? -eq 0 ]]; then
 					echo "$line"  >>  tag_temp
