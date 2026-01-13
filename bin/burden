@@ -1533,7 +1533,7 @@ generate_tags()
   		echo "  Jirald: ${1}" >> tags_defaults
 	fi
 	#
-	# If ~/.config/zathras/cloud_tags exsists, replace the various tags.
+	# If ~/.config/zathras/cloud_tags exists, replace the various tags.
 	# 
 
 	rm -f tag_temp
