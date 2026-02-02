@@ -3535,6 +3535,8 @@ set_general_value()
 		--no_packages)
 			echo "$1" >> $gl_cli_supplied_options
 			gl_no_packages=1
+			gl_no_pip_packages=1
+			gl_no_system_packages=1
 			shift_by=1
 		;;
 		--no_pip_packages)
