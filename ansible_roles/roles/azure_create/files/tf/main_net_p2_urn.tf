@@ -10,7 +10,7 @@ resource "azurerm_linux_virtual_machine" "virtualmachine" {
 
     admin_ssh_key {
         username   = var.test_user
-        public_key = file("~/.ssh/id_rsa.pub")
+        public_key = file(var.ssh_public_key_path)
     }
     PRIORITYSPOT
     EVICTIONPOLICY

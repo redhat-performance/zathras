@@ -47,6 +47,11 @@ variable "ssh_key_path" {
   default = "~/.ssh/id_rsa"
 }
 
+variable "ssh_public_key_path" {
+  type    = string
+  default = "~/.ssh/id_rsa.pub"
+}
+
 variable "vm_image" {
   type    = string
   default = "none"
