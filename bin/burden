@@ -187,6 +187,7 @@ gl_selinux_level="enforcing"
 gl_selinux_state=$value_not_set
 gl_selinux_state_set=0
 gl_ssh_key_file=""
+gl_ssh_public_key_file=""
 gl_show_os_versions=0;
 gl_test_def_file=""
 gl_test_def_dir="${gl_top_dir}/config"
@@ -1909,8 +1910,12 @@ create_ansible_options()
 		echo "  kit_upload_directory: ${gl_kit_upload_directory}" >> ansible_vars_main.yml
 		if [[ $gl_ssh_key_file == "" ]]; then
 			echo "  ssh_key: $HOME/.ssh/id_rsa" >> ansible_vars_main.yml
+			echo "  ssh_public_key: $HOME/.ssh/id_rsa.pub" >> ansible_vars_main.yml
 		else
 			echo "  ssh_key: ${gl_ssh_key_file}" >> ansible_vars_main.yml
+			if [[ $gl_ssh_public_key_file != "" ]]; then
+				echo "  ssh_public_key: ${gl_ssh_public_key_file}" >> ansible_vars_main.yml
+			fi
 		fi
 		#
 		# local system type, user is expected to be root. cloud systems are expected
@@ -2347,6 +2352,13 @@ verify_ssh_key_file()
 {
 	if [[ ! -f $1 ]]; then
 		cleanup_and_exit "Error: ssh key file $1 does not exist." 1
+	fi
+}
+
+verify_ssh_public_key_file()
+{
+	if [[ ! -f $1 ]]; then
+		cleanup_and_exit "Error: ssh public key file $1 does not exist." 1
 	fi
 }
 
@@ -3340,7 +3352,8 @@ usage()
 	echo "  --scenario_vars <file>: file that contains the variables for the scenario file. The default is config/zathras_scenario_vars_def."
 	echo "  --selinux_level: enforcing/permissive/disabled"
 	echo "  --selinux_state: disabled/enabled"
-	echo "  --ssh_key_file: Designates the ssh key file we are to use."
+	echo "  --ssh_key_file: Designates the ssh private key file we are to use."
+	echo "  --ssh_public_key_file: Designates the ssh public key file we are to use. Only used if explicitly specified."
 	echo "  --show_os_versions: given the cloud type, and OS vendor, show the available os versions"
 	echo "  --show_tests:  list the available test as defined in config/test_defs.yml"
 	echo "  --test_def_file <file>: test definition file to use."
@@ -3635,6 +3648,14 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--ssh_public_key_file)
+			if [[ $gl_ssh_public_key_file == "" ]]; then
+				echo "$1 $2" >> $gl_cli_supplied_options
+				gl_ssh_public_key_file=$2
+				verify_data verify_ssh_public_key_file $gl_ssh_public_key_file
+			fi
+			shift_by=2
+		;;
 		--system_type)
 			if [[ $gl_system_type == "" ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -3812,6 +3833,7 @@ grab_cli_data()
 		"run_file"
 		"scenario"
 		"ssh_key_file"
+		"ssh_public_key_file"
 		"tuned_profiles"
 		"scenario_vars"
 		"selinux_level"
