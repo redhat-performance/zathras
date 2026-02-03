@@ -209,6 +209,76 @@ write_installation_record() {
 # Write installation record
 write_installation_record
 
+# Validate kit directories specified in templates
+echo ""
+echo "Validating kit directories..."
+
+missing_kits=()
+config_dir=$(readlink -f "config")
+
+for template_file in config/*_template.yml; do
+    # Skip if no files match the pattern
+    [ -e "$template_file" ] || continue
+
+    template_name=$(basename "$template_file")
+
+    # Extract upload_extra value using yq
+    upload_extra=$(yq -r '.upload_extra // "none"' "$template_file" 2>/dev/null || echo "none")
+
+    # Skip if upload_extra is 'none', empty, or null
+    if [[ "$upload_extra" == "none" ]] || [[ -z "$upload_extra" ]] || [[ "$upload_extra" == "null" ]]; then
+        continue
+    fi
+
+    # Check if upload_extra is an array or a string
+    is_array=$(yq -r '.upload_extra | type' "$template_file" 2>/dev/null || echo "null")
+
+    if [[ "$is_array" == "array" ]]; then
+        # It's an array, process each element
+        while IFS= read -r path; do
+            if [[ "$path" != "none" ]] && [[ -n "$path" ]]; then
+                if [[ ! -e "$path" ]]; then
+                    missing_kits+=("$template_name:$path")
+                fi
+            fi
+        done < <(yq -r '.upload_extra[]' "$template_file" 2>/dev/null)
+    else
+        # It's a string, split by spaces
+        IFS=' ' read -ra paths <<< "$upload_extra"
+        for path in "${paths[@]}"; do
+            if [[ "$path" != "none" ]] && [[ -n "$path" ]]; then
+                if [[ ! -e "$path" ]]; then
+                    missing_kits+=("$template_name:$path")
+                fi
+            fi
+        done
+    fi
+done
+
+# Display warning if there are missing kits
+if [ ${#missing_kits[@]} -gt 0 ]; then
+    echo ""
+    echo "======================================================================"
+    echo "WARNING: Missing Kit Directories"
+    echo "======================================================================"
+    echo ""
+    echo "The following kit files/directories specified in templates do not exist:"
+    echo ""
+    for entry in "${missing_kits[@]}"; do
+        template=$(echo "$entry" | cut -d':' -f1)
+        path=$(echo "$entry" | cut -d':' -f2-)
+        echo "  - $template: $path"
+    done
+    echo ""
+    echo "These kits are required for certain benchmarks to run properly."
+    echo "Wrappers depending on these kits may fail until they are provided."
+    echo ""
+    echo "Please ensure the required kits are placed at the specified locations"
+    echo "or update the template files in $config_dir to reflect the correct paths."
+    echo "======================================================================"
+    echo ""
+fi
+
 echo "Before you can run Zathras:"
 echo "****Ensure ~/.local/bin is in your path"
 echo "****Set up a scenario file"
