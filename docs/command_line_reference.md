@@ -52,6 +52,12 @@ Do not cleanup at the end of the test.
 ### --no_packages
 Do not install any packages, default is no.
 
+### --no_pip_packages
+Do not install python pip packages, default is no.
+
+### --no_system_packages
+Do not install system packages via dnf/apt/zypper/etc, default is no.
+
 ### --no_spot_recover
 Do not recover from a spot system going away.
 
