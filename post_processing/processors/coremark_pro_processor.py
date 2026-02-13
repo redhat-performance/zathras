@@ -4,19 +4,55 @@ CoreMark Pro processor for Zathras results.
 CoreMark Pro is a comprehensive multi-workload benchmark suite that tests various
 aspects of processor performance including JPEG encoding, core algorithms, linear algebra,
 loops, neural networks, parsing, radix sort, SHA hashing, and compression.
+
+Expects results CSV with Start_Date and End_Date columns (ISO 8601). Timestamps
+are required; missing or malformed timestamps raise ProcessorError.
 """
 
 import re
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
 import logging
 
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ProcessorError
 from ..schema import Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key
 from ..utils.parser_utils import read_file_content
 
 logger = logging.getLogger(__name__)
+
+# ISO 8601 pattern (e.g. 2026-02-13T20:18:29Z or with fractional seconds)
+_ISO8601_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
+)
+
+
+def _validate_iso8601_timestamp(value: str, context: str) -> str:
+    """Validate and return an ISO 8601 timestamp string. Raises ProcessorError if invalid."""
+    if not value or not isinstance(value, str):
+        raise ProcessorError(
+            f"CoreMark Pro results require timestamps. {context} "
+            "Start_Date and End_Date must be non-empty strings."
+        )
+    value = value.strip()
+    if not value:
+        raise ProcessorError(
+            f"CoreMark Pro results require timestamps. {context} "
+            "Start_Date and End_Date cannot be blank."
+        )
+    if not _ISO8601_PATTERN.match(value):
+        raise ProcessorError(
+            f"CoreMark Pro results require valid ISO 8601 timestamps. {context} "
+            f"Got: {value!r}. Expected format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ"
+        )
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as e:
+        raise ProcessorError(
+            f"CoreMark Pro results require valid ISO 8601 timestamps. {context} "
+            f"Cannot parse {value!r}: {e}"
+        ) from e
+    return value
 
 
 class CoreMarkProProcessor(BaseProcessor):
@@ -32,32 +68,42 @@ class CoreMarkProProcessor(BaseProcessor):
         CoreMark Pro runs multiple workload tests (cjpeg, core, linear_alg, etc.)
         in a single execution, with metrics for multi-core, single-core, and scaling.
 
-        We'll treat this as a single run with:
-        - Overall metrics (overall score)
-        - Individual workload metrics as nested data
-        - Workload-specific results as time series points (sequence-based)
+        Resolves CSV path via extracted_result["files"] (e.g. results_csv) when
+        provided (demo/single-file style), else from extracted_result["extracted_path"]
+        with results.csv directly in that directory or in a coremark_pro_* subdirectory.
 
         Returns:
             A dictionary of Run objects, keyed by run_key (typically just "run_0").
         """
-        extracted_path = Path(extracted_result['extracted_path'])
+        csv_file: Optional[Path] = None
+        result_dir: Optional[Path] = None
 
-        # The extracted_path points to the coremark_pro_* directory itself
-        # Check if results.csv is directly in extracted_path
-        csv_file = extracted_path / "results.csv"
+        files = extracted_result.get("files") or {}
+        if files.get("results_csv"):
+            csv_file = Path(files["results_csv"])
+            result_dir = csv_file.parent
+        else:
+            extracted_path = Path(extracted_result["extracted_path"])
+            # Results file directly in extracted_path (e.g. tmp/coremark_pro/results.csv)
+            direct_csv = extracted_path / "results.csv"
+            if direct_csv.exists():
+                csv_file = direct_csv
+                result_dir = extracted_path
+            else:
+                result_dirs = [d for d in extracted_path.glob("coremark_pro_*") if d.is_dir()]
+                if not result_dirs:
+                    raise ProcessorError(
+                        "CoreMark Pro results not found. Provide a CSV path in extracted_result['files']['results_csv'] "
+                        f"or ensure results.csv exists in {extracted_path} or in a coremark_pro_* subdirectory."
+                    )
+                csv_file = result_dirs[0] / "results.csv"
+                result_dir = result_dirs[0]
 
-        # If not, look for a coremark_pro_* subdirectory
-        if not csv_file.exists():
-            result_dirs = [d for d in extracted_path.glob("coremark_pro_*") if d.is_dir()]
-            if not result_dirs:
-                logger.error(f"results.csv not found in {extracted_path} and no coremark_pro_* subdirectory found")
-                return {}
-            csv_file = result_dirs[0] / "results.csv"
-
-        # Parse the CSV file for metrics
-        if not csv_file.exists():
-            logger.error(f"results.csv not found: {csv_file}")
-            return {}
+        if not csv_file or not csv_file.exists():
+            raise ProcessorError(
+                f"CoreMark Pro results CSV not found: {csv_file}. "
+                "Ensure the file exists and includes Start_Date and End_Date columns (ISO 8601)."
+            )
 
         run_data = self._parse_coremark_pro_csv(csv_file)
 
@@ -71,105 +117,145 @@ class CoreMarkProProcessor(BaseProcessor):
 
     def _parse_coremark_pro_csv(self, csv_file: Path) -> Dict[str, Any]:
         """
-        Parse the CoreMark Pro results.csv file.
+        Parse the CoreMark Pro results CSV file.
 
-        Format:
-        # Test general meta start
-        # <metadata lines>
-        # Test general meta end
-        Test:Multi iterations:Single Iterations:Scaling
-        cjpeg-rose7-preset:1000.00:200.00:5.00
-        core:12.14:2.34:5.19
+        Supports comma-delimited format with required Start_Date and End_Date columns:
+        Test,Multi_iterations,Single_iterations,Scaling,Start_Date,End_Date
+        cjpeg-rose7-preset,434.78,217.39,2.00,2026-02-13T20:18:29Z,2026-02-13T20:19:14Z
         ...
-        Score:35614.20:8064.91
+        Score,14498.47,7411.58,1.95,2026-02-13T20:18:29Z,2026-02-13T20:19:14Z
+
+        Raises ProcessorError if timestamps are missing from the header, or if any
+        data row has missing or malformed Start_Date/End_Date.
         """
         if not csv_file.exists():
-            logger.warning(f"CSV file not found: {csv_file}")
-            return {}
+            raise ProcessorError(
+                f"CoreMark Pro results file not found: {csv_file}. "
+                "Ensure the CSV exists and includes Start_Date and End_Date columns (ISO 8601)."
+            )
 
         content = read_file_content(csv_file)
         lines = content.strip().split('\n')
 
         run_data = {
             "run_number": 0,
-            "status": "PASS",  # CoreMark Pro doesn't explicitly report status
+            "status": "PASS",
             "workloads": {},
             "timeseries": {},
             "overall_metrics": {},
-            "configuration": {}
+            "configuration": {},
+            "start_timestamp": None,
+            "end_timestamp": None,
         }
 
         in_meta = False
-        header_found = False
+        header_tokens: Optional[list] = None
         sequence = 0
 
         for line in lines:
-            line = line.strip()
-            if not line:
+            line_stripped = line.strip()
+            if not line_stripped:
                 continue
 
             # Parse metadata section
-            if "# Test general meta start" in line:
+            if "# Test general meta start" in line_stripped:
                 in_meta = True
                 continue
-            elif "# Test general meta end" in line:
+            elif "# Test general meta end" in line_stripped:
                 in_meta = False
                 continue
 
             if in_meta:
-                # Extract configuration from metadata comments
-                # Example: # Tuned: virtual-guest
-                meta_match = re.match(r'#\s*([^:]+):\s*(.+)', line)
+                meta_match = re.match(r'#\s*([^:]+):\s*(.+)', line_stripped)
                 if meta_match:
                     key = meta_match.group(1).strip().lower().replace(' ', '_')
                     value = meta_match.group(2).strip()
                     run_data["configuration"][key] = value
                 continue
 
-            # Header line
-            if line.startswith("Test:Multi"):
-                header_found = True
+            # Header line: must be comma-delimited with Start_Date and End_Date
+            if line_stripped.startswith("Test,") or (
+                "Start_Date" in line_stripped and "End_Date" in line_stripped and "," in line_stripped
+            ):
+                tokens = [t.strip() for t in line_stripped.split(",")]
+                if "Start_Date" in tokens and "End_Date" in tokens:
+                    header_tokens = tokens
+                    continue
+                raise ProcessorError(
+                    "CoreMark Pro results require timestamps. The CSV header must be comma-delimited "
+                    "and include Start_Date and End_Date columns "
+                    "(e.g. Test,Multi_iterations,Single_iterations,Scaling,Start_Date,End_Date)."
+                )
+
+            # Legacy colon-delimited header (no timestamps)
+            if line_stripped.startswith("Test:") and "Start_Date" not in line_stripped:
+                raise ProcessorError(
+                    "CoreMark Pro results require timestamps. The CSV must use comma-delimited format "
+                    "with Start_Date and End_Date columns. Colon-delimited format without timestamps is not supported."
+                )
+
+            if header_tokens is None:
                 continue
 
-            if not header_found:
+            # Data rows: comma-delimited
+            parts = [p.strip() for p in line_stripped.split(",")]
+            if len(parts) < 6:
                 continue
 
-            # Data lines: workload_name:multi:single:scaling
-            # Or: Score:multi:single
-            parts = line.split(':')
-            if len(parts) < 3:
-                continue
+            # Map columns by header
+            try:
+                start_idx = header_tokens.index("Start_Date")
+                end_idx = header_tokens.index("End_Date")
+            except ValueError:
+                raise ProcessorError(
+                    "CoreMark Pro results require Start_Date and End_Date columns in the CSV header."
+                )
+            if start_idx >= len(parts) or end_idx >= len(parts):
+                raise ProcessorError(
+                    f"CoreMark Pro CSV row has too few columns for Start_Date/End_Date: {line_stripped!r}"
+                )
+
+            start_ts = _validate_iso8601_timestamp(
+                parts[start_idx],
+                f"Row {sequence + 1} ({parts[0]!r}):",
+            )
+            end_ts = _validate_iso8601_timestamp(
+                parts[end_idx],
+                f"Row {sequence + 1} ({parts[0]!r}):",
+            )
+
+            if run_data["start_timestamp"] is None:
+                run_data["start_timestamp"] = start_ts
+                run_data["end_timestamp"] = end_ts
+            # Optionally ensure consistency across rows; for run-level we already have first row's timestamps
 
             workload_name = parts[0].strip()
 
             if workload_name == "Score":
-                # Overall score
                 try:
                     run_data["overall_metrics"]["multicore_score"] = float(parts[1])
                     run_data["overall_metrics"]["singlecore_score"] = float(parts[2])
-                    if len(parts) > 3 and parts[3]:
+                    if len(parts) > 4 and parts[3]:
                         run_data["overall_metrics"]["scaling_factor"] = float(parts[3])
                 except (ValueError, IndexError) as e:
-                    logger.warning(f"Failed to parse Score line: {line} - {e}")
+                    raise ProcessorError(
+                        f"CoreMark Pro CSV: invalid Score row: {line_stripped!r} - {e}"
+                    ) from e
             else:
-                # Individual workload
                 try:
                     multi_iters = float(parts[1])
                     single_iters = float(parts[2])
-                    scaling = float(parts[3]) if len(parts) > 3 else None
+                    scaling = float(parts[3]) if len(parts) > 4 and parts[3] else None
 
-                    # Store workload metrics
                     run_data["workloads"][workload_name] = {
                         "multicore_iterations_per_sec": multi_iters,
                         "singlecore_iterations_per_sec": single_iters,
                         "scaling_factor": scaling
                     }
 
-                    # Create time series point for this workload
-                    # Use sequence number since all workloads run at roughly the same time
                     seq_key = create_sequence_key(sequence)
                     run_data["timeseries"][seq_key] = {
-                        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "timestamp": start_ts,
                         "metrics": {
                             "workload_name": workload_name,
                             "multicore_iterations_per_sec": multi_iters,
@@ -180,19 +266,41 @@ class CoreMarkProProcessor(BaseProcessor):
                     sequence += 1
 
                 except (ValueError, IndexError) as e:
-                    logger.warning(f"Failed to parse workload line: {line} - {e}")
+                    raise ProcessorError(
+                        f"CoreMark Pro CSV: invalid workload row: {line_stripped!r} - {e}"
+                    ) from e
+
+        if header_tokens is None and not run_data["workloads"] and not run_data["overall_metrics"]:
+            raise ProcessorError(
+                "CoreMark Pro results require timestamps. No header line with "
+                "Test,Multi_iterations,Single_iterations,Scaling,Start_Date,End_Date was found."
+            )
+
+        if not run_data["start_timestamp"] or not run_data["end_timestamp"]:
+            raise ProcessorError(
+                "CoreMark Pro results require timestamps. No data row with valid Start_Date and End_Date was found."
+            )
 
         return run_data
 
     def _build_run_object(self, run_data: Dict[str, Any]) -> Run:
-        """Convert raw run data dictionary to Run dataclass object."""
+        """Convert raw run data dictionary to Run dataclass object.
 
-        # Convert timeseries dictionary to TimeSeriesPoint objects
+        Uses start_timestamp/end_timestamp and per-sequence timestamps from the CSV.
+        Raises ProcessorError if any timeseries point is missing a valid timestamp.
+        """
         timeseries = {}
         if "timeseries" in run_data and run_data["timeseries"]:
             for seq_key, ts_data in run_data["timeseries"].items():
+                ts = ts_data.get("timestamp")
+                if not ts:
+                    raise ProcessorError(
+                        f"CoreMark Pro run timeseries point {seq_key} is missing a timestamp. "
+                        "Timestamps must come from the CSV Start_Date/End_Date."
+                    )
+                _validate_iso8601_timestamp(ts, f"Timeseries {seq_key}:")
                 timeseries[seq_key] = TimeSeriesPoint(
-                    timestamp=ts_data.get("timestamp", datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")),
+                    timestamp=ts,
                     metrics=ts_data.get("metrics", {})
                 )
 
@@ -225,12 +333,13 @@ class CoreMarkProProcessor(BaseProcessor):
             for metric_name, value in workload_metrics.items():
                 all_metrics[f"{workload_name}_{metric_name}"] = value
 
-        # Create Run object
         return Run(
             run_number=run_data.get("run_number", 0),
             status=run_data.get("status", "UNKNOWN"),
             metrics=all_metrics,
             configuration=run_data.get("configuration", {}),
             timeseries=timeseries if timeseries else None,
-            timeseries_summary=ts_summary
+            timeseries_summary=ts_summary,
+            start_time=run_data.get("start_timestamp"),
+            end_time=run_data.get("end_timestamp"),
         )
