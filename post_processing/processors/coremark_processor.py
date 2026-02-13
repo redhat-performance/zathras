@@ -13,10 +13,9 @@ CoreMark produces:
 
 import statistics
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
 import logging
 
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ProcessorError
 from ..schema import Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key
 from ..utils.parser_utils import (
     parse_csv_timeseries,
@@ -57,11 +56,22 @@ class CoreMarkProcessor(BaseProcessor):
         """
         files = extracted_result['files']
 
-        # Parse CSV time series
+        # Parse CSV time series (comma-delimited with Start_Date/End_Date; comment lines skipped)
         csv_file = files.get('results_csv')
         time_series_data = []
         if csv_file:
-            time_series_data = parse_csv_timeseries(csv_file, delimiter=':')
+            time_series_data = parse_csv_timeseries(
+                csv_file, delimiter=',', skip_comments=True
+            )
+            if time_series_data and (
+                'Start_Date' not in time_series_data[0]
+                or 'End_Date' not in time_series_data[0]
+            ):
+                raise ProcessorError(
+                    "CoreMark results require timestamps. The CSV must include "
+                    "Start_Date and End_Date columns (comma-delimited format with "
+                    "comment lines). Legacy format without timestamps is not supported."
+                )
 
         # Parse run summaries
         run_summaries = files.get('run_summaries', [])
@@ -190,16 +200,33 @@ class CoreMarkProcessor(BaseProcessor):
         # Calculate duration from summary
         duration = summary.get('total_time_secs') if summary else None
 
-        # Estimate timestamps (we don't have exact timestamps in CoreMark)
-        base_time = datetime(2025, 11, 6, 5, 9, 45)  # Placeholder
-        start_time = base_time + timedelta(minutes=(run_number - 1) * 5)
-        end_time = start_time + timedelta(seconds=duration) if duration else None
+        # Run-level timestamps: from CSV Start_Date/End_Date (required when time series present)
+        has_real_timestamps = (
+            time_series_data
+            and isinstance(time_series_data[0].get('Start_Date'), str)
+            and isinstance(time_series_data[0].get('End_Date'), str)
+        )
+        if has_real_timestamps:
+            start_times = [r['Start_Date'] for r in time_series_data if r.get('Start_Date')]
+            end_times = [r['End_Date'] for r in time_series_data if r.get('End_Date')]
+            start_time_str = min(start_times) if start_times else None
+            end_time_str = max(end_times) if end_times else None
+        elif time_series_data:
+            raise ProcessorError(
+                "CoreMark results require valid timestamps (Start_Date and End_Date "
+                "as ISO 8601 strings in the CSV). Time series data was found but "
+                "timestamps are missing or could not be processed."
+            )
+        else:
+            # No time series data: run-level timestamps left unset
+            start_time_str = None
+            end_time_str = None
 
         return Run(
             run_number=run_number,
             status="PASS",  # Assume PASS if we got results
-            start_time=start_time.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
-            end_time=end_time.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z" if end_time else None,
+            start_time=start_time_str,
+            end_time=end_time_str,
             duration_seconds=duration,
             configuration=config if config else None,
             metrics=metrics if metrics else None,
@@ -220,9 +247,15 @@ class CoreMarkProcessor(BaseProcessor):
         timeseries = {}
         values = []
 
-        # Base timestamp (estimate - CoreMark doesn't include actual timestamps)
-        base_time = datetime(2025, 11, 6, 5, 9, 45)
-        base_time = base_time + timedelta(minutes=(run_number - 1) * 5)
+        has_real_timestamps = (
+            time_series_data
+            and isinstance(time_series_data[0].get('Start_Date'), str)
+        )
+        if not has_real_timestamps and time_series_data:
+            raise ProcessorError(
+                "CoreMark time series requires valid Start_Date timestamps in the CSV. "
+                "Timestamps are missing or could not be processed."
+            )
 
         for sequence, row in enumerate(time_series_data):
             # Get the primary metric value
@@ -243,9 +276,12 @@ class CoreMarkProcessor(BaseProcessor):
 
             values.append(value)
 
-            # Create timestamp (spaced 5 seconds apart as estimate)
-            timestamp = base_time + timedelta(seconds=sequence * 5)
-            timestamp_str = timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+            timestamp_str = row['Start_Date']
+            if not timestamp_str or not isinstance(timestamp_str, str):
+                raise ProcessorError(
+                    f"CoreMark time series row (sequence {sequence}) has missing or "
+                    "invalid Start_Date; all rows must have a valid ISO 8601 timestamp."
+                )
 
             # Create sequence key and time series point
             seq_key = create_sequence_key(sequence)

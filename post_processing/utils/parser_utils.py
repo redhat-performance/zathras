@@ -11,6 +11,7 @@ Common parsing functions for various file formats found in Zathras results:
 Handles various formats and encodings gracefully.
 """
 
+import io
 import re
 import csv
 from typing import Dict, List, Any
@@ -20,19 +21,25 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def parse_csv_timeseries(csv_path: str, delimiter: str = ':') -> List[Dict[str, Any]]:
+def parse_csv_timeseries(csv_path: str, delimiter: str = ':',
+                         skip_comments: bool = False) -> List[Dict[str, Any]]:
     """
     Parse time series CSV files
 
-    Example format (results_coremark.csv):
+    Example format (results_coremark.csv, legacy):
     iteration:threads:IterationsPerSec
     1:4:193245.201809
     1:4:195999.821818
     2:4:190905.935439
 
+    Example format (results_coremark.csv, with timestamps):
+    iteration,threads,IterationsPerSec,Start_Date,End_Date
+    1,4,119358.448340,2026-02-04T00:13:05Z,2026-02-04T00:13:39Z
+
     Args:
         csv_path: Path to CSV file
         delimiter: Column delimiter (default ':')
+        skip_comments: If True, skip lines that start with '#' before the header (default False)
 
     Returns:
         List of dicts with parsed data:
@@ -47,14 +54,35 @@ def parse_csv_timeseries(csv_path: str, delimiter: str = ':') -> List[Dict[str, 
 
     try:
         data = []
-        with open(csv_path, 'r') as f:
-            reader = csv.DictReader(f, delimiter=delimiter)
-            for row in reader:
-                # Convert numeric strings to numbers
-                parsed_row = {}
-                for key, value in row.items():
-                    parsed_row[key] = _parse_numeric_value(value)
-                data.append(parsed_row)
+        if skip_comments:
+            with open(csv_path, 'r') as f:
+                non_comment_lines = [
+                    line for line in f
+                    if line.strip() and not line.strip().startswith('#')
+                ]
+            if not non_comment_lines:
+                return []
+            reader = csv.DictReader(
+                io.StringIO(''.join(non_comment_lines)),
+                delimiter=delimiter
+            )
+        else:
+            with open(csv_path, 'r') as f:
+                reader = csv.DictReader(f, delimiter=delimiter)
+                for row in reader:
+                    parsed_row = {}
+                    for key, value in row.items():
+                        parsed_row[key] = _parse_numeric_value(value)
+                    data.append(parsed_row)
+            logger.debug(f"Parsed {len(data)} rows from {csv_path}")
+            return data
+
+        for row in reader:
+            # Convert numeric strings to numbers (dates etc. remain as strings)
+            parsed_row = {}
+            for key, value in row.items():
+                parsed_row[key] = _parse_numeric_value(value)
+            data.append(parsed_row)
 
         logger.debug(f"Parsed {len(data)} rows from {csv_path}")
         return data
