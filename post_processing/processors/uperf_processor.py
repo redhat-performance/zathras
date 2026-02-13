@@ -3,19 +3,57 @@ Uperf processor for Zathras results.
 
 Uperf is a network performance tool that measures throughput, latency, and transaction rate
 across various protocols, packet sizes, and concurrency levels.
+
+Timestamps are taken from the benchmark output (CSV Start_Date/End_Date). When only
+run-level start/end exist (e.g. run_metadata in net_results), timestamps are interpolated
+for each data point. Missing or malformed timestamps raise ProcessorError.
 """
 
-from typing import Dict, Any, Optional
-from datetime import datetime
+import re
+from typing import Dict, Any, Optional, List
+from datetime import datetime, timedelta
 from pathlib import Path
 import logging
 import statistics
 
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ProcessorError
 from ..schema import Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key
 from ..utils.parser_utils import read_file_content
 
 logger = logging.getLogger(__name__)
+
+# ISO 8601 pattern (e.g. 2026-02-10T14:41:49Z or with fractional seconds)
+_ISO8601_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
+)
+
+
+def _validate_iso8601_timestamp(value: str, context: str) -> str:
+    """Validate and return an ISO 8601 timestamp string. Raises ProcessorError if invalid."""
+    if not value or not isinstance(value, str):
+        raise ProcessorError(
+            f"Uperf results require timestamps. {context} "
+            "Start_Date and End_Date must be non-empty strings."
+        )
+    value = value.strip()
+    if not value:
+        raise ProcessorError(
+            f"Uperf results require timestamps. {context} "
+            "Start_Date and End_Date cannot be blank."
+        )
+    if not _ISO8601_PATTERN.match(value):
+        raise ProcessorError(
+            f"Uperf results require valid ISO 8601 timestamps. {context} "
+            f"Got: {value!r}. Expected format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ"
+        )
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as e:
+        raise ProcessorError(
+            f"Uperf results require valid ISO 8601 timestamps. {context} "
+            f"Cannot parse {value!r}: {e}"
+        ) from e
+    return value
 
 
 class UperfProcessor(BaseProcessor):
@@ -28,132 +66,349 @@ class UperfProcessor(BaseProcessor):
         """
         Parse Uperf runs into object-based structure.
 
-        Uperf runs multiple test configurations (test type x protocol x packet size)
-        and measures IOPS, latency, and throughput at different concurrency levels.
+        Supports:
+        - Direct results path via extracted_result['files']['results_uperf_csv'] (single CSV
+          with Start_Date/End_Date; demos can pass a file path).
+        - extracted_path: look for results_uperf.csv directly in that directory, or in a
+          uperf_* subdir; if not found, use net_results/ with run_metadata timestamps.
 
-        We'll treat this as a single run with:
-        - Aggregated metrics for all configurations
-        - Each configuration's concurrency sweep as time series points
+        Uperf runs multiple test configurations; we treat as one run with timeseries
+        points per (configuration, instance_count). Timestamps come from the CSV or
+        from run-level Start_Date/End_Date with interpolation.
 
         Returns:
-            A dictionary of Run objects, keyed by run_key (typically just "run_0").
+            A dictionary of Run objects, keyed by run_key (typically "run_0").
         """
-        extracted_path = Path(extracted_result['extracted_path'])
+        csv_file: Optional[Path] = None
+        result_dir: Optional[Path] = None
 
-        # Find the net_results directory
-        net_results_dirs = list(extracted_path.rglob("net_results"))
+        files = extracted_result.get("files") or {}
+        if files.get("results_uperf_csv"):
+            csv_file = Path(files["results_uperf_csv"])
+            if not csv_file.exists():
+                raise ProcessorError(
+                    f"Uperf results file not found: {csv_file}. "
+                    "Ensure results_uperf_csv path is valid."
+                )
+            result_dir = csv_file.parent
+        else:
+            extracted_path = Path(extracted_result["extracted_path"])
+            # CSV in result dir directly (e.g. tmp/uperf/results_uperf.csv) or in uperf_*
+            direct_csv = extracted_path / "results_uperf.csv"
+            if direct_csv.exists():
+                csv_file = direct_csv
+                result_dir = extracted_path
+            else:
+                uperf_dirs = list(extracted_path.glob("uperf_*"))
+                if uperf_dirs:
+                    candidate = uperf_dirs[0] / "results_uperf.csv"
+                    if candidate.exists():
+                        csv_file = candidate
+                        result_dir = uperf_dirs[0]
+                if not csv_file:
+                    # Fall back to net_results directory layout (requires run_metadata timestamps)
+                    net_results_dirs = list(extracted_path.rglob("net_results"))
+                    if not net_results_dirs:
+                        raise ProcessorError(
+                            f"Uperf: no results_uperf.csv in {extracted_path} and no net_results directory found. "
+                            "Provide results_uperf.csv with Start_Date/End_Date columns or net_results with run_metadata."
+                        )
+                    net_results_dir = net_results_dirs[0]
+                    run_data = self._parse_uperf_net_results(net_results_dir)
+                    run_objects = {}
+                    if run_data:
+                        run_objects[create_run_key(0)] = self._build_run_object(run_data)
+                    logger.info(
+                        f"Parsed Uperf: 1 run with {len(run_data.get('configurations', {}))} configurations"
+                    )
+                    return run_objects
 
-        if not net_results_dirs:
-            logger.error(f"No net_results directory found in {extracted_path}")
-            return {}
+        if csv_file and csv_file.exists():
+            run_data = self._parse_uperf_single_csv(csv_file)
+            run_objects = {}
+            if run_data:
+                run_objects[create_run_key(0)] = self._build_run_object(run_data)
+            logger.info(
+                f"Parsed Uperf: 1 run with {len(run_data.get('timeseries', {}))} timeseries points"
+            )
+            return run_objects
 
-        net_results_dir = net_results_dirs[0]
+        raise ProcessorError(
+            "Uperf: no results_uperf.csv found and no net_results with run_metadata. "
+            "Expected CSV with columns including Start_Date,End_Date (ISO 8601)."
+        )
 
-        # Parse all test configurations
-        run_data = self._parse_uperf_results(net_results_dir)
-
-        # Build Run object
-        run_objects = {}
-        if run_data:
-            run_objects[create_run_key(0)] = self._build_run_object(run_data)
-
-        logger.info(f"Parsed Uperf: 1 run with {len(run_data.get('configurations', {}))} configurations")
-        return run_objects
-
-    def _parse_uperf_results(self, net_results_dir: Path) -> Dict[str, Any]:
+    def _parse_uperf_single_csv(self, csv_file: Path) -> Dict[str, Any]:
         """
-        Parse Uperf network results.
+        Parse a single Uperf results CSV with Start_Date/End_Date.
 
-        Structure: net_results/<test_type>/<protocol>/<packet_size>/1/
-        - test_type: rr (request-response), stream
-        - protocol: tcp
-        - packet_size: 64, 1024, 16384
-
-        Each configuration has 3 CSV files:
-        - iops.csv: Transactions per second
-        - latency.csv: Latency in microseconds
-        - throughput.csv: Throughput in GB/sec
+        Expected format (comma-delimited):
+          number_procs,Gb_Sec,trans_sec,lat_usec,test_type,packet_type,packet_size,Start_Date,End_Date
+        Comment lines (#) are skipped. Raises ProcessorError if timestamps are missing or malformed.
         """
         run_data = {
             "run_number": 0,
             "status": "PASS",
             "configurations": {},
             "timeseries": {},
-            "overall_metrics": {}
+            "overall_metrics": {},
         }
+        content = read_file_content(csv_file)
+        lines = content.strip().split("\n")
 
+        start_idx: Optional[int] = None
+        end_idx: Optional[int] = None
+        header_cols: List[str] = []
         sequence = 0
-        all_throughput_values = []
+        all_throughput_values: List[float] = []
 
-        # Iterate through test types
-        for test_type_dir in net_results_dir.iterdir():
-            if not test_type_dir.is_dir():
+        for line in lines:
+            line_stripped = line.strip()
+            if not line_stripped or line_stripped.startswith("#"):
                 continue
 
-            test_type = test_type_dir.name  # e.g., "rr", "stream"
+            parts = [p.strip() for p in line_stripped.split(",")]
+            if not parts:
+                continue
 
-            # Iterate through protocols
-            for protocol_dir in test_type_dir.iterdir():
-                if not protocol_dir.is_dir():
-                    continue
+            # Detect header: must contain Start_Date and End_Date
+            if "Start_Date" in parts and "End_Date" in parts:
+                header_cols = parts
+                start_idx = parts.index("Start_Date")
+                end_idx = parts.index("End_Date")
+                if start_idx < 0 or end_idx < 0 or start_idx >= len(parts) or end_idx >= len(parts):
+                    raise ProcessorError(
+                        "Uperf results require timestamps. CSV header must include "
+                        "Start_Date and End_Date columns."
+                    )
+                continue
 
-                protocol = protocol_dir.name  # e.g., "tcp"
+            if start_idx is None or end_idx is None:
+                raise ProcessorError(
+                    "Uperf results require timestamps. No header line with Start_Date and End_Date found. "
+                    "Expected comma-delimited header: number_procs,Gb_Sec,...,Start_Date,End_Date"
+                )
 
-                # Iterate through packet sizes
-                for packet_size_dir in protocol_dir.iterdir():
-                    if not packet_size_dir.is_dir():
-                        continue
+            if len(parts) <= max(start_idx, end_idx):
+                raise ProcessorError(
+                    f"Uperf CSV row has too few columns (got {len(parts)}, need Start_Date at index {start_idx}, "
+                    f"End_Date at {end_idx}). Row: {line_stripped[:80]!r}..."
+                )
 
-                    packet_size = packet_size_dir.name  # e.g., "1024"
+            start_ts = parts[start_idx]
+            end_ts = parts[end_idx]
+            start_timestamp = _validate_iso8601_timestamp(
+                start_ts, f"Row with number_procs={parts[0] if parts else '?'}:"
+            )
+            end_timestamp = _validate_iso8601_timestamp(
+                end_ts, f"Row with number_procs={parts[0] if parts else '?'}:"
+            )
 
-                    # Find the iteration directory (usually "1")
-                    iteration_dirs = [d for d in packet_size_dir.iterdir() if d.is_dir()]
-                    if not iteration_dirs:
-                        continue
+            # Map header to indices for number_procs, Gb_Sec, trans_sec, lat_usec, test_type, packet_type, packet_size
+            def col(name: str) -> int:
+                if name in header_cols:
+                    return header_cols.index(name)
+                return -1
 
-                    result_dir = iteration_dirs[0]
+            num_procs_idx = col("number_procs")
+            gb_sec_idx = col("Gb_Sec")
+            trans_sec_idx = col("trans_sec")
+            lat_usec_idx = col("lat_usec")
+            test_type_idx = col("test_type")
+            packet_type_idx = col("packet_type")
+            packet_size_idx = col("packet_size")
 
-                    # Parse the 3 CSV files
-                    config_key = f"{test_type}_{protocol}_{packet_size}"
-                    config_data = self._parse_config_csvs(result_dir, test_type, protocol, packet_size)
+            number_procs = int(parts[num_procs_idx]) if num_procs_idx >= 0 and num_procs_idx < len(parts) else 0
+            try:
+                gb_sec = float(parts[gb_sec_idx]) if gb_sec_idx >= 0 and gb_sec_idx < len(parts) else None
+            except (ValueError, IndexError):
+                gb_sec = None
+            try:
+                trans_sec = float(parts[trans_sec_idx]) if trans_sec_idx >= 0 and trans_sec_idx < len(parts) else None
+            except (ValueError, IndexError):
+                trans_sec = None
+            try:
+                lat_usec = float(parts[lat_usec_idx]) if lat_usec_idx >= 0 and lat_usec_idx < len(parts) else None
+            except (ValueError, IndexError):
+                lat_usec = None
+            test_type = parts[test_type_idx] if test_type_idx >= 0 and test_type_idx < len(parts) else ""
+            packet_type = parts[packet_type_idx] if packet_type_idx >= 0 and packet_type_idx < len(parts) else ""
+            packet_size_str = parts[packet_size_idx] if packet_size_idx >= 0 and packet_size_idx < len(parts) else "0"
+            try:
+                packet_size_int = int(packet_size_str)
+            except ValueError:
+                packet_size_int = 0
 
-                    if config_data:
-                        run_data["configurations"][config_key] = config_data
+            config_key = f"{test_type}_{packet_type}_{packet_size_str}"
+            if config_key not in run_data["configurations"]:
+                run_data["configurations"][config_key] = {
+                    "test_type": test_type,
+                    "protocol": packet_type,
+                    "packet_size_bytes": packet_size_int,
+                    "data_points": [],
+                    "throughput_values": [],
+                }
+            if gb_sec is not None:
+                run_data["overall_metrics"].setdefault(f"{config_key}_max_throughput_gbps", gb_sec)
+                run_data["overall_metrics"][f"{config_key}_max_throughput_gbps"] = max(
+                    run_data["overall_metrics"][f"{config_key}_max_throughput_gbps"], gb_sec
+                )
+                all_throughput_values.append(gb_sec)
+            run_data["configurations"][config_key]["data_points"].append({
+                "instance_count": number_procs,
+                "iops": trans_sec,
+                "latency_usec": lat_usec,
+                "throughput_gbps": gb_sec,
+            })
+            run_data["configurations"][config_key]["throughput_values"].extend(
+                [gb_sec] if gb_sec is not None else []
+            )
 
-                        # Store overall metrics for this configuration
-                        if config_data.get("throughput_values"):
-                            throughput_values = config_data["throughput_values"]
-                            max_throughput = max(throughput_values)
-                            run_data["overall_metrics"][f"{config_key}_max_throughput_gbps"] = max_throughput
-                            all_throughput_values.extend(throughput_values)
+            seq_key = create_sequence_key(sequence)
+            run_data["timeseries"][seq_key] = {
+                "timestamp": start_timestamp,
+                "metrics": {
+                    "configuration": config_key,
+                    "test_type": test_type,
+                    "protocol": packet_type,
+                    "packet_size_bytes": packet_size_int,
+                    "instance_count": number_procs,
+                    "iops": trans_sec,
+                    "latency_usec": lat_usec,
+                    "throughput_gbps": gb_sec,
+                },
+            }
+            sequence += 1
 
-                        # Create time series points for this configuration
-                        # Each instance count is a separate point
-                        if config_data.get("data_points"):
-                            for point_data in config_data["data_points"]:
-                                seq_key = create_sequence_key(sequence)
-                                run_data["timeseries"][seq_key] = {
-                                    "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                    "metrics": {
-                                        "configuration": config_key,
-                                        "test_type": test_type,
-                                        "protocol": protocol,
-                                        "packet_size_bytes": int(packet_size),
-                                        "instance_count": point_data["instance_count"],
-                                        "iops": point_data.get("iops"),
-                                        "latency_usec": point_data.get("latency_usec"),
-                                        "throughput_gbps": point_data.get("throughput_gbps")
-                                    }
-                                }
-                                sequence += 1
-
-        # Calculate overall statistics
         if all_throughput_values:
             run_data["overall_metrics"]["total_configurations"] = len(run_data["configurations"])
             run_data["overall_metrics"]["peak_throughput_gbps"] = max(all_throughput_values)
             run_data["overall_metrics"]["mean_throughput_gbps"] = statistics.mean(all_throughput_values)
 
         return run_data
+
+    def _parse_uperf_net_results(self, net_results_dir: Path) -> Dict[str, Any]:
+        """
+        Parse Uperf results from net_results directory layout.
+
+        Requires run-level timestamps in net_results_dir/run_metadata.csv with format:
+          Start_Date,End_Date
+          2026-02-10T14:40:00Z,2026-02-10T14:50:00Z
+        Timestamps are interpolated for each data point. Raises ProcessorError if
+        run_metadata is missing or timestamps are invalid.
+        """
+        run_metadata_file = net_results_dir / "run_metadata.csv"
+        if not run_metadata_file.exists():
+            raise ProcessorError(
+                "Uperf results require timestamps. When using net_results layout, "
+                "run_metadata.csv with Start_Date,End_Date (ISO 8601) is required in net_results."
+            )
+        start_ts, end_ts = self._read_run_metadata_timestamps(run_metadata_file)
+
+        run_data = {
+            "run_number": 0,
+            "status": "PASS",
+            "configurations": {},
+            "timeseries": {},
+            "overall_metrics": {},
+        }
+        sequence = 0
+        all_throughput_values: List[float] = []
+        data_points_ordered: List[Dict[str, Any]] = []
+
+        for test_type_dir in net_results_dir.iterdir():
+            if not test_type_dir.is_dir():
+                continue
+            test_type = test_type_dir.name
+            for protocol_dir in test_type_dir.iterdir():
+                if not protocol_dir.is_dir():
+                    continue
+                protocol = protocol_dir.name
+                for packet_size_dir in protocol_dir.iterdir():
+                    if not packet_size_dir.is_dir():
+                        continue
+                    packet_size = packet_size_dir.name
+                    iteration_dirs = [d for d in packet_size_dir.iterdir() if d.is_dir()]
+                    if not iteration_dirs:
+                        continue
+                    result_dir = iteration_dirs[0]
+                    config_key = f"{test_type}_{protocol}_{packet_size}"
+                    config_data = self._parse_config_csvs(result_dir, test_type, protocol, packet_size)
+                    if config_data:
+                        run_data["configurations"][config_key] = config_data
+                        if config_data.get("throughput_values"):
+                            run_data["overall_metrics"][f"{config_key}_max_throughput_gbps"] = max(
+                                config_data["throughput_values"]
+                            )
+                            all_throughput_values.extend(config_data["throughput_values"])
+                        for point_data in config_data.get("data_points", []):
+                            data_points_ordered.append({
+                                "config_key": config_key,
+                                "test_type": test_type,
+                                "protocol": protocol,
+                                "packet_size": packet_size,
+                                "point_data": point_data,
+                            })
+
+        n = len(data_points_ordered)
+        if n == 0:
+            raise ProcessorError(
+                "Uperf net_results: no data points found. Ensure iops.csv, latency.csv, throughput.csv exist."
+            )
+        start_dt = datetime.fromisoformat(start_ts.replace("Z", "+00:00"))
+        end_dt = datetime.fromisoformat(end_ts.replace("Z", "+00:00"))
+        for i, item in enumerate(data_points_ordered):
+            if n <= 1:
+                ts_str = start_ts
+            else:
+                frac = i / (n - 1)
+                delta_sec = (end_dt - start_dt).total_seconds() * frac
+                point_dt = start_dt + timedelta(seconds=delta_sec)
+                ts_str = (
+                    point_dt.strftime("%Y-%m-%dT%H:%M:%S")
+                    + (f".{point_dt.microsecond:06d}".rstrip("0").rstrip(".") or "")
+                    + "Z"
+                )
+            seq_key = create_sequence_key(sequence)
+            pd = item["point_data"]
+            run_data["timeseries"][seq_key] = {
+                "timestamp": ts_str,
+                "metrics": {
+                    "configuration": item["config_key"],
+                    "test_type": item["test_type"],
+                    "protocol": item["protocol"],
+                    "packet_size_bytes": int(item["packet_size"]),
+                    "instance_count": pd["instance_count"],
+                    "iops": pd.get("iops"),
+                    "latency_usec": pd.get("latency_usec"),
+                    "throughput_gbps": pd.get("throughput_gbps"),
+                },
+            }
+            sequence += 1
+
+        if all_throughput_values:
+            run_data["overall_metrics"]["total_configurations"] = len(run_data["configurations"])
+            run_data["overall_metrics"]["peak_throughput_gbps"] = max(all_throughput_values)
+            run_data["overall_metrics"]["mean_throughput_gbps"] = statistics.mean(all_throughput_values)
+
+        return run_data
+
+    def _read_run_metadata_timestamps(self, metadata_file: Path) -> tuple:
+        """Read Start_Date,End_Date from run_metadata.csv. Raises ProcessorError if missing/invalid."""
+        content = read_file_content(metadata_file)
+        lines = [ln.strip() for ln in content.strip().split("\n") if ln.strip() and not ln.strip().startswith("#")]
+        if len(lines) < 2:
+            raise ProcessorError(
+                "Uperf run_metadata.csv must have a header line (Start_Date,End_Date) and a data line with ISO 8601 timestamps."
+            )
+        parts = [p.strip() for p in lines[1].split(",")]
+        if len(parts) < 2:
+            raise ProcessorError(
+                "Uperf run_metadata.csv data line must have at least two columns: Start_Date,End_Date."
+            )
+        start_ts = _validate_iso8601_timestamp(parts[0], "run_metadata.csv Start_Date:")
+        end_ts = _validate_iso8601_timestamp(parts[1], "run_metadata.csv End_Date:")
+        return start_ts, end_ts
 
     def _parse_config_csvs(
         self, result_dir: Path, test_type: str, protocol: str, packet_size: str
@@ -242,15 +497,23 @@ class UperfProcessor(BaseProcessor):
         return data
 
     def _build_run_object(self, run_data: Dict[str, Any]) -> Run:
-        """Convert raw run data dictionary to Run dataclass object."""
+        """Convert raw run data dictionary to Run dataclass object.
 
-        # Convert timeseries dictionary to TimeSeriesPoint objects
+        Requires valid timestamps for every timeseries point; raises ProcessorError if any are missing or invalid.
+        """
         timeseries = {}
         if "timeseries" in run_data and run_data["timeseries"]:
             for seq_key, ts_data in run_data["timeseries"].items():
+                ts = ts_data.get("timestamp")
+                if not ts:
+                    raise ProcessorError(
+                        f"Uperf run timeseries point {seq_key} is missing a timestamp. "
+                        "Timestamps must come from the CSV Start_Date/End_Date or run_metadata."
+                    )
+                _validate_iso8601_timestamp(ts, f"Timeseries {seq_key}:")
                 timeseries[seq_key] = TimeSeriesPoint(
-                    timestamp=ts_data.get("timestamp", datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")),
-                    metrics=ts_data.get("metrics", {})
+                    timestamp=ts,
+                    metrics=ts_data.get("metrics", {}),
                 )
 
         # Calculate time series summary using throughput as primary metric
