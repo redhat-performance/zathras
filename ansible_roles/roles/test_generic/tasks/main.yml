@@ -80,6 +80,8 @@
         --sysname "{{ config_info.host_or_cloud_inst }}"
         --sys_type {{ config_info.system_type }}
         {{ "--no_pkg_install" if config_info.do_not_install_packages else "" }}
+        {{ "--no_pip_packages" if config_info.do_not_install_pip_packages else "" }}
+        {{ "--no_system_packages" if config_info.do_not_install_system_packages else "" }}
         {{ config_info.use_pcp }}
         {{ test_data.test_specific }}
 
