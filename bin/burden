@@ -223,6 +223,8 @@ gl_cloud_disk_type=""
 gl_zathras_specific_vals="config/zathras_specific_vals_def"
 gl_zathras_specific_vals_set=0
 gl_no_packages=0
+gl_no_pip_packages=0
+gl_no_system_packages=0
 gl_bootc_mode=0
 gl_cpu_type_request="none"
 gl_run_file=""
@@ -1851,6 +1853,8 @@ create_ansible_options()
 		echo "  "cloud_placement: $gl_cloud_placement >> ansible_vars_main.yml
 		echo "  "run_label: ${gl_run_prefix}_${gl_os_vendor} >> ansible_vars_main.yml
 		echo "  "do_not_install_packages: ${gl_no_packages} >> ansible_vars_main.yml
+		echo "  "do_not_install_pip_packages: ${gl_no_pip_packages} >> ansible_vars_main.yml
+		echo "  "do_not_install_system_packages: ${gl_no_system_packages} >> ansible_vars_main.yml
 		echo "  "bootc_mode: ${gl_bootc_mode} >> ansible_vars_main.yml
 		echo "  "error_repo_errors: ${gl_error_repo_errors} >> ansible_vars_main.yml
 		spot_pricing=0
@@ -3323,6 +3327,8 @@ usage()
 	echo "  --mode <mode>: Operating mode. Use 'image' for bootc-based hosts (skips packages, uses safe upload paths)."
 	echo "  --no_clean_up: Do not cleanup at the end of the test"
 	echo "  --no_packages: Do not install any packages. The default is no."
+	echo "  --no_pip_packages: Do not install pip packages. The default is no."
+	echo "  --no_system_packages: Do not install system packages (via dnf/apt/etc). The default is no."
 	echo "  --no_spot_recover: Do not recover from a spot system going away."
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
@@ -3529,6 +3535,18 @@ set_general_value()
 		--no_packages)
 			echo "$1" >> $gl_cli_supplied_options
 			gl_no_packages=1
+			gl_no_pip_packages=1
+			gl_no_system_packages=1
+			shift_by=1
+		;;
+		--no_pip_packages)
+			echo "$1" >> $gl_cli_supplied_options
+			gl_no_pip_packages=1
+			shift_by=1
+		;;
+		--no_system_packages)
+			echo "$1" >> $gl_cli_supplied_options
+			gl_no_system_packages=1
 			shift_by=1
 		;;
 		--mode)
@@ -3840,6 +3858,8 @@ grab_cli_data()
 		"ignore_repo_errors"
 		"no_clean_up"
 		"no_packages"
+		"no_pip_packages"
+		"no_system_packages"
 		"no_spot_recover"
 		"persistent_log"
 		"preflight_check"
