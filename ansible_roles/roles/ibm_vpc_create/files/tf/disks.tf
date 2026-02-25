@@ -21,5 +21,5 @@ resource "ibm_is_instance_volume_attachment" "volume_attachment" {
     count.index
   )
   name     = "${var.run_label}-attachment-${format("%02d", count.index)}"
-  delete_volume_on_instance_delete = false
+  delete_volume_on_instance_delete = true
 }

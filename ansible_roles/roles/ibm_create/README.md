@@ -6,18 +6,14 @@ This role provides IBM Cloud Virtual Server Instance (VSI) provisioning support 
 
 The `ibm_create` role integrates IBM Cloud into Zathras, allowing users to provision VSIs for testing on IBM Cloud infrastructure. This implementation follows the same patterns as the existing AWS, Azure, and GCP cloud providers.
 
-## ⚠️ Important: IBM Cloud Authentication
+## IBM Cloud Authentication
 
-**Unlike AWS, Azure, and GCP**, IBM Cloud requires an explicit API key to be set as an environment variable for Terraform to work, even if you're logged in via `ibmcloud login`.
-
-**You MUST export one of these environment variables before running Zathras:**
+IBM Cloud requires an API key for Terraform. Set the environment variable before running Zathras:
 ```bash
 export IC_API_KEY="your-api-key"
-# OR
-export IBMCLOUD_API_KEY="your-api-key"
 ```
 
-This is a requirement of the IBM Cloud Terraform provider and cannot be avoided.
+This is validated by burden before provisioning begins.
 
 ## Prerequisites
 

@@ -60,15 +60,6 @@ variable "network_count" {
   default = 1
 }
 
-variable "pbench_device" {
-  type = string
-  default = "/dev/vdd"
-}
-
-variable "pb_disk_count" {
-  type = number
-  default = 1
-}
 
 variable "pb_vol_size" {
   type = number
