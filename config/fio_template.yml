@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/fio-wrapper/archive/refs/tags
-exec_dir: "fio-wrapper-3.1/fio"
-repo_file: "v3.1.tar.gz"
+exec_dir: "fio-wrapper-3.0/fio"
+repo_file: "v3.0.tar.gz"
 storage_required: "yes"
 test_script_to_run: fio_run
 test_specific: "--disks {{ dyn_data.storage }}"
