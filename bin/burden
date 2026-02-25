@@ -140,6 +140,7 @@ gl_spot_recover=1
 gl_cloud_placement=${value_not_set}
 gl_cloud_networks_sys="duplicate"
 gl_preflight=0
+gl_use_pcp="--use_pcp"
 #
 # Global values
 #   gl_sys_file: sysctl files to use.
@@ -222,6 +223,8 @@ gl_cloud_disk_type=""
 gl_zathras_specific_vals="config/zathras_specific_vals_def"
 gl_zathras_specific_vals_set=0
 gl_no_packages=0
+gl_no_pip_packages=0
+gl_no_system_packages=0
 gl_bootc_mode=0
 gl_cpu_type_request="none"
 gl_run_file=""
@@ -976,7 +979,10 @@ set_region_zone_defaults()
 	if [[ $gl_system_type == "aws" ]]; then
 		gl_cloud_region=`aws configure get region`
 		if [ $? -eq 1 ]; then
-			cleanup_and_exit "Unable to retrieve the AWS region" 1
+			if [[ -z "$AWS_DEFAULT_REGION" ]]; then
+				cleanup_and_exit "Unable to retrieve the AWS region" 1
+			fi
+			gl_cloud_region="$AWS_DEFAULT_REGION"
 		fi
 		obtain_zone
 	elif [[ $gl_system_type == "azure" ]]; then
@@ -1167,14 +1173,6 @@ determine_what_has_to_be_installed()
 		create_test_run_file $local_test_name
 	done
 	make_list_of_rpms_to_upload
-#
-#  Now java packages if need be.
-#
-	if [[ $gl_java_version != $value_not_set ]]; then
-		java_package=$(find_test_def_field "${gl_top_dir}/java_info" "java_version" $gl_java_version $gl_os_vendor)
-		echo "  - ${java_package}" >> install_choices
-	fi
-
 	echo "---" >> install_opts.yml
 	echo "pkg_install:" >> install_opts.yml
 	sort -u install_choices >> install_opts.yml
@@ -1598,6 +1596,28 @@ generate_tags()
   		echo "  Jirald: ${1}" >> tags_defaults
 	fi
 	#
+	# If ~/.config/zathras/cloud_tags exists, replace the various tags.
+	# 
+
+	rm -f tag_temp
+	if [[ -f "${HOME}/.config/zathras/cloud_tags" ]]; then
+		while IFS= read -r line
+		do
+			name=`echo "$line" | cut -d':'  -f 1`
+			while IFS= read -r tag_value
+			do
+				field=`echo "$tag_value" | cut -d':' -f 1`
+				echo $field | grep -q "$name"
+				if [[ $? -eq 0 ]]; then
+					echo "$line"  >>  tag_temp
+				else
+					echo "$tag_value" >> tag_temp
+				fi
+			done < "tags_defaults"
+			mv tag_temp tags_defaults
+		done < "${HOME}/.config/zathras/cloud_tags"
+	fi
+	#
 	# OK now add the variable information into the various files
 	# This sets them up to be set  when the system is created or
 	# shortly after it is created via terraform.  The various
@@ -1673,6 +1693,7 @@ generate_tags()
 	fi
 	echo "}" >> add_main_vars.tf
 }
+
 #
 #  Using all the options entered, create the working directory for the configuration and it's
 #  associated files.
@@ -1893,6 +1914,8 @@ create_ansible_options()
 		echo "  "cloud_placement: $gl_cloud_placement >> ansible_vars_main.yml
 		echo "  "run_label: ${gl_run_prefix}_${gl_os_vendor} >> ansible_vars_main.yml
 		echo "  "do_not_install_packages: ${gl_no_packages} >> ansible_vars_main.yml
+		echo "  "do_not_install_pip_packages: ${gl_no_pip_packages} >> ansible_vars_main.yml
+		echo "  "do_not_install_system_packages: ${gl_no_system_packages} >> ansible_vars_main.yml
 		echo "  "bootc_mode: ${gl_bootc_mode} >> ansible_vars_main.yml
 		echo "  "error_repo_errors: ${gl_error_repo_errors} >> ansible_vars_main.yml
 		spot_pricing=0
@@ -1988,6 +2011,7 @@ create_ansible_options()
 			echo "  test_exec_location: none"  >> ansible_vars_main.yml
 		fi
 
+		echo "  use_pcp: ${gl_use_pcp}" >> ansible_vars_main.yml
 		#
 		# More differences in the cloud space that has to be addressed here.
 		#
@@ -2507,29 +2531,6 @@ verify_iterations()
 	if [[ $value_check -lt 1 ]]; then
 		cleanup_and_exit "Error: $1, iterations needs to be an integer and greater than 0" 1
 	fi
-}
-
-#
-# Verify that the java version provided is a valid value.
-#
-verify_java_version()
-{
-	java_vers=`grep java_version java_info  | cut -d\" -f 4`
-
-	for ask_for in $1;
-	do
-		found=0
-		for version in $java_vers; 
-		do
-			if [[ $version == $ask_for ]]; then
-				found=1
-			fi
-		done
-		if [[ $found -eq 0 ]]; then
-			cleanup_and_exit "Error: unknown java version $1, known versions are: $java_vers" 1
-		fi
-	done
-	
 }
 
 obtain_network_info()
@@ -3398,9 +3399,13 @@ usage()
 	echo "  --mode <mode>: Operating mode. Use 'image' for bootc-based hosts (skips packages, uses safe upload paths)."
 	echo "  --no_clean_up: Do not cleanup at the end of the test"
 	echo "  --no_packages: Do not install any packages. The default is no."
+	echo "  --no_pip_packages: Do not install pip packages. The default is no."
+	echo "  --no_system_packages: Do not install system packages (via dnf/apt/etc). The default is no."
 	echo "  --no_spot_recover: Do not recover from a spot system going away."
 	echo "  --package_name <name>: Use this set of packages to override the default in the test config."
 	echo "    file instead of the default. Default format  package name <os>_pkg, new name <os>_pkg_<ver>."
+	echo "  --use_pcp 0/1:  If set to 0, pcp will not be used by the wrappers.  If set to 1, pcp will be"
+	echo "    used by the wrappers.  Default is 1."
 	echo "  --persistent_log: enable persistent logging"
 	echo "  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits"
 	echo "  --results_prefix <prefix>: Run directory prefix"
@@ -3576,8 +3581,7 @@ set_general_value()
 		--java_version)
 			if [[ $gl_java_version == $value_not_set ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
-				gl_java_version=$2
-				verify_data verify_java_version $2
+				gl_java_version=`echo $2 | sed "s/java-//g"`
 			fi
 			shift_by=2
 		;; 
@@ -3603,6 +3607,18 @@ set_general_value()
 		--no_packages)
 			echo "$1" >> $gl_cli_supplied_options
 			gl_no_packages=1
+			gl_no_pip_packages=1
+			gl_no_system_packages=1
+			shift_by=1
+		;;
+		--no_pip_packages)
+			echo "$1" >> $gl_cli_supplied_options
+			gl_no_pip_packages=1
+			shift_by=1
+		;;
+		--no_system_packages)
+			echo "$1" >> $gl_cli_supplied_options
+			gl_no_system_packages=1
 			shift_by=1
 		;;
 		--mode)
@@ -3829,6 +3845,15 @@ set_general_value()
 			usage "0"
 			shift_by=1
 		;;
+		--use_pcp)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			if [[ $2 -eq 1 ]]; then
+				gl_use_pcp="--use_pcp"
+			else
+				gl_use_pcp=""
+			fi
+			shift_by=2
+		;;
 		--use_spot)
 			gl_use_spot=$2
 			shift_by=2
@@ -3894,6 +3919,7 @@ grab_cli_data()
 		"tuned_reboot"
 		"update_target"
 		"upload_rpms"
+		"use_pcp"
 		"use_spot"
 	)
 
@@ -3904,6 +3930,8 @@ grab_cli_data()
 		"ignore_repo_errors"
 		"no_clean_up"
 		"no_packages"
+		"no_pip_packages"
+		"no_system_packages"
 		"no_spot_recover"
 		"persistent_log"
 		"preflight_check"
@@ -4205,7 +4233,6 @@ first_invocation()
 	if [[ ! -f test_info ]] || [[ $gl_test_version_check -eq 1 ]] || [[ $gl_update_test_versions -eq 1 ]]; then
 		integrate_templates ${gl_test_def_dir}/test_defs.yml
 		cat $gl_test_def_dir/full_test_defs.yml | yq . > test_info
-		cat $gl_test_def_dir/java_pkg_def.yml | yq . > java_info
 	fi
 	source $UTILS_DIR/gl_unlock_exclusive
 }

@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/uperf-wrapper/archive/refs/tags
-exec_dir: "uperf-wrapper-2.3/uperf"
-repo_file: "v2.3.tar.gz"
+exec_dir: "uperf-wrapper-2.2/uperf"
+repo_file: "v2.2.tar.gz"
 network_required: "yes"
 test_script_to_run: uperf_run
 test_specific: --client_ips {{ dyn_data.ct_uperf_server_ip }} --server_ips {{ dyn_data.ct_uperf_client_list }} --tests stream --numb_jobs 1 --packet_type tcp --packet_sizes 64 --time 60

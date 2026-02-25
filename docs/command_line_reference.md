@@ -52,6 +52,12 @@ Do not cleanup at the end of the test.
 ### --no_packages
 Do not install any packages, default is no.
 
+### --no_pip_packages
+Do not install python pip packages, default is no.
+
+### --no_system_packages
+Do not install system packages via dnf/apt/zypper/etc, default is no.
+
 ### --no_spot_recover
 Do not recover from a spot system going away.
 
@@ -60,6 +66,9 @@ Currently rhel, ubuntu, amazon, suse.
 
 ### --package_name \<name>
 Use this set of packages to override the default in the test config file instead of the default. Default format package name \<os>_pkg, new name \<os>_pkg_\<ver>.
+
+### --use_pcp 0/1
+If set to 0, pcp will not be used by the wrappers.  If set to 1, pcp will be used by the wrappers.  Default is 1.
 
 ### --persistent_log
 Enable persistent logging.
@@ -188,3 +197,4 @@ Name of the user to log into the system with. This setting will override the def
 
 ### --update_test_versions
 Will update the templates so we are using the latest versions of the test (git repos only).
+

@@ -1,6 +1,6 @@
 location: https://github.com/redhat-performance/specjbb-wrapper/archive/refs/tags
-repo_file: "v2.4.tar.gz"
-exec_dir: "specjbb-wrapper-2.4/specjbb"
+repo_file: "v2.2.tar.gz"
+exec_dir: "specjbb-wrapper-2.2/specjbb"
 java_required: "yes"
 test_script_to_run: specjbb_run
 upload_extra: "/home/exports/SPECjbb2005_kitv1.07.tar.gz"
