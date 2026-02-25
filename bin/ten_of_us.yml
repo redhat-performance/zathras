@@ -968,7 +968,7 @@
         name: tf_delete
       vars:
         tf_dir: "tf"
-      when: config_info.system_type == "aws" or config_info.system_type == "gcp" or config_info.system_type == "azure" or config_info.system_type == "ibm"
+      when: config_info.system_type in ['aws', 'gcp', 'azure', 'ibm']
     
     - name: terminate end time
       command: "date -u +%s"

@@ -1,33 +1,6 @@
 ---
 # tasks file for ibm_create
 
-# Validate IBM Cloud API key is set
-- name: Check for IBM Cloud API key
-  shell: |
-    if [ -z "$IC_API_KEY" ] && [ -z "$IBMCLOUD_API_KEY" ]; then
-      echo "MISSING"
-    else
-      echo "OK"
-    fi
-  register: api_key_check
-  changed_when: false
-
-- name: Fail if IBM Cloud API key not set
-  fail:
-    msg: |
-      IBM Cloud API key is not set. Terraform requires an API key to authenticate.
-
-      Please set one of these environment variables:
-        export IC_API_KEY="your-api-key"
-      OR
-        export IBMCLOUD_API_KEY="your-api-key"
-
-      To create an API key:
-        ibmcloud iam api-key-create zathras-key -d "Zathras Terraform key"
-
-      Then export the key value shown in the output.
-  when: api_key_check.stdout == "MISSING"
-
 - name: include info
   include_vars:
     file: "{{ working_dir }}/ansible_vars.yml"
@@ -65,29 +38,28 @@
       exit 0
     fi
     # Fall back to first available key
-    ibmcloud is keys --output json | jq -r '.[0].name'
+    first_key=$(ibmcloud is keys --output json | jq -r '.[0].name')
+    if [ -n "$first_key" ] && [ "$first_key" != "null" ]; then
+      echo "$first_key"
+      exit 0
+    fi
+    exit 1
   register: ibm_ssh_key_name
-  ignore_errors: yes
-
-- name: Set default SSH key name if lookup failed
-  set_fact:
-    ibm_ssh_key_name_value: "{{ ibm_ssh_key_name.stdout if ibm_ssh_key_name.rc == 0 and ibm_ssh_key_name.stdout != '' else 'zathras-key' }}"
-
-- name: Verify SSH key exists in IBM Cloud
-  shell: ibmcloud is keys --output json | jq -r '.[].name' | grep -q "{{ ibm_ssh_key_name_value }}"
-  register: ssh_key_check
-  ignore_errors: yes
   failed_when: false
 
-- name: Fail if SSH key not found
+- name: Fail if no SSH key found in IBM Cloud
   fail:
     msg: |
-      SSH key '{{ ibm_ssh_key_name_value }}' not found in IBM Cloud.
+      No SSH key found in IBM Cloud.
       Please create an SSH key first:
-        ibmcloud is key-create {{ ibm_ssh_key_name_value }} @~/.ssh/id_rsa.pub
+        ibmcloud is key-create zathras-key @~/.ssh/id_rsa.pub
       Or list existing keys:
         ibmcloud is keys
-  when: ssh_key_check.rc != 0
+  when: ibm_ssh_key_name.rc != 0 or ibm_ssh_key_name.stdout == ''
+
+- name: Set SSH key name
+  set_fact:
+    ibm_ssh_key_name_value: "{{ ibm_ssh_key_name.stdout }}"
 
 - name: create private copy of tfvars template
   copy:
@@ -124,26 +96,18 @@
   when: public_ip_list is not defined or public_ip_list | length == 0
 
 - name: wait for ssh to come up
-  local_action: wait_for
-    host={{ public_ip_list[0] }}
-    port=22
-    state=started
-    delay=10
-    timeout=1200
+  include_role:
+    name: wait_for_ssh
+  vars:
+    hostname: "{{ public_ip_list[0] }}"
 
-- name: Wait for IBM Cloud user account readiness with backoff
-  shell: |
-    ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    -i {{ config_info.ssh_key }} \
-    {{ config_info.test_user }}@{{ item.1 }} \
-    "id {{ config_info.test_user }} && echo 'User ready'"
-  register: user_ssh_ready
-  until: user_ssh_ready.rc == 0
-  retries: "{{ ansible_ssh_retries | default(5) }}"
-  delay: "{{ item.0 * 2 + 3 }}"
-  with_indexed_items:
-    - "{{ public_ip_list }}"
+- name: Wait for user account readiness
+  include_role:
+    name: wait_for_user_ready
+  vars:
+    ssh_key: "{{ config_info.ssh_key }}"
+    test_user: "{{ config_info.test_user }}"
+    ip_list: "{{ public_ip_list }}"
 
 - name: grab create end time
   command: "date -u +%s"

@@ -1507,6 +1507,10 @@ aws_specific_os_version()
 #
 ibm_specific_os_version()
 {
+	# Validate IBM Cloud API key is set - Terraform requires it
+	if [[ -z "$IC_API_KEY" ]] && [[ -z "$IBMCLOUD_API_KEY" ]]; then
+		cleanup_and_exit "Error: IBM Cloud API key not set. Export IC_API_KEY or IBMCLOUD_API_KEY" 1
+	fi
 	# For IBM Cloud, we just pass through the image ID
 	# The image ID should be validated by the user via --show_os_versions
 	echo "  cloud_os_version: ${gl_cloud_os_version}" >> ansible_vars_main.yml
@@ -1954,8 +1958,10 @@ create_ansible_options()
 		fi
 		#
 		# local system type, user is expected to be root. cloud systems are expected
-		# to be non-root.
+		# to be non-root. Note: user_parent_home_dir is set after set_user_name
+		# below, since we need to know the test_user first.
 		#
+
 		echo "  java_version: ${gl_java_version}" >> ansible_vars_main.yml
 		if [[ ${gl_rhel_tuned_setting} == "none" ]]; then
 			echo "  rhel_tuned_setting: ${gl_rhel_tuned_setting}" >> ansible_vars_main.yml
@@ -2034,11 +2040,9 @@ create_ansible_options()
 		set_user_name $user_name
 		#
 		# Set user_parent_home_dir based on test_user (must be AFTER set_user_name)
+		# Root's home is /root, not /home/root
 		#
-		if [[ $gl_test_user == "root" ]]; then
-			# Root user's home is /root, not /home/root
-			echo "  user_parent_home_dir: /" >> ansible_vars_main.yml
-		elif [[ $gl_system_type == "local" ]]; then
+		if [[ $gl_test_user == "root" ]] || [[ $gl_system_type == "local" ]]; then
 			echo "  user_parent_home_dir: /" >> ansible_vars_main.yml
 		else
 			echo "  user_parent_home_dir: /home" >> ansible_vars_main.yml

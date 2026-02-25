@@ -1,8 +1,5 @@
 location: https://github.com/redhat-performance/iozone-wrapper/archive/refs/tags
-exec_dir: "iozone-wrapper-2.1/iozone"
-repo_file: "v2.1.tar.gz"
-rhel_pkgs: gcc,bc,wget,perl-Math-BigInt.noarch,perl-Math-BigRat.noarch,perl-Math-Complex.noarch,perf,git,unzip
-ubuntu_pkgs: gcc
-amazon_pkgs: gcc
+exec_dir: "iozone-wrapper-3.0/iozone"
+repo_file: "v3.0.tar.gz"
 storage_required: "yes"
 test_script_to_run: iozone_run.sh

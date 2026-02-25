@@ -87,7 +87,6 @@
   include_role:
     name: set_up_tf_vars
   vars:
-    pbench_ns_tf: none
     cloud_change_to: ibm_vpc
 
 #
@@ -101,13 +100,6 @@
 
 - name: Add tag info in to main info, must be in the front.
   shell: "cat {{ working_dir }}/add_main_vars.tf {{ working_dir }}/main_back.tf > {{ working_dir }}/tf/main.tf"
-
-- name: Set up terraform variables
-  include_role:
-    name: set_up_tf_vars
-  vars:
-    pbench_ns_tf: tf/pbench_disks.tf
-    pbench_spot_tf: none
 
 - name: grab ibm vpc create start time
   command: "date -u +%s"
@@ -124,23 +116,10 @@
 
 # Wait for the server to come up
 - name: wait for ssh to come up
-  local_action: wait_for
-    host={{ public_ip_address[0] }}
-    port=22
-    state=started
-    delay=10
-    timeout=1200
-
-- name: Handle wrong cpu types
-  block:
-  - name: Verfiy IBM CPU
-    include_role:
-      name: verify_cpu
-    vars:
-      ip_addr: "{{ public_ip_address[0] }}"
-  - name: Remove wrong cpu type systems
-    shell: "{{ working_dir }}/remove_wrong_cpus {{ working_dir }}"
-  when: config_info.cpu_type_request != "none"
+  include_role:
+    name: wait_for_ssh
+  vars:
+    hostname: "{{ public_ip_address[0] }}"
 
 - name: Add host(s) to test and install groups
   include_tasks: add_host_to_groups.yml
@@ -151,13 +130,6 @@
   vars:
     ip_list: "{{ public_ip_address }}"
   when: config_info.cloud_numb_networks|int >= 1
-
-- name: IBM VPC set up pbench disk
-  include_role:
-    name: pbench_disk_set
-  vars:
-    tf_file: "{{ working_dir }}/tf/terraform.tfstate.d/{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}/terraform.tfstate"
-  when: config_info.pbench_disk_required == "yes"
 
 - name: create end time
   command: "date -u +%s"
