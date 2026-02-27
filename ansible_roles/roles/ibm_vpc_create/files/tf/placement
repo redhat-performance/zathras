@@ -1,0 +1,37 @@
+# Create placement group for improved performance and availability
+resource "ibm_is_instance_group_manager" "placement_group" {
+  name                 = "${var.run_label}-placement-group"
+  instance_group       = ibm_is_instance_group.instance_group.id
+  manager_type         = "autoscale"
+  enable_manager       = true
+  aggregation_window   = 120
+  cooldown             = 300
+  max_membership_count = var.vm_count + 1
+  min_membership_count = var.vm_count
+}
+
+resource "ibm_is_instance_group" "instance_group" {
+  name                = "${var.run_label}-instance-group"
+  instance_template   = ibm_is_instance_template.instance_template.id
+  instance_count      = var.vm_count
+  resource_group      = data.ibm_resource_group.resource_group.id
+  subnets             = [ibm_is_subnet.subnet.id]
+  application_port    = 22
+  load_balancer       = null
+}
+
+resource "ibm_is_instance_template" "instance_template" {
+  name           = "${var.run_label}-instance-template"
+  image          = var.image_name
+  profile        = var.machine_type
+  resource_group = data.ibm_resource_group.resource_group.id
+  vpc            = ibm_is_vpc.vpc.id
+  zone           = var.zone
+  keys           = [data.ibm_is_ssh_key.ssh_key.id]
+  
+  primary_network_interface {
+    name            = "eth0"
+    subnet          = ibm_is_subnet.subnet.id
+    security_groups = [ibm_is_security_group.security_group.id]
+  }
+}

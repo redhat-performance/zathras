@@ -1,0 +1,40 @@
+---
+#
+# Wait for user account readiness on a remote system via SSH.
+# Retries with backoff to handle cloud instances where user
+# accounts may not be immediately available after SSH is up.
+#
+# Required variables:
+#   ssh_key       - path to SSH private key
+#   test_user     - username to check
+#   ip_list       - list of IPs to verify
+#
+- name: Wait for user account readiness with backoff
+  block:
+    - name: Check user account via SSH
+      shell: |
+        ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -i {{ ssh_key }} \
+        {{ test_user }}@{{ item.1 }} \
+        "id {{ test_user }} && echo 'User ready'"
+      register: user_ssh_ready
+      until: user_ssh_ready.rc == 0
+      retries: "{{ ansible_ssh_retries | default(5) }}"
+      delay: "{{ item.0 * 2 + 3 }}"
+      with_indexed_items:
+        - "{{ ip_list }}"
+  rescue:
+    - name: Record user readiness failure
+      include_role:
+        name: record_status
+      vars:
+        results: "{{ user_ssh_ready }}"
+        status_file: "{{ working_dir }}/user_ready_status"
+
+    - name: Terminate system on user readiness failure
+      include_role:
+        name: terminate_on_error
+      vars:
+        status_file: "user_ready_status"
+        exit_msg: "User account '{{ test_user }}' never became ready. Retries exhausted."

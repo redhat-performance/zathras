@@ -1,0 +1,33 @@
+#
+# Set up disks in IBM VPC
+#
+- name: Get the disk information
+  set_fact:
+    disk_info: "{{ config_info.cloud_disks | replace('[','') | replace(']','') }}"
+
+- name: Parse disk info
+  set_fact:
+    disk_list: "{{ disk_info.split(',') }}"
+
+- name: Get each disk's information
+  set_fact:
+    disk_values: "{{ item.split(':') }}"
+  loop: "{{ disk_list }}"
+  register: disk_info_parsed
+
+- name: Set up disks
+  block:
+  - name: template over disk count and size
+    template:
+      src: "tfvars_disks.j2"
+      dest: "{{ working_dir }}/tf/env_disks.tfvars"
+    vars:
+      disk_count: "{{ disk_values_in.0 }}"
+      disk_size: "{{ disk_values_in.2 }}"
+      disk_type: "{{ disk_values_in.1 }}"
+  - name: Add to current tfvars
+    shell: "cat {{ working_dir }}/tf/env_disks.tfvars >> {{ working_dir }}/tf/env.tfvars"
+  vars:
+    disk_values_in: "{{ item.ansible_facts.disk_values }}"
+  with_items: "{{ disk_info_parsed.results }}"
+  when: item.ansible_facts.disk_values[0] | int > 0

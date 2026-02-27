@@ -1,0 +1,145 @@
+#
+# Create the IBM VPC instance
+#
+
+#
+# Set up the various terraform files.
+#
+- name: copy general tf files, no network
+  block:
+  - name: copy main.tf to tf/main.tf
+    copy:
+      src: "tf/main_no_net.tf"
+      dest: "{{ working_dir }}/tf/main.tf"
+  - name: cat non spot machine terraform
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
+    when: config_info.spot_start_price == 0
+  - name: cat spot machine terraform
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT/auto_delete_volume = true/g\" | sed \"s/EVICTIONPOLICY/auto_delete_volume = true/g\" >> {{ working_dir }}/tf/main.tf" 
+    when: config_info.spot_start_price == 1
+  - name: copy output.tf
+    copy:
+      src: "tf/output_no_net.tf"
+      dest: "{{ working_dir }}/tf/output.tf"
+  when: config_info.cloud_numb_networks|int == 0
+
+- name: copy general tf files, network
+  block:
+  - name: copy main_net.tf to tf/main.tf
+    copy:
+      src: "tf/main_net.tf"
+      dest: "{{ working_dir }}/tf/main.tf"
+  - name: copy network_interface.tf to tf/network_interface.tf
+    copy:
+      src: "tf/network_interface.tf"
+      dest: "{{ working_dir }}/tf/network_interface.tf"
+  - name: cat non spot machine terraform
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
+    when: config_info.spot_start_price == 0
+  - name: cat spot machine terraform
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT/auto_delete_volume = true/g\" | sed \"s/EVICTIONPOLICY/auto_delete_volume = true/g\" >> {{ working_dir }}/tf/main.tf" 
+    when: config_info.spot_start_price == 1
+  - name: copy output.tf
+    copy:
+      src: "tf/output_net.tf"
+      dest: "{{ working_dir }}/tf/output.tf"
+  when: config_info.cloud_numb_networks|int >= 1
+
+- name: copy general tf vars file
+  copy:
+    src: "tf/vars.tf"
+    dest: "{{ working_dir }}/tf/vars.tf"
+
+- name: add in vars for networks
+  include_role:
+    name: add_networks
+
+- name: Activate proximity group
+  copy:
+    src: "tf/main.tf"
+    dest: "{{ working_dir }}/tf/main.tf"
+  when: config_info.cloud_placement == "none"
+
+- name: Activate placement group
+  block:
+  - name: add placement group info
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/placement >> {{ working_dir }}/tf/main.tf"
+  when: config_info.cloud_placement != "none"
+
+- name: Handle disks
+  block:
+  - name: copy to work location
+    copy:
+      src: "tf/disks.tf"
+      dest: "{{ working_dir }}/tf/disks.tf"
+  when: config_info.cloud_disks != "[0:na:na:0]"
+
+- name: include variables etc.
+  include_vars:
+    file: "{{ working_dir }}/ansible_vars.yml"
+
+- name: include net dynamic info
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: dyn_data
+
+- name: Set up terraform vars
+  include_role:
+    name: set_up_tf_vars
+  vars:
+    cloud_change_to: ibm_vpc
+
+#
+# Set up the terraform variables, includes setting the disk parameters.
+#
+- name: copy general tf files
+  shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf//vars.tf"
+
+- name: Move main.tf off to the side
+  shell: "mv {{ working_dir }}/tf/main.tf {{ working_dir }}/main_back.tf"
+
+- name: Add tag info in to main info, must be in the front.
+  shell: "cat {{ working_dir }}/add_main_vars.tf {{ working_dir }}/main_back.tf > {{ working_dir }}/tf/main.tf"
+
+- name: grab ibm vpc create start time
+  command: "date -u +%s"
+  register: ibm_vpc_create_time_start
+
+- name: IBM VPC create server
+  include_role:
+    name: tf_create
+  vars:
+    tf_var_file: "env.tfvars"
+
+- name: Record IP addresses
+  include_tasks: record_ip_info.yml
+
+# Wait for the server to come up
+- name: wait for ssh to come up
+  include_role:
+    name: wait_for_ssh
+  vars:
+    hostname: "{{ public_ip_address[0] }}"
+
+- name: Add host(s) to test and install groups
+  include_tasks: add_host_to_groups.yml
+
+- name: ssh key exchange
+  include_role:
+    name: ssh_key_exchange
+  vars:
+    ip_list: "{{ public_ip_address }}"
+  when: config_info.cloud_numb_networks|int >= 1
+
+- name: create end time
+  command: "date -u +%s"
+  register: ibm_vpc_create_time_end
+
+#
+# Report how long it took to create the instance.
+#
+- name: Report creation time
+  lineinfile:
+    path: "{{ working_dir }}/cloud_timings"
+    line: "instance start_time: {{ (ibm_vpc_create_time_end.stdout) | int - (ibm_vpc_create_time_start.stdout) | int }}"
+    create: yes
