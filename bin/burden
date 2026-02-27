@@ -1915,6 +1915,8 @@ create_ansible_options()
 			echo "  ssh_key: ${gl_ssh_key_file}" >> ansible_vars_main.yml
 			if [[ $gl_ssh_public_key_file != "" ]]; then
 				echo "  ssh_public_key: ${gl_ssh_public_key_file}" >> ansible_vars_main.yml
+			else
+				echo "  ssh_public_key: $HOME/.ssh/id_rsa.pub" >> ansible_vars_main.yml
 			fi
 		fi
 		#
