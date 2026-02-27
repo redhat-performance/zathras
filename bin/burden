@@ -186,6 +186,7 @@ gl_scenario_to_restore=""
 gl_selinux_level="enforcing"
 gl_selinux_state=$value_not_set
 gl_selinux_state_set=0
+gl_ibm_api_key=""
 gl_ssh_key_file=""
 gl_show_os_versions=0;
 gl_test_def_file=""
@@ -1505,9 +1506,19 @@ aws_specific_os_version()
 #
 ibm_specific_os_version()
 {
-	# Validate IBM Cloud API key is set - Terraform requires it
-	if [[ -z "$IC_API_KEY" ]] && [[ -z "$IBMCLOUD_API_KEY" ]]; then
-		cleanup_and_exit "Error: IBM Cloud API key not set. Export IC_API_KEY or IBMCLOUD_API_KEY" 1
+	#
+	# IBM Cloud API key for Terraform. Can come from:
+	#   1. Scenario file / CLI (--ibm_api_key)
+	#   2. Environment variable (IC_API_KEY or IBMCLOUD_API_KEY)
+	# Export IC_API_KEY so Terraform inherits it from the environment.
+	#
+	if [[ -n "$gl_ibm_api_key" ]]; then
+		export IC_API_KEY="${gl_ibm_api_key}"
+	elif [[ -z "$IC_API_KEY" ]] && [[ -n "$IBMCLOUD_API_KEY" ]]; then
+		export IC_API_KEY="${IBMCLOUD_API_KEY}"
+	fi
+	if [[ -z "$IC_API_KEY" ]]; then
+		cleanup_and_exit "Error: IBM Cloud API key not set. Provide via --ibm_api_key, scenario file, or export IC_API_KEY/IBMCLOUD_API_KEY" 1
 	fi
 	# For IBM Cloud, we just pass through the image ID
 	# The image ID should be validated by the user via --show_os_versions
@@ -3571,6 +3582,12 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--ibm_api_key)
+			if [[ $gl_ibm_api_key == "" ]]; then
+				gl_ibm_api_key=$2
+			fi
+			shift_by=2
+		;;
 		--ignore_repo_errors)
 			if [[ $gl_error_repo_errors -eq 1 ]]; then
 				echo "$1" >> $gl_cli_supplied_options
@@ -3890,6 +3907,7 @@ grab_cli_data()
 		"dir_index"
 		"git_timeout"
 		"host_config"
+		"ibm_api_key"
 		"individ_vars"
 		"java_version"
 		"kit_upload_directory"

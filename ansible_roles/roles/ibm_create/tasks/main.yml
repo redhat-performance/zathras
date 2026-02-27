@@ -87,9 +87,21 @@
 - name: Record ip addresses in ansible_run_vars.yml
   include_tasks: record_ip_info.yml
 
-- name: Fail if public IP not retrieved
-  fail:
-    msg: |
+- name: Record public IP retrieval failure
+  include_role:
+    name: record_status
+  vars:
+    results:
+      failed: true
+    status_file: "{{ working_dir }}/public_ip_status"
+  when: public_ip_list is not defined or public_ip_list | length == 0
+
+- name: Terminate on public IP retrieval failure
+  include_role:
+    name: terminate_on_error
+  vars:
+    status_file: "public_ip_status"
+    exit_msg: |
       Failed to retrieve public IP addresses from Terraform.
       This usually means the Terraform outputs are not available.
       Check the Terraform state and ensure the infrastructure was created successfully.
