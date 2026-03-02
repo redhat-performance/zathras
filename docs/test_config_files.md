@@ -83,13 +83,13 @@ The following shows all the possible options a test configuration file could con
 
 **repo_file**:  What is actually being pulled
 
-   For the coremark repo, if you want to pull tag v2.4 it will be
+    For the coremark repo, if you want to pull tag v2.4 it will be
 
-   repo_file: "v2.4.tar.gz"
+    repo_file: "v2.4.tar.gz"
 
-   If you want the branch testing instead you will have
+    If you want the branch testing instead you will have
 
-   repo_file: "testing.zip"
+    repo_file: "testing.zip"
 
 **version**: The version of the test to use. For a listing of versions available, you can issue the following command:
 
