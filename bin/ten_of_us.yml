@@ -108,8 +108,14 @@
     - name: create gcp instances
       block:
         - include_role:
-            name: gcp_create_instance  
+            name: gcp_create_instance
       when: config_info.system_type == "gcp"
+
+    - name: create ibm instances
+      block:
+        - include_role:
+            name: ibm_create
+      when: config_info.system_type == "ibm"
 
     - name: local operations
       block:
@@ -280,6 +286,27 @@
             status_file: "/tmp/cr_status"
       when:
         - config_info.system_type == "gcp"
+
+    - name: Enable CodeReady Builder for IBM Cloud
+      block:
+        - name: Install yum utils
+          become: yes
+          shell: "yum install yum-utils -y"
+
+        - name: Enable CodeReady Builder for IBM Cloud
+          become: yes
+          shell: "yum-config-manager --enable codeready-builder-for-rhel-9-$(arch)-rpms"
+          register: yum_config
+          ignore_errors: yes
+
+        - name: Record status of yum config success
+          include_role:
+            name: record_status
+          vars:
+            results: "{{ yum_config }}"
+            status_file: "/tmp/cr_status"
+      when:
+        - config_info.system_type == "ibm"
 
     - name: retrieve repo config status
       include_role:
@@ -941,7 +968,7 @@
         name: tf_delete
       vars:
         tf_dir: "tf"
-      when: config_info.system_type == "aws" or config_info.system_type == "gcp" or config_info.system_type == "azure"
+      when: config_info.system_type in ['aws', 'gcp', 'azure', 'ibm']
     
     - name: terminate end time
       command: "date -u +%s"
