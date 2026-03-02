@@ -22,3 +22,18 @@ spot_price.cfg: Spot pricing for clouds
 test_defs.yml: The test definitions file.  When Zathras is executed the test_defs.yml
   and template files are merged in to a single file, full_test_defs.yml.
 
+
+To test from a given branch
+
+repo coremark-wrapper
+branch testing
+
+Change this
+location: https://github.com/redhat-performance/coremark-wrapper/archive/refs/tags
+exec_dir: "coremark-wrapper-2.4/coremark"
+repo_file: "v2.4.tar.gz"
+
+to be this
+location: https://github.com/redhat-performance/coremark-wrapper/archive/refs/heads
+exec_dir: "coremark-wrapper-testing/coremark"
+repo_file: "testing.zip"
