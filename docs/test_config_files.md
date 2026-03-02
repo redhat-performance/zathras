@@ -81,7 +81,7 @@ The following shows all the possible options a test configuration file could con
     If pulling from the head you will have
     https://github.com/redhat-performance/streams-wrapper/heads
 
-**repo_file**:  What is actually being pulled
+**repo_file**: What is actually being pulled:
 
     For the coremark repo, if you want to pull tag v2.4 it will be
 
