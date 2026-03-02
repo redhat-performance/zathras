@@ -1,4 +1,4 @@
 location: https://github.com/redhat-performance/pyperf-wrapper/archive/refs/tags
-exec_dir: "pyperf-wrapper-2.1/pyperf"
-repo_file: "v2.1.tar.gz"
+exec_dir: "pyperf-wrapper-2.2/pyperf"
+repo_file: "v2.2.tar.gz"
 test_script_to_run: pyperf_run
