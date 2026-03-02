@@ -1,5 +1,5 @@
 location: https://github.com/redhat-performance/coremark_pro-wrapper/archive/refs/tags
-exec_dir: "coremark_pro-wrapper-2.1/coremark_pro"
-repo_file: "v2.1.tar.gz"
+exec_dir: "coremark_pro-wrapper-2.4/coremark_pro"
+repo_file: "v2.4.tar.gz"
 test_script_to_run: coremark_pro_run
 test_specific: "--iterations 5"
