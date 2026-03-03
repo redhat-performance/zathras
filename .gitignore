@@ -1,6 +1,10 @@
 .ansible/
 2
 
+# Python virtual environment
+.venv/
+venv/
+
 # Ignore local configs
 local_configs/
 !local_configs/README
