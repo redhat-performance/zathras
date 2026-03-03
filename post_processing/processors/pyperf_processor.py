@@ -6,22 +6,82 @@ Processes PyPerf results including:
 - Multiple runs per benchmark with time series data
 - Rich metadata (Python version, compiler, CPU frequency, memory usage)
 - Summary statistics (mean, median, stdev)
+
+Timestamps are taken from each run's metadata.date in the JSON. Missing or
+malformed timestamps raise ProcessorError.
 """
 
 import json
+import re
 import statistics
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from pathlib import Path
 import logging
 
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ProcessorError
 from ..schema import (
     Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key,
     ZathrasDocument, Results, PrimaryMetric
 )
 
 logger = logging.getLogger(__name__)
+
+# ISO 8601 with optional Z (e.g. 2026-02-26T04:42:24Z or 2026-02-26T04:42:24.123456Z)
+_ISO8601_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
+)
+
+
+def _parse_pyperf_timestamp(value: str, context: str) -> str:
+    """
+    Validate and normalize a PyPerf timestamp to ISO 8601.
+
+    Accepts:
+    - ISO 8601 with Z: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ
+    - PyPerf format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.ffffff
+
+    Returns normalized string like 2026-02-26T04:42:24Z.
+    Raises ProcessorError if value is missing, blank, or not parseable.
+    """
+    if value is None:
+        raise ProcessorError(
+            f"PyPerf results require timestamps. {context} "
+            "Each run must have metadata.date (non-null)."
+        )
+    if not isinstance(value, str):
+        raise ProcessorError(
+            f"PyPerf results require timestamps. {context} "
+            f"metadata.date must be a string, got {type(value).__name__}."
+        )
+    value = value.strip()
+    if not value:
+        raise ProcessorError(
+            f"PyPerf results require timestamps. {context} "
+            "metadata.date cannot be blank."
+        )
+    # Already ISO 8601 with Z
+    if _ISO8601_PATTERN.match(value):
+        try:
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise ProcessorError(
+                f"PyPerf results require valid timestamps. {context} "
+                f"Cannot parse {value!r}: {e}"
+            ) from e
+        return value
+    # PyPerf format: YYYY-MM-DD HH:MM:SS[.ffffff]
+    if len(value) >= 19 and value[10] == " " and value[4] == "-" and value[7] == "-":
+        try:
+            dt = datetime.strptime(value[:19], "%Y-%m-%d %H:%M:%S")
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            pass
+    raise ProcessorError(
+        f"PyPerf results require valid timestamps. {context} "
+        f"Got: {value!r}. Expected format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD HH:MM:SS.ffffff, "
+        "or ISO 8601 with Z (e.g. YYYY-MM-DDTHH:MM:SSZ)."
+    )
 
 
 class PyPerfProcessor(BaseProcessor):
@@ -141,45 +201,50 @@ class PyPerfProcessor(BaseProcessor):
         """
         Parse PyPerf runs into object-based structure.
 
+        Resolves JSON path via extracted_result['files'] (e.g. results_json or
+        pyperf_json) when provided (demo/single-file style), or via
+        extracted_result['extracted_path'] with pyperf_out_*.json in that
+        directory. Requires valid timestamps in each run's metadata.date;
+        raises ProcessorError if timestamps are missing or malformed.
+
         PyPerf has 90+ benchmarks, each treated as a separate run.
 
         Returns:
             {
-                "run_0": {  # 2to3 benchmark
-                    "run_number": 0,
-                    "status": "PASS",
-                    "metrics": {
-                        "mean_seconds": 0.25530,
-                        "median_seconds": 0.25525,
-                        "stdev_seconds": 0.00123
-                    },
-                    "timeseries": {
-                        "sequence_0": {
-                            "timestamp": "2025-09-18T22:10:00Z",
-                            "metrics": {
-                                "value_seconds": 0.2553,
-                                "cpu_freq_mhz": "0-7=2300 MHz",
-                                "mem_max_rss_bytes": 49152000
-                            }
-                        },
-                        ...
-                    }
-                },
+                "run_0": { ... },
                 ...
             }
         """
-        result_dir = Path(extracted_result['extracted_path'])
+        json_file: Optional[Path] = None
+        files = extracted_result.get("files") or {}
+        if files.get("results_json"):
+            json_file = Path(files["results_json"])
+        elif files.get("pyperf_json"):
+            json_file = Path(files["pyperf_json"])
 
-        # Find the JSON file with detailed results
-        json_file = self._find_json_file(result_dir)
-        if not json_file:
-            logger.warning(f"No PyPerf JSON file found in {result_dir}")
-            return {}
+        if not json_file or not json_file.exists():
+            extracted_path = extracted_result.get("extracted_path")
+            if not extracted_path:
+                raise ProcessorError(
+                    "PyPerf results require either extracted_result['files']['results_json'] "
+                    "(or 'pyperf_json') with a path to the JSON file, or "
+                    "extracted_result['extracted_path'] to a directory containing pyperf_out_*.json."
+                )
+            result_dir = Path(extracted_path)
+            json_file = self._find_json_file(result_dir)
+            if not json_file:
+                raise ProcessorError(
+                    f"No PyPerf JSON file (pyperf_out_*.json) found in {result_dir}. "
+                    "PyPerf results must be in JSON format with benchmarks[].runs[].metadata.date."
+                )
 
-        # Parse JSON
+        # Parse JSON; fail clearly on missing or invalid content
         pyperf_data = self._parse_json(json_file)
-        if not pyperf_data:
-            return {}
+        if not pyperf_data or "benchmarks" not in pyperf_data:
+            raise ProcessorError(
+                f"PyPerf JSON file must contain a 'benchmarks' array. "
+                f"File: {json_file}"
+            )
 
         # Convert each benchmark to a Run object
         runs = {}
@@ -200,14 +265,22 @@ class PyPerfProcessor(BaseProcessor):
             return json_files[0]
         return None
 
-    def _parse_json(self, json_file: Path) -> Optional[Dict[str, Any]]:
-        """Parse PyPerf JSON file."""
+    def _parse_json(self, json_file: Path) -> Dict[str, Any]:
+        """Parse PyPerf JSON file. Raises ProcessorError on read or JSON parse failure."""
         try:
             with open(json_file, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            logger.warning(f"Failed to parse PyPerf JSON {json_file}: {e}")
-            return None
+                data = json.load(f)
+        except OSError as e:
+            raise ProcessorError(f"PyPerf: cannot read JSON file {json_file}: {e}") from e
+        except json.JSONDecodeError as e:
+            raise ProcessorError(
+                f"PyPerf: invalid JSON in {json_file}: {e}"
+            ) from e
+        if not isinstance(data, dict):
+            raise ProcessorError(
+                f"PyPerf: JSON root must be an object. File: {json_file}"
+            )
+        return data
 
     def _build_run_object(
         self,
@@ -243,25 +316,21 @@ class PyPerfProcessor(BaseProcessor):
             metrics['max_seconds'] = max(all_values)
             metrics['num_samples'] = len(all_values)
 
-        # Build time series from individual runs
+        # Build time series from individual runs; require valid timestamp per run
         timeseries = {}
         sequence = 0
+        all_timestamps: List[str] = []
 
-        for run in benchmark_runs:
+        for run_idx, run in enumerate(benchmark_runs):
             run_metadata = run.get('metadata', {})
             values = run.get('values', [])
 
-            # Get timestamp from run metadata
-            timestamp = run_metadata.get('date', '')
-            if timestamp:
-                try:
-                    # Parse: "2025-09-18 22:10:00.123456"
-                    dt = datetime.strptime(timestamp[:19], "%Y-%m-%d %H:%M:%S")
-                    timestamp = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-                except Exception:
-                    timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-            else:
-                timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+            date_val = run_metadata.get('date')
+            timestamp = _parse_pyperf_timestamp(
+                date_val if date_val is not None else "",
+                f"Benchmark {benchmark_name!r}, run index {run_idx}:"
+            )
+            all_timestamps.append(timestamp)
 
             # Store each value from the run as a separate time series point
             for value in values:
@@ -311,11 +380,17 @@ class PyPerfProcessor(BaseProcessor):
                 stddev=statistics.stdev(all_values) if len(all_values) > 1 else None
             )
 
+        # Run-level start/end from timestamps (from results, not system time)
+        start_time = min(all_timestamps) if all_timestamps else None
+        end_time = max(all_timestamps) if all_timestamps else None
+
         return Run(
             run_number=run_number,
             status="PASS",  # PyPerf doesn't provide explicit pass/fail
             metrics=metrics,
             configuration=config,
             timeseries=timeseries if timeseries else None,
-            timeseries_summary=ts_summary
+            timeseries_summary=ts_summary,
+            start_time=start_time,
+            end_time=end_time,
         )
