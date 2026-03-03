@@ -71,13 +71,25 @@ The following shows all the possible options a test configuration file could con
 
 **location**: Is the location at which the test can be found. Note in the case of git, it will be everything minus the actual location name. For example, if we have:
 
-    https://github.com/redhat-performance/streams-wrapper/
-
-We will drop the streams-wrapper on the end and have
-
     https://github.com/redhat-performance/
 
+    We will drop the streams-wrapper on the end and have
 
+    https://github.com/redhat-performance/streams-wrapper/
+    If pulling a tag, you will have
+    https://github.com/redhat-performance/streams-wrapper/tags
+    If pulling from the head you will have
+    https://github.com/redhat-performance/streams-wrapper/heads
+
+**repo_file**: What is actually being pulled:
+
+    For the coremark repo, if you want to pull tag v2.4 it will be
+
+    repo_file: "v2.4.tar.gz"
+
+    If you want the branch testing instead you will have
+
+    repo_file: "testing.zip"
 
 **version**: The version of the test to use. For a listing of versions available, you can issue the following command:
 
