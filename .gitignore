@@ -5,6 +5,10 @@
 .venv/
 venv/
 
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Ignore local configs
 local_configs/
 !local_configs/README
@@ -44,10 +48,6 @@ config/failed_test
 post_processing/config/export_config.yml
 post_processing/config/export_config*.yml
 post_processing/extracted_zathras_results/
-
-# Post-processing: Ignore test outputs
-post_processing/**/__pycache__/
-post_processing/**/*.pyc
 
 # Post-processing: Ignore production data and temporary extraction directories
 production_data/
