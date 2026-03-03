@@ -115,7 +115,8 @@
             "cloud_provider": {"type": "keyword"},
             "instance_type": {"type": "keyword"},
             "scenario_name": {"type": "keyword"},
-            "iteration": {"type": "integer"}
+            "iteration": {"type": "integer"},
+            "pcp_archive_url": {"type": "keyword"}
           }
         },
         "test": {

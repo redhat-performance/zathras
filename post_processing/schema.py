@@ -43,6 +43,9 @@ class Metadata:
     iteration: Optional[int] = None
     scenario_name: Optional[str] = None
 
+    # URL to the Performance CoPilot (PCP) archive for this test run (e.g. internal server, S3).
+    pcp_archive_url: Optional[str] = None
+
     def to_dict(self) -> Dict[str, Any]:
         return {k: v for k, v in asdict(self).items() if v is not None}
 
@@ -391,6 +394,8 @@ class ZathrasDocument:
             doc_dict['metadata'].pop('collection_timestamp', None)
             # Also remove document_id as we're computing it
             doc_dict['metadata'].pop('document_id', None)
+            # PCP archive URL is storage location, not part of result identity
+            doc_dict['metadata'].pop('pcp_archive_url', None)
 
         # Sort keys for deterministic ordering
         sorted_json = json.dumps(doc_dict, sort_keys=True, separators=(',', ':'))
