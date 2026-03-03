@@ -75,7 +75,7 @@ test_version_ops()
 			# We expect EPEL to be installed, which contains gh.
 			#
 			if  [[ $using_version == *"zip"* ]]; then
-				printf "%32s using head $using_version\n"' $test_repo $using_version
+				printf "%32s using head %s\n" $test_repo $using_version
 				continue
 			fi
 			gh release view -R $repo $using_version --json tagName -q .tagName &> /dev/null
