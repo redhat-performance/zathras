@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 #                         License
 #
 # Copyright (C) 2022  David Valin dvalin@redhat.com
