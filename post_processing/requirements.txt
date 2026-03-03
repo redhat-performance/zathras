@@ -8,7 +8,7 @@ python-dateutil>=2.8.0
 # OpenSearch export
 opensearch-py>=2.0.0
 
-# Horreum export
+# Optional: for future Horreum implementation (currently stubbed)
 requests>=2.28.0
 
 # Optional: For better performance

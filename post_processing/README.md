@@ -1,6 +1,6 @@
 # Zathras Post-Processing
 
-Export Zathras benchmark results to OpenSearch or Horreum for centralized analysis, dashboards, and performance tracking.
+Export Zathras benchmark results to OpenSearch for centralized analysis, dashboards, and performance tracking. Horreum export is available as a stub (not implemented) for future use.
 
 ---
 
@@ -29,7 +29,7 @@ python3 -m post_processing.run_postprocessing \
 - Recursively discovers all result directories
 - Auto-detects benchmark types (coremark, streams, pyperf, etc.)
 - Batch processes all results
-- Exports to OpenSearch/Horreum or saves JSON
+- Exports to OpenSearch or saves JSON (Horreum is a stub)
 - Provides detailed summary report
 
 **Example output:**
@@ -90,7 +90,7 @@ Tests Processed:
 ### Prerequisites
 - Python 3.8+
 - Zathras benchmark results
-- OpenSearch or Horreum access (optional for local testing)
+- OpenSearch access (optional for local testing)
 
 ### Install Dependencies
 
@@ -102,7 +102,7 @@ pip3 install -r post_processing/requirements.txt
 **Dependencies:**
 - `pyyaml` - Configuration and result parsing
 - `python-dateutil` - Timestamp handling
-- `requests` - HTTP for Horreum
+- `requests` - optional, for future Horreum implementation
 
 ### Configuration
 
@@ -126,6 +126,7 @@ opensearch:
   password: "your-password"
   verify_ssl: false  # Set to true for production
 
+# Horreum export is not implemented (stub only)
 horreum:
   url: "http://localhost:8080"
   username: "your-horreum-username"
@@ -307,22 +308,20 @@ python3 -m post_processing.run_postprocessing \
     --opensearch
 ```
 
-### Horreum
+### Horreum (stub)
+
+Horreum export is not implemented. The `HorreumExporter` class is a stub: it accepts the same constructor and method calls for compatibility, but `export_zathras_document` (and other methods) raise `NotImplementedError`. Implement `post_processing/exporters/horreum_exporter.py` to enable Horreum.
 
 ```python
 from post_processing.exporters.horreum_exporter import HorreumExporter
 
+# Stub accepts url, username, password (and **kwargs for future use)
 exporter = HorreumExporter(
     url="https://horreum.example.com",
-    test_name="zathras-coremark",
-    auth_token="your-token",
-    owner="your-team",
-    access="PUBLIC"
+    username="user",
+    password="pass"
 )
-
-# Export run
-run_id = exporter.export_zathras_document(document)
-print(f"Run ID: {run_id}")
+# exporter.export_zathras_document(document)  # Raises NotImplementedError
 ```
 
 ---
@@ -630,5 +629,5 @@ GET /zathras-timeseries/_search
 ### External Resources
 - [OpenSearch Query DSL](https://opensearch.org/docs/latest/query-dsl/)
 - [OpenSearch Aggregations](https://opensearch.org/docs/latest/aggregations/)
-- [Horreum Documentation](https://horreum.hyperfoil.io/)
+- [Horreum Documentation](https://horreum.hyperfoil.io/) (for future implementation)
 

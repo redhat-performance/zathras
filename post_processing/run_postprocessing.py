@@ -3,13 +3,13 @@
 Zathras Post-Processing Orchestrator
 
 End-to-end pipeline for processing Zathras benchmark results and exporting
-to OpenSearch and/or Horreum.
+to OpenSearch. Horreum export is available as a stub (--horreum) for future use.
 
 Usage:
     # Process all benchmarks in a directory and export to OpenSearch
     python -m post_processing.run_postprocessing --input /path/to/results --opensearch
 
-    # Export to both OpenSearch and Horreum
+    # Horreum export is not implemented; --horreum is a stub for future use
     python -m post_processing.run_postprocessing --input /path/to/results --opensearch --horreum
 
     # Just create JSON files (no export)
@@ -329,7 +329,7 @@ def process_result_directory(
                 username=horreum_config.get('username'),
                 password=horreum_config.get('password')
             )
-            logger.info(f"Horreum exporter initialized: {horreum_config.get('url')}")
+            logger.info(f"Horreum exporter (stub) initialized: {horreum_config.get('url')}")
         except Exception as e:
             logger.error(f"Failed to initialize Horreum exporter: {e}")
             export_horreum = False
@@ -445,12 +445,15 @@ def process_result_directory(
                         export_error = f"OpenSearch export failed: {e}"
                         logger.error(f"  {export_error}")
 
-                # Export to Horreum
+                # Export to Horreum (stub: not implemented)
                 if export_horreum and horreum_exporter:
                     try:
                         run_id = horreum_exporter.export_zathras_document(document)
                         if len(documents) == 1:
                             logger.info(f"  Exported to Horreum: run {run_id}")
+                    except NotImplementedError:
+                        if len(documents) == 1:
+                            logger.warning("  Horreum export is not implemented; skipping.")
                     except Exception as e:
                         if not export_failed:
                             export_failed = True
@@ -510,7 +513,7 @@ Examples:
   # Process all benchmarks in a directory and export to OpenSearch
   %(prog)s --input /path/to/results --opensearch
 
-  # Export to both OpenSearch and Horreum
+  # Horreum is a stub (not implemented)
   %(prog)s --input /path/to/results --opensearch --horreum
 
   # Just create JSON files (no export)
@@ -543,7 +546,7 @@ Examples:
     parser.add_argument(
         '--horreum',
         action='store_true',
-        help='Export to Horreum (requires config with horreum section)'
+        help='Enable Horreum export (stub only; not implemented)'
     )
 
     parser.add_argument(

@@ -1,6 +1,6 @@
 # Zathras Benchmark Processors
 
-This directory contains the processors that parse Zathras benchmark results and convert them into structured `ZathrasDocument` objects for export to OpenSearch and Horreum.
+This directory contains the processors that parse Zathras benchmark results and convert them into structured `ZathrasDocument` objects for export to OpenSearch (Horreum export is a stub).
 
 ## Table of Contents
 
@@ -43,7 +43,7 @@ Benchmark Processor (parse)
     ↓
 ZathrasDocument (structured)
     ↓
-Exporters (OpenSearch/Horreum)
+Exporters (OpenSearch; Horreum stub)
 ```
 
 ---

@@ -40,7 +40,7 @@ curl -k -X PUT "https://opensearch.example.com/_index_template/zathras-timeserie
 ```
 
 ### `export_config.example.yml`
-Example configuration for OpenSearch and Horreum exporters.
+Example configuration for OpenSearch (Horreum section is supported as a stub).
 
 **Setup:**
 ```bash
