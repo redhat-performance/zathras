@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import logging
 
-from .base_processor import BaseProcessor
+from .base_processor import BaseProcessor, ProcessorError
 from ..schema import (
     Run, TimeSeriesPoint, TimeSeriesSummary, PrimaryMetric,
     create_run_key, create_sequence_key
@@ -17,6 +17,53 @@ from ..utils.parser_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Reasonable Unix timestamp range (2000-01-01 to 2100-01-01)
+_FIO_TIMESTAMP_MIN = 946684800
+_FIO_TIMESTAMP_MAX = 4102444800
+
+
+def _validate_fio_timestamp(value: Any, context: str) -> int:
+    """
+    Validate FIO JSON top-level 'timestamp' (Unix seconds). Returns int seconds.
+    Raises ProcessorError if missing, not numeric, or out of range.
+    """
+    if value is None:
+        raise ProcessorError(
+            f"FIO results require timestamps. {context} "
+            "The fio-results.json must include a top-level 'timestamp' (Unix seconds)."
+        )
+    if isinstance(value, bool):
+        raise ProcessorError(
+            f"FIO results require valid timestamps. {context} "
+            f"'timestamp' must be a number (Unix seconds), got: {value!r}."
+        )
+    if isinstance(value, (int, float)):
+        try:
+            ts = int(value)
+        except (ValueError, OverflowError):
+            ts = -1
+    else:
+        try:
+            ts = int(float(str(value).strip()))
+        except (ValueError, TypeError):
+            raise ProcessorError(
+                f"FIO results require valid timestamps. {context} "
+                f"'timestamp' must be numeric (Unix seconds), got: {value!r}. "
+                "Expected format: integer or float seconds since epoch."
+            ) from None
+    if not (_FIO_TIMESTAMP_MIN <= ts <= _FIO_TIMESTAMP_MAX):
+        raise ProcessorError(
+            f"FIO results require valid timestamps. {context} "
+            f"'timestamp' value {ts!r} is out of reasonable range (Unix seconds 2000–2100)."
+        )
+    return ts
+
+
+def _fio_timestamp_to_iso(unix_sec: int) -> str:
+    """Convert Unix timestamp to ISO 8601 UTC string."""
+    dt = datetime.utcfromtimestamp(unix_sec)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class FioProcessor(BaseProcessor):
@@ -71,6 +118,12 @@ class FioProcessor(BaseProcessor):
 
         Each workload test (e.g., read-4KiB) becomes one Run with aggregated metrics.
 
+        Supports:
+        - Direct results path via extracted_result['files']['fio_results_json'] (single
+          fio-results.json path, e.g. for demos like tmp/fio).
+        - extracted_result['extracted_path']: look for export_fio_data_* or, if none,
+          treat directory as containing fio_ndisks_* directly.
+
         Returns:
             {
                 "run_0": {run_data for workload 0},
@@ -78,26 +131,63 @@ class FioProcessor(BaseProcessor):
                 ...
             }
         """
-        result_dir = Path(extracted_result['extracted_path'])
+        files = extracted_result.get("files") or {}
+        if files.get("fio_results_json"):
+            # Direct file path (demo / tmp/coremark-style layout)
+            json_path = Path(files["fio_results_json"])
+            if not json_path.exists():
+                raise ProcessorError(
+                    f"FIO results file not found: {json_path}. "
+                    "Ensure 'fio_results_json' in extracted_result['files'] points to an existing fio-results.json."
+                )
+            try:
+                with open(json_path, "r") as f:
+                    fio_data = json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                raise ProcessorError(
+                    f"FIO results file is not valid JSON or unreadable: {json_path}. {e}"
+                ) from e
+            # Single run from one JSON; workload_dir is parent for optional log files
+            run_data = self._build_run_object(
+                run_number=0,
+                fio_data=fio_data,
+                workload_dir=json_path.parent,
+                config_info={},
+                status="UNKNOWN",
+                version=None,
+            )
+            logger.info("Parsed 1 FIO run from direct fio_results_json")
+            return {create_run_key(0): run_data}
 
-        # Find the export_fio_data directory
+        result_dir = Path(extracted_result["extracted_path"])
+
+        # Find export_fio_data_* or use result_dir directly if it contains fio_ndisks_*
         export_dirs = list(result_dir.glob("export_fio_data_*"))
-        if not export_dirs:
-            logger.warning(f"No export_fio_data_* directory found in {result_dir}")
-            return {}
+        if export_dirs:
+            export_dir = export_dirs[0]
+            logger.debug(f"Found FIO export directory: {export_dir}")
+        else:
+            # Results may live directly in extracted_path (no export_fio_data_* subdir)
+            if list(result_dir.glob("fio_ndisks_*")):
+                export_dir = result_dir
+            else:
+                logger.warning(
+                    f"No export_fio_data_* or fio_ndisks_* found in {result_dir}"
+                )
+                return {}
 
-        export_dir = export_dirs[0]
-        logger.debug(f"Found FIO export directory: {export_dir}")
-
-        # Parse version
+        # Parse version (optional)
         version_file = result_dir / "version"
         version = parse_version_file(version_file) if version_file.exists() else None
 
         # Parse test status
         status_file = export_dir / "test_results_report"
-        test_status = "PASS" if status_file.exists() and "Ran" in read_file_content(status_file) else "UNKNOWN"
+        test_status = (
+            "PASS"
+            if status_file.exists() and "Ran" in read_file_content(status_file)
+            else "UNKNOWN"
+        )
 
-        # Find all configuration directories
         config_dirs = sorted(export_dir.glob("fio_ndisks_*"))
         if not config_dirs:
             logger.warning(f"No fio_ndisks_* directories found in {export_dir}")
@@ -108,40 +198,39 @@ class FioProcessor(BaseProcessor):
         runs = {}
         run_number = 0
 
-        # Process each configuration directory
         for config_dir in config_dirs:
-            # Parse configuration from directory name
             config_info = self._parse_config_dir_name(config_dir.name)
 
-            # Find all workload subdirectories (e.g., 1-read-4KiB, 2-write-4KiB)
-            workload_dirs = sorted([d for d in config_dir.iterdir() if d.is_dir() and d.name[0].isdigit()])
+            workload_dirs = sorted(
+                [d for d in config_dir.iterdir() if d.is_dir() and d.name[0].isdigit()]
+            )
 
             for workload_dir in workload_dirs:
                 logger.debug(f"Processing workload: {workload_dir.name}")
 
-                # Parse the JSON file (primary source)
                 json_file = workload_dir / "fio-results.json"
                 if not json_file.exists():
                     logger.warning(f"No fio-results.json in {workload_dir}")
                     continue
 
                 try:
-                    with open(json_file, 'r') as f:
+                    with open(json_file, "r") as f:
                         fio_data = json.load(f)
 
-                    # Build run object
                     run_data = self._build_run_object(
                         run_number=run_number,
                         fio_data=fio_data,
                         workload_dir=workload_dir,
                         config_info=config_info,
                         status=test_status,
-                        version=version
+                        version=version,
                     )
 
                     runs[create_run_key(run_number)] = run_data
                     run_number += 1
 
+                except ProcessorError:
+                    raise
                 except Exception as e:
                     logger.error(f"Failed to process {workload_dir.name}: {e}")
                     continue
@@ -271,12 +360,25 @@ class FioProcessor(BaseProcessor):
             version
         )
 
-        # Parse time series
+        # Require timestamp from results (no datetime.now() fallback)
+        ts_unix = _validate_fio_timestamp(
+            fio_data.get("timestamp"),
+            f"Run {run_number}, fio-results.json:",
+        )
+        start_iso = _fio_timestamp_to_iso(ts_unix)
+        # End time: start + max job elapsed seconds
+        elapsed_secs = [
+            j.get("elapsed", 0) for j in jobs if isinstance(j.get("elapsed"), (int, float))
+        ]
+        end_secs = ts_unix + (max(elapsed_secs) if elapsed_secs else 0)
+        end_iso = _fio_timestamp_to_iso(end_secs)
+
+        # Parse time series (uses timestamp from results only)
         timeseries, ts_summary = self._parse_timeseries(
             workload_dir,
             len(jobs),
             operation,
-            fio_data.get('timestamp', None)
+            ts_unix,
         )
 
         return Run(
@@ -285,7 +387,9 @@ class FioProcessor(BaseProcessor):
             metrics=aggregated_metrics,
             configuration=configuration,
             timeseries=timeseries if timeseries else None,
-            timeseries_summary=ts_summary
+            timeseries_summary=ts_summary,
+            start_time=start_iso,
+            end_time=end_iso,
         )
 
     def _aggregate_metrics(self, jobs: List[Dict[str, Any]], operation: str) -> Dict[str, Any]:
@@ -555,11 +659,12 @@ class FioProcessor(BaseProcessor):
         workload_dir: Path,
         num_jobs: int,
         operation: str,
-        test_timestamp: Optional[int]
+        test_timestamp: int,
     ) -> Tuple[Optional[Dict[str, TimeSeriesPoint]], Optional[TimeSeriesSummary]]:
         """
         Parse time series log files for all jobs.
 
+        Uses test_timestamp (Unix seconds from fio-results.json) as base; no fallback.
         Returns aggregated time series across all jobs.
         """
         # Read log files for all jobs
@@ -588,14 +693,8 @@ class FioProcessor(BaseProcessor):
         if not all_bw or not all_bw[0]:
             return None, None
 
-        # Determine number of samples (should be consistent across all logs)
-        num_samples = len(all_bw[0])
-
-        # Calculate base timestamp
-        if test_timestamp:
-            base_time = datetime.fromtimestamp(test_timestamp)
-        else:
-            base_time = datetime.now()
+        # Base timestamp from results only (required; validated in _build_run_object)
+        base_time = datetime.utcfromtimestamp(test_timestamp)
 
         # Build aggregated time series
         timeseries = {}
