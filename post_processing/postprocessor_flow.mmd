@@ -1,0 +1,105 @@
+%% Mermaid chart of the postprocessor pipeline (origin/enable-post-processing-and-export)
+%% Do not include local uncommitted code.
+
+flowchart TB
+    subgraph entry["1. Entry"]
+        CLI["run_postprocessing.py"]
+        load_cfg["load_config()"]
+        discover["discover_result_directories()"]
+    end
+
+    subgraph per_dir["2. Per result directory"]
+        each_zip["For each results_*.zip"]
+        detect["detect_test_type()"]
+        registry["PROCESSOR_REGISTRY"]
+        get_proc["Instantiate processor"]
+    end
+
+    subgraph base["3. Base processor"]
+        process["process() / process_multiple()"]
+        build_doc["Assemble ZathrasDocument"]
+        build_meta["build_metadata()"]
+        build_test["build_test_info()"]
+        build_sut["build_system_under_test()"]
+        build_config["build_test_configuration()"]
+        build_results["build_results()"]
+        build_runtime["build_runtime_info()"]
+        content_hash["content_hash / document_id"]
+        validate["validate()"]
+        extract_arch["extract_result_archive()"]
+        parse_runs_impl["parse_runs()"]
+    end
+
+    subgraph processors["Concrete processors"]
+        Concrete["CoreMark, Streams, SpecJBB, PyPerf,\nCoreMark Pro, Passmark, Phoronix,\nUperf, Pig, AutoHPL, SpecCPU2017, Fio"]
+    end
+
+    subgraph utils["Utils"]
+        arch["ArchiveHandler"]
+        meta_ext["MetadataExtractor"]
+        parser_utils["parser_utils"]
+    end
+
+    subgraph schema["4. Schema"]
+        ZathrasDoc["ZathrasDocument"]
+        Results["Results · runs · timeseries"]
+        TimeSeriesDoc["TimeSeriesDocument"]
+    end
+
+    subgraph export["5. Export"]
+        out_json["output-json"]
+        os_summary["OpenSearch summary"]
+        extract_ts["extract_timeseries_documents()"]
+        os_ts["OpenSearch timeseries"]
+        horreum["Horreum (stub)"]
+    end
+
+    CLI --> load_cfg
+    CLI --> discover
+    load_cfg --> per_dir
+    discover --> per_dir
+
+    per_dir --> each_zip
+    each_zip --> detect
+    detect --> registry
+    registry --> get_proc
+    get_proc --> Concrete
+    Concrete --> process
+
+    process --> build_meta
+    process --> build_test
+    process --> build_sut
+    process --> build_config
+    process --> build_results
+    process --> build_runtime
+    build_results --> extract_arch
+    build_results --> parse_runs_impl
+    Concrete -.->|implements| parse_runs_impl
+    build_doc --> content_hash
+    content_hash --> validate
+    validate --> ZathrasDoc
+    extract_arch --> arch
+    build_sut --> arch
+    build_sut --> meta_ext
+    build_runtime --> parser_utils
+    build_meta --> build_doc
+    build_test --> build_doc
+    build_sut --> build_doc
+    build_config --> build_doc
+    build_results --> build_doc
+    build_runtime --> build_doc
+    ZathrasDoc --> Results
+
+    ZathrasDoc --> out_json
+    ZathrasDoc --> os_summary
+    ZathrasDoc --> extract_ts
+    ZathrasDoc --> horreum
+    extract_ts --> TimeSeriesDoc
+    TimeSeriesDoc --> os_ts
+
+    style entry fill:#e1f5fe
+    style base fill:#fff3e0
+    style processors fill:#f3e5f5
+    style schema fill:#e8f5e9
+    style export fill:#fce4ec
+    style utils fill:#f5f5f5

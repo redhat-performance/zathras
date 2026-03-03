@@ -1,6 +1,14 @@
 .ansible/
 2
 
+# Python virtual environment
+.venv/
+venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Ignore local configs
 local_configs/
 !local_configs/README
@@ -35,3 +43,19 @@ run_burden_*
 config/full_test_defs.yml
 config/git_vers
 config/failed_test
+
+# Post-processing: Ignore real config files with credentials
+post_processing/config/export_config.yml
+post_processing/config/export_config*.yml
+post_processing/extracted_zathras_results/
+
+# Post-processing: Ignore production data and temporary extraction directories
+production_data/
+quick_sample_data/
+perf-*/
+*_json_output/
+*_json/
+all_benchmarks_json/
+test_new_benchmarks/
+coremark_test/
+
