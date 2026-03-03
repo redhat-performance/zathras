@@ -94,9 +94,19 @@ Tests Processed:
 
 ### Install Dependencies
 
+Use a project virtual environment; do not install into the system Python.
+
 ```bash
 cd /path/to/zathras
-pip3 install -r post_processing/requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+pip install -r post_processing/requirements.txt
+```
+
+**Running tests** (from repo root with venv activated). The suite includes unit/integration tests for processor timestamp validation (valid, missing, invalid, or empty timestamps in CSV/YML):
+
+```bash
+PYTHONPATH=. pytest tests/post_processing/ -v
 ```
 
 **Dependencies:**
