@@ -401,7 +401,6 @@
   become: true
   vars_files:
     - ansible_vars.yml
-    - install_opts.yml
 
   gather_facts: yes
   tasks:
@@ -475,7 +474,6 @@
   become: true
   vars_files:
     - ansible_vars.yml
-    - install_opts.yml
 
   gather_facts: no
   tasks:
@@ -500,7 +498,6 @@
   become: true
   vars_files:
     - ansible_vars.yml
-    - install_opts.yml
 
   gather_facts: no
   tasks:

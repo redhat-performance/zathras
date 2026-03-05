@@ -293,4 +293,17 @@ if [[ -f test_times ]]; then
         report_usage
 fi
 
+#
+# Remove links in the results directory.
+#
+find . -maxdepth 1 -type l -delete
+#
+# Remove unneeded status files
+#
+rm -f *status
+
+#
+# Remove  misc files
+#
+rm -rf terraform_data.yml test_info upload* ignore.yml tags_defaults ansible.cfg config ansible_install_group add_vars_tf add_main_vars.tf add_main_tf_vars ansible_test_group ansible_vars_main.yml
 exit 0
