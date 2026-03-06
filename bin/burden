@@ -2159,7 +2159,6 @@ create_ansible_options()
 			else
 				test_sys=${gl_host_config}
 			fi
-			rm -f ansible_vars.yml
 			echo "system config: ${test_sys}" >> results_info
 			for i in `ls tests_to_run`
 			do
