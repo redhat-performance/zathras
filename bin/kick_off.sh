@@ -130,6 +130,10 @@ while getopts "a:c:d:f:s:S:t:l:" o; do
 done
 shift $((OPTIND-1))
 
+if [[ ! -d $direct ]]; then
+	echo $direct is not a directory
+	exit 101
+fi
 #
 # Clean house, populate, and set permissions
 #
