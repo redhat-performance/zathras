@@ -130,6 +130,10 @@ while getopts "a:c:d:f:s:S:t:l:" o; do
 done
 shift $((OPTIND-1))
 
+if [[ ! -d $direct ]]; then
+	echo $direct is not a directory
+	exit 101
+fi
 #
 # Clean house, populate, and set permissions
 #
@@ -293,4 +297,17 @@ if [[ -f test_times ]]; then
         report_usage
 fi
 
+#
+# Remove links in the results directory.
+#
+find . -maxdepth 1 -type l -delete
+#
+# Remove unneeded status files
+#
+rm -f *status
+
+#
+# Remove  misc files
+#
+rm -rf terraform_data.yml test_info upload* ignore.yml tags_defaults ansible.cfg config ansible_install_group add_vars_tf add_main_vars.tf add_main_tf_vars ansible_test_group
 exit 0

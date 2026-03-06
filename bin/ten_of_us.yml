@@ -401,7 +401,6 @@
   become: true
   vars_files:
     - ansible_vars.yml
-    - install_opts.yml
 
   gather_facts: yes
   tasks:
@@ -411,16 +410,6 @@
 
   - name: rhel installation
     block:
-    - name: install_pkgs
-      include_role:
-        name: install_packages
-      vars:
-        results_file: "/tmp/install_status"
-    - name: retrieve install package status
-      include_role:
-        name: retrieve_status
-      vars:
-        status_file: "install_status"
     - name: Gather the rpm package facts
       package_facts:
         manager: auto
@@ -467,82 +456,6 @@
       name: install_rpms
     vars:
       results_file: "/tmp/rpm_installs"
-
-# Install packages for other OSes
-- hosts: install_group
-  remote_user: config_info.test_user
-  become_user: root
-  become: true
-  vars_files:
-    - ansible_vars.yml
-    - install_opts.yml
-
-  gather_facts: no
-  tasks:
-  - name: amazon/ubuntu installation
-    block:
-    - name: update apts
-      shell: "apt-get update -y"
-    - name: install_pkgs
-      include_role:
-        name: install_packages
-      vars:
-        results_file: "/tmp/install_status"
-    when:
-      - config_info.os_vendor == "ubuntu"
-      - config_info.init_system == "yes"
-      - config_info.do_not_install_packages == 0
-
-# Install packages for other OSes
-- hosts: install_group
-  remote_user: config_info.test_user
-  become_user: root
-  become: true
-  vars_files:
-    - ansible_vars.yml
-    - install_opts.yml
-
-  gather_facts: no
-  tasks:
-  - name: amazon
-    block:
-    - name: install_pkgs
-      include_role:
-        name: install_packages
-      vars:
-        results_file: "/tmp/install_status"
-    when:
-      - config_info.os_vendor == "amazon"
-      - config_info.init_system == "yes"
-      - config_info.do_not_install_packages == 0
-  - name: suse
-    block:
-    - name: install_pkgs
-      include_role:
-        name: install_packages
-      vars:
-        results_file: "/tmp/install_status"
-    when:
-      - config_info.os_vendor == "suse"
-      - config_info.init_system == "yes"
-      - config_info.do_not_install_packages == 0
-
-#
-# Terminate if told to.
-# 
-- hosts: install_group
-  vars_files: ansible_vars.yml
-  gather_facts: no
-  tasks:
-  - name: Handle package install errors
-    block:
-    - name: retrieve install status
-      include_role:
-        name: retrieve_status
-      vars:
-        status_file: "install_status"
-      when:
-        - config_info.do_not_install_packages == 0
 
 #
 # Reboot the system if we did an update.
