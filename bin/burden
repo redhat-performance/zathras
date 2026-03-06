@@ -825,20 +825,6 @@ create_test_run_file()
 }
 
 #
-# Determine what packages are needed for the test on this particular flavor linux.
-#
-obtain_required_packages()
-{
-	packages=$(find_test_def_field "test_info" "test_name" "$1" "${gl_os_vendor}_pkgs" )
-	if [[ "$packages" != $value_not_set ]]; then
-		worker=`echo $packages | sed "s/,/ /g"`
-		for i in $worker; do
-			echo "  - ${i}" >> install_choices
-		done
-	fi
-}
-
-#
 # Determine the files to upload and make sure they exist.
 #
 make_list_of_uploads()
@@ -1146,19 +1132,6 @@ determine_what_has_to_be_installed()
 {
 	worker=`echo $1 | cut -d' ' -f2- | sed "s/,/ /g"`
 
-	# Ensure we have a couple packages to install, keeps things nice and happy.
-	if [[ $gl_os_vendor == "ubuntu" ]]; then
-		echo "  - gzip" > install_choices
-	elif [[ $gl_os_vendor == "suse" ]]; then
-		echo "  - bc" > install_choices
-		echo "  - libnuma1" >> install_choices
-		echo "  - time" >> install_choices
-		echo "  - git" >> install_choices
-	else
-		echo "  - bc" > install_choices
-		echo "  - numactl" > install_choices
-		echo "  - time" >> install_choices
-	fi
 	echo "---" > upload_files.yml
 	echo "uploads:" >> upload_files.yml
 	#
@@ -1166,7 +1139,6 @@ determine_what_has_to_be_installed()
 	#
 	for local_test_name in ${worker};
 	do
-		obtain_required_packages $local_test_name
 		make_list_of_uploads $local_test_name
 		#
 		# create the *yml file to be used for the test.
@@ -1174,10 +1146,6 @@ determine_what_has_to_be_installed()
 		create_test_run_file $local_test_name
 	done
 	make_list_of_rpms_to_upload
-	echo "---" >> install_opts.yml
-	echo "pkg_install:" >> install_opts.yml
-	sort -u install_choices >> install_opts.yml
-
 }
 
 #
