@@ -1,0 +1,123 @@
+name: Test Azure
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      azure_region:
+        description: 'Azure region for testing'
+        required: false
+        default: 'eastus'
+      vm_size:
+        description: 'Azure VM size (leave empty for default Standard_D4s_v3)'
+        required: false
+      image_id:
+        description: 'Azure image ID or URN (leave empty for default RHEL 9)'
+        required: false
+
+  # Automatic trigger on PR to main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'bin/**'
+      - 'ansible_roles/**'
+      - 'config/**'
+      - 'ci/test_scenarios/azure_ci_test.yml'
+      - '.github/workflows/test-azure.yml'
+      - '.github/actions/**'
+
+# Permissions required for OIDC authentication to Azure
+permissions:
+  id-token: write  # Required for requesting JWT
+  contents: read   # Required for actions/checkout
+  pull-requests: write  # Required for commenting on PRs
+
+env:
+  AZURE_REGION: ${{ inputs.azure_region || 'eastus' }}
+  SCENARIO_FILE: ci/test_scenarios/azure_ci_test.yml
+
+jobs:
+  test-azure:
+    name: Test on Azure
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # Prevent runaway costs
+
+    steps:
+      - name: Azure login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure authentication
+        run: |
+          echo "Verifying Azure credentials..."
+          az account show
+          echo "Azure CLI configured successfully"
+
+      - name: Set up Zathras
+        uses: ./.github/actions/setup-zathras
+        with:
+          ssh-private-key: ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
+
+      - name: Determine Azure image
+        id: image
+        run: |
+          # Use provided image or find latest RHEL 9 image
+          if [ -n "${{ inputs.image_id }}" ]; then
+            IMAGE_ID="${{ inputs.image_id }}"
+            echo "Using provided image: $IMAGE_ID"
+          else
+            # Use RHEL 9 URN (Publisher:Offer:Sku:Version)
+            IMAGE_ID="RedHat:RHEL:9-lvm-gen2:latest"
+            echo "Using default RHEL 9 image: $IMAGE_ID"
+          fi
+          echo "image_id=$IMAGE_ID" >> $GITHUB_OUTPUT
+
+      - name: Run Zathras test on Azure
+        id: test
+        uses: ./.github/actions/run-zathras-test
+        with:
+          scenario-file: ${{ env.SCENARIO_FILE }}
+          cloud-os-id: ${{ steps.image.outputs.image_id }}
+          additional-args: ${{ inputs.vm_size && format('--host_config {0}', inputs.vm_size) || '' }}
+
+      - name: Check for orphaned resources
+        if: always()
+        run: |
+          echo "Checking for orphaned resource groups..."
+          az group list \
+            --query "[?tags.ManagedBy=='Zathras'].{Name:name, Location:location, State:properties.provisioningState}" \
+            --output table || true
+
+      - name: Post results to PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ steps.test.outputs.test-status }}';
+            const emoji = status === 'success' ? '✅' : '❌';
+            const body = `## ${emoji} Azure Test Results
+
+            **Status:** ${status}
+            **Region:** ${{ env.AZURE_REGION }}
+            **Image:** ${{ steps.image.outputs.image_id }}
+            **Workflow:** [Run #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ${status === 'success' ? 'All tests passed successfully!' : 'Tests failed. Check workflow logs for details.'}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail workflow if tests failed
+        if: steps.test.outputs.test-status != 'success'
+        run: |
+          echo "❌ Azure tests failed"
+          exit 1

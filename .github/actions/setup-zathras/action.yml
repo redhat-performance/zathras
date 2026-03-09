@@ -1,0 +1,80 @@
+name: 'Setup Zathras'
+description: 'Install Zathras dependencies and prepare for testing'
+
+inputs:
+  ssh-private-key:
+    description: 'SSH private key for accessing cloud instances'
+    required: true
+
+outputs:
+  zathras-version:
+    description: 'Zathras git commit SHA'
+    value: ${{ steps.version.outputs.sha }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Get Zathras version
+      id: version
+      shell: bash
+      run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        # Install required system packages
+        sudo dnf install -y \
+          ansible-core \
+          git \
+          jq \
+          python3 \
+          python3-pip \
+          unzip \
+          wget
+
+    - name: Install Terraform
+      shell: bash
+      run: |
+        # Install Terraform 1.9.8
+        TERRAFORM_VERSION="1.9.8"
+        wget -q https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+        unzip -q terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+        sudo mv terraform /usr/local/bin/
+        terraform --version
+
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        # Install required Python packages
+        pip install --user boto boto3 yq==2.10.0
+
+    - name: Install Ansible collections
+      shell: bash
+      run: |
+        # Install required Ansible collections
+        ansible-galaxy collection install amazon.aws:9.1.0
+        ansible-galaxy collection install ansible.posix
+        ansible-galaxy collection install community.aws
+        ansible-galaxy collection install community.general
+
+    - name: Set up SSH key
+      shell: bash
+      env:
+        SSH_PRIVATE_KEY: ${{ inputs.ssh-private-key }}
+      run: |
+        # Configure SSH key for cloud instance access
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/zathras_ci_key
+        chmod 600 ~/.ssh/zathras_ci_key
+        echo "ZATHRAS_SSH_KEY=$HOME/.ssh/zathras_ci_key" >> $GITHUB_ENV
+
+    - name: Verify Zathras installation
+      shell: bash
+      run: |
+        # Verify bin/burden exists and is executable
+        ls -la bin/burden
+        file bin/burden
+        head -n 5 bin/burden
