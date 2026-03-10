@@ -53,21 +53,23 @@ worker_fsys=`mktemp /tmp/zathras_fs.XXXXX`
 out_file=`mktemp /tmp/zathras_fs.XXXXX`
 mount | grep ' (rw,' > $worker_mnt
 
-df --local --output=avail,target,source | grep -ve 'mounted\|tmpfs\|boot' | grep -v "Mounted on" > $worker_fsys
+findmnt -D -t nosquashfs,notmpfs,nodevtmpfs -b  > $worker_fsys
 
 while IFS= read -r mnt_data
 do
-	device=`echo $mnt_data | awk '{print $3}'`
+	device=`echo $mnt_data | awk '{print $1}'`
 	grep -q "^${device} " $worker_mnt
 	if [[ $? -eq 0 ]]; then
-		echo $mnt_data  >> $out_file
+		space=$( echo $mnt_data | awk '{print $5}' )
+		mnt_pnt=$( echo $mnt_data | awk '{print $7}' )
+		echo $space $mnt_pnt  >> $out_file
 	fi
 done < "$worker_fsys"
 
 if [[ $most_free_space -eq 1 ]]; then
 	sort -n $out_file | tail -1 | awk '{print $2}'
 else
-	sort -n $out_file
+	sort -n $out_file 
 fi
 rm -f $worker_fsys $worker_mnt $out_file
 exit 0
