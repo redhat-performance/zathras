@@ -21,7 +21,7 @@
   ansible.builtin.package:
     name: git
     state: present
-  ignore_errors: yes
+
 #
 # Time we are starting the test.
 #

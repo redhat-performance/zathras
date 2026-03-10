@@ -367,6 +367,17 @@
     when:
       - config_info.os_vendor == "suse"
  
+- hosts: local
+  vars_files: ansible_vars.yml
+  gather_facts: no
+  tasks:
+  - name: Warning of sles_legacy
+    include_role:
+      name: warn_on_error
+    vars:
+      status_file: "sles_legacy_status"
+      warning: "SLES legacy module installation failure"
+    when: config_info.os_vendor == "suse"
 #
 # Determine where to upload from, assumption is all test systems have the same
 # disk space.
