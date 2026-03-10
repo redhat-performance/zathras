@@ -1,0 +1,109 @@
+---
+# Set up ISO share via NFS so guest can access packages after install
+#
+# - Mount ISO on host at /iso_install_host
+# - Configure NFS export
+# - Ensure libvirt default network is active
+# - Open firewall for NFS
+
+- name: Install nfs-utils on host
+  dnf:
+    name: nfs-utils
+    state: present
+
+- name: Create ISO mount point on host
+  file:
+    path: /iso_install_host
+    state: directory
+    mode: '0755'
+
+- name: Check if ISO is already mounted
+  command: mountpoint -q /iso_install_host
+  register: iso_mounted
+  ignore_errors: yes
+
+- name: Mount ISO on host
+  mount:
+    path: /iso_install_host
+    src: "{{ config_info.kvm_iso }}"
+    fstype: iso9660
+    opts: loop,ro
+    state: mounted
+  when: iso_mounted.rc != 0
+
+- name: Configure NFS export for ISO
+  lineinfile:
+    path: /etc/exports
+    line: "/iso_install_host *(ro,sync,no_subtree_check,no_root_squash)"
+    create: yes
+
+- name: Start and enable nfs-server
+  systemd:
+    name: nfs-server
+    state: started
+    enabled: yes
+
+- name: Re-export NFS shares
+  command: exportfs -ra
+
+- name: Ensure libvirt default network is active
+  block:
+  - name: Check if default network exists
+    command: virsh net-info default
+    register: net_info
+    ignore_errors: yes
+
+  - name: Define default network if missing
+    block:
+    - name: Create default network XML
+      copy:
+        content: |
+          <network>
+            <name>default</name>
+            <forward mode='nat'/>
+            <bridge name='virbr0' stp='on' delay='0'/>
+            <ip address='192.168.122.1' netmask='255.255.255.0'>
+              <dhcp>
+                <range start='192.168.122.2' end='192.168.122.254'/>
+              </dhcp>
+            </ip>
+          </network>
+        dest: /tmp/kvm_default_net.xml
+    - name: Define the default network
+      command: virsh net-define /tmp/kvm_default_net.xml
+    - name: Clean up temp file
+      file:
+        path: /tmp/kvm_default_net.xml
+        state: absent
+    when: net_info.rc != 0
+
+  - name: Start default network if inactive
+    command: virsh net-start default
+    ignore_errors: yes
+
+  - name: Set default network to autostart
+    command: virsh net-autostart default
+    ignore_errors: yes
+
+- name: Get host bridge IP
+  shell: ip -4 addr show virbr0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+  register: host_bridge_ip
+
+- name: Save host bridge IP
+  set_fact:
+    kvm_host_ip: "{{ host_bridge_ip.stdout }}"
+
+- name: Open firewall for NFS on libvirt zone
+  block:
+  - name: Allow NFS service
+    command: firewall-cmd --zone=libvirt --add-service=nfs --permanent
+    ignore_errors: yes
+  - name: Allow mountd service
+    command: firewall-cmd --zone=libvirt --add-service=mountd --permanent
+    ignore_errors: yes
+  - name: Allow rpc-bind service
+    command: firewall-cmd --zone=libvirt --add-service=rpc-bind --permanent
+    ignore_errors: yes
+  - name: Reload firewall
+    command: firewall-cmd --reload
+    ignore_errors: yes

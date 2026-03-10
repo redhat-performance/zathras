@@ -1,0 +1,60 @@
+---
+# Create the KVM virtual machine
+#
+# If custom XML is provided, use virsh define + virsh start
+# Otherwise use virt-install with kickstart
+
+- name: Create qcow2 disk image
+  command: >
+    qemu-img create -f qcow2
+    /var/lib/libvirt/images/{{ kvm_guest_name }}.qcow2
+    {{ config_info.kvm_disk_size }}G
+
+- name: Create VM with custom XML
+  block:
+  - name: Copy custom XML
+    copy:
+      src: "{{ config_info.kvm_xml }}"
+      dest: "/tmp/{{ kvm_guest_name }}.xml"
+      remote_src: yes
+
+  - name: Update guest name in XML
+    replace:
+      path: "/tmp/{{ kvm_guest_name }}.xml"
+      regexp: '<name>.*</name>'
+      replace: '<name>{{ kvm_guest_name }}</name>'
+
+  - name: Define VM from XML
+    command: virsh define /tmp/{{ kvm_guest_name }}.xml
+
+  - name: Start VM
+    command: virsh start {{ kvm_guest_name }}
+
+  - name: Clean up temp XML
+    file:
+      path: "/tmp/{{ kvm_guest_name }}.xml"
+      state: absent
+  when: config_info.kvm_xml is defined and config_info.kvm_xml != ""
+
+- name: Create VM with virt-install
+  command: >
+    virt-install
+    --name {{ kvm_guest_name }}
+    --memory {{ kvm_guest_memory }}
+    --vcpus {{ kvm_guest_cpus }}
+    --disk path=/var/lib/libvirt/images/{{ kvm_guest_name }}.qcow2,format=qcow2
+    --location {{ config_info.kvm_iso }}
+    --initrd-inject {{ working_dir }}/config/kvm_kickstart.cfg
+    --extra-args "inst.ks=file:/kvm_kickstart.cfg console=ttyS0,115200n8"
+    --os-variant rhel9-unknown
+    --network network=default
+    --graphics none
+    --noautoconsole
+    --wait -1
+  when: config_info.kvm_xml is not defined or config_info.kvm_xml == ""
+
+- name: Record guest name in ansible_run_vars
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "kvm_guest_name: {{ kvm_guest_name }}"
+    create: yes

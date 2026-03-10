@@ -123,6 +123,13 @@
         include_role:
           name: local_setup
       when: config_info.system_type == "local"
+
+    - name: kvm operations
+      block:
+      - name: kvm_operations
+        include_role:
+          name: kvm_create
+      when: config_info.system_type == "kvm"
     when: config_info.init_system == "yes"
 
 #
@@ -315,6 +322,7 @@
         status_file: "cr_status"
       when:
         - config_info.system_type != "local"
+        - config_info.system_type != "kvm"
     when:
       - config_info.os_vendor == "rhel"
 
@@ -882,7 +890,12 @@
       vars:
         tf_dir: "tf"
       when: config_info.system_type in ['aws', 'gcp', 'azure', 'ibm']
-    
+
+    - name: KVM terminate
+      include_role:
+        name: kvm_destroy
+      when: config_info.system_type == "kvm"
+
     - name: terminate end time
       command: "date -u +%s"
       register: terminate_end_time

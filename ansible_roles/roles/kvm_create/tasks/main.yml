@@ -1,0 +1,28 @@
+---
+# tasks file for kvm_create
+#
+# Orchestrates KVM guest creation:
+#   1. Calculate resources for guest
+#   2. Set up ISO share via NFS
+#   3. Generate kickstart file and SSH keys
+#   4. Create and start the VM
+#   5. Wait for guest to be reachable
+#   6. Add guest to ansible host groups
+
+- name: Calculate guest resources
+  include_tasks: calculate_resources.yml
+
+- name: Setup ISO share
+  include_tasks: setup_iso_share.yml
+
+- name: Create kickstart
+  include_tasks: create_kickstart.yml
+
+- name: Create VM
+  include_tasks: create_vm.yml
+
+- name: Wait for guest
+  include_tasks: wait_for_guest.yml
+
+- name: Add host to groups
+  include_tasks: add_host_to_groups.yml

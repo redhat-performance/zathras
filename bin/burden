@@ -132,7 +132,7 @@ gl_git_timeout_set=0
 gl_archive_location=$value_not_set
 gl_error_repo_errors=1
 gl_valid_os_vendors="rhel ubuntu amazon suse private none"
-gl_valid_system_types="aws azure gcp ibm local"
+gl_valid_system_types="aws azure gcp ibm local kvm"
 gl_package_name=$value_not_set
 gl_show_tests=0
 gl_create_attempts=5
@@ -228,6 +228,9 @@ gl_no_pip_packages=0
 gl_no_system_packages=0
 gl_bootc_mode=0
 gl_cpu_type_request="none"
+gl_kvm_iso=""
+gl_kvm_xml=""
+gl_kvm_disk_size=100
 gl_run_file=""
 gl_failed_test_rpt="failed_tests"
 
@@ -567,6 +570,9 @@ show_aws_images()
 #
 verify_cloud_os_version()
 {
+	if [[ "$gl_system_type" == "kvm" ]]; then
+		return
+	fi
 	if [[ "$gl_system_type" == "aws" ]]; then
 		show_aws_images $gl_os_vendor 1
 	fi
@@ -1274,7 +1280,7 @@ reduce_options()
 #
 add_local_config_info()
 {
-	if [[ $gl_system_type == "local" ]]; then
+	if [[ $gl_system_type == "local" ]] || [[ $gl_system_type == "kvm" ]]; then
 		conf_file="$gl_top_dir/local_configs/${1}.config"
 		#
 		# If there is a config file, go and retrieve the information.
@@ -1366,6 +1372,8 @@ set_user_name()
 			gl_test_user=${user_name}
 		elif [[ $gl_system_type == "ibm" ]]; then
 			# IBM Cloud defaults to root
+			gl_test_user=root
+		elif [[ $gl_system_type == "kvm" ]]; then
 			gl_test_user=root
 		else
 			#
@@ -1773,7 +1781,7 @@ create_ansible_options()
 		# If we did not find spot pricing, check the config/spot_price for the instance type,
 		# and populate if required.
 		#
-		if [[ $gl_system_type != "local" ]] && [[ $gl_spot_cap -eq 0 ]]; then
+		if [[ $gl_system_type != "local" ]] && [[ $gl_system_type != "kvm" ]] && [[ $gl_spot_cap -eq 0 ]]; then
 			echo No spot price designated, retrieving
 			worker=`curl -L ec2.shop?filter=$1 -H 'accept: json'`
 			if [[ $? -ne 0 ]]; then
@@ -1820,7 +1828,7 @@ create_ansible_options()
 		# Save the tf system info if we are a cloud system, and gl_cloud_terminate_instance
 		# is set to 1 (terminate cloud upon completion.
 		#
-		if [[ $gl_system_type != "local" ]] && [[ $gl_cloud_terminate_instance -eq 1 ]]; then
+		if [[ $gl_system_type != "local" ]] && [[ $gl_system_type != "kvm" ]] && [[ $gl_cloud_terminate_instance -eq 1 ]]; then
 			echo $run_dir/tf >> $gl_tf_sys_list
 		fi
 		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> $gl_run_info
@@ -1843,7 +1851,7 @@ create_ansible_options()
 			fi
 			echo 0 >> instance_cost
 		fi
-		if [[ $gl_system_type != "local" ]]; then
+		if [[ $gl_system_type != "local" ]] && [[ $gl_system_type != "kvm" ]]; then
 			make_dir_report_errors tf
 		fi
 		make_dir_report_errors tests_to_run
@@ -1943,6 +1951,14 @@ create_ansible_options()
 			aws_specific_os_version $system_name
 		elif [[ $gl_system_type = "ibm" ]]; then
 			ibm_specific_os_version
+		elif [[ $gl_system_type = "kvm" ]]; then
+			if [[ $gl_kvm_iso == "" ]]; then
+				cleanup_and_exit "Error: --kvm_iso is required for system_type kvm" 1
+			fi
+			echo "  cloud_os_version: local_iso" >> ansible_vars_main.yml
+			echo "  kvm_iso: ${gl_kvm_iso}" >> ansible_vars_main.yml
+			echo "  kvm_xml: ${gl_kvm_xml}" >> ansible_vars_main.yml
+			echo "  kvm_disk_size: ${gl_kvm_disk_size}" >> ansible_vars_main.yml
 		else
 			echo "  cloud_os_version: ${gl_cloud_os_version}" >> ansible_vars_main.yml
 		fi
@@ -1953,7 +1969,9 @@ create_ansible_options()
 		echo "  update_type: ${gl_image_type}" >> ansible_vars_main.yml
 		echo "  persistent_log: ${gl_persistent_log}" >> ansible_vars_main.yml
 		echo "  kit_upload_directory: ${gl_kit_upload_directory}" >> ansible_vars_main.yml
-		if [[ $gl_ssh_key_file == "" ]]; then
+		if [[ $gl_system_type == "kvm" ]]; then
+			echo "  ssh_key: kvm_guest_key" >> ansible_vars_main.yml
+		elif [[ $gl_ssh_key_file == "" ]]; then
 			echo "  ssh_key: $HOME/.ssh/id_rsa" >> ansible_vars_main.yml
 		else
 			echo "  ssh_key: ${gl_ssh_key_file}" >> ansible_vars_main.yml
@@ -2045,12 +2063,14 @@ create_ansible_options()
 		# Set user_parent_home_dir based on test_user (must be AFTER set_user_name)
 		# Root's home is /root, not /home/root
 		#
-		if [[ $gl_test_user == "root" ]] || [[ $gl_system_type == "local" ]]; then
+		if [[ $gl_test_user == "root" ]] || [[ $gl_system_type == "local" ]] || [[ $gl_system_type == "kvm" ]]; then
 			echo "  user_parent_home_dir: /" >> ansible_vars_main.yml
 		else
 			echo "  user_parent_home_dir: /home" >> ansible_vars_main.yml
 		fi
-		generate_tags $user_name
+		if [[ $gl_system_type != "kvm" ]]; then
+			generate_tags $user_name
+		fi
 
 		#
 		# Handle local config info in ansible_run_vars.yml, networks, disks.  Hostname is added via
@@ -2101,7 +2121,7 @@ create_ansible_options()
 			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
 			test_info_str=`grep test_to_run: $run_dir/ansible_vars_main.yml | sed "s/\[//g" | sed "s/\]//g" | cut -d: -f 2 | sed "s/ //g"`
 			echo "Starting ${test_info_str} on ${host_or_cloud_inst}"
-			if [[ $gl_system_type == "local" ]]; then
+			if [[ $gl_system_type == "local" ]] || [[ $gl_system_type == "kvm" ]]; then
 				#
 				# Do not allow simultaneous runs to the same local host.
 				#
@@ -2355,6 +2375,23 @@ check_for_terraform()
 	report_util_version terraform_version "${terraform_version}"
 }
 
+check_for_virt_install()
+{
+	which virt-install 2> /dev/null
+	if [[ $? -eq 1 ]]; then
+		cleanup_and_exit "virt-install needs to be installed for kvm system type.\ndnf install -y virt-install" 1
+	fi
+	virt_install_version=`virt-install --version`
+	report_util_version virt_install_version "${virt_install_version}"
+
+	which virsh 2> /dev/null
+	if [[ $? -eq 1 ]]; then
+		cleanup_and_exit "virsh needs to be installed for kvm system type.\ndnf install -y libvirt-client" 1
+	fi
+	virsh_version=`virsh --version`
+	report_util_version virsh_version "${virsh_version}"
+}
+
 #
 # Check the packages to see if they are installed on the system.
 # If not, we flag the issue and bail.
@@ -2372,7 +2409,11 @@ package_check()
 			check_for_boto
 			check_for_aws
 		fi
-		check_for_terraform
+		if [[ $gl_system_type == "kvm" ]]; then
+			check_for_virt_install
+		else
+			check_for_terraform
+		fi
 	fi
 	source $UTILS_DIR/gl_unlock_exclusive
 }
@@ -3300,7 +3341,7 @@ usage()
 	echo "	--create_attempts: number of times we attempt to create an instance to get the"
 	echo "    designated cpu type"
 	echo "  --git_timeout: Number of seconds to timeout on git requests.  Default is 60"
-	echo "  --system_type <vendor>: aws, azure, gcp, or local"
+	echo "  --system_type <vendor>: aws, azure, gcp, ibm, local, or kvm"
 	echo "  --host_config <config options>: Specification of the system and configuration"
 	if [[ $1 -eq 1 ]]; then
 		echo "    If the --system_type option is local, then this is simply the system name"
@@ -3462,6 +3503,10 @@ usage()
 	echo "      Default is to terminate"
 	echo "  --use_spot: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not"
 	echo "      to use spot_pricing"
+	echo "KVM options (--system_type kvm)"
+	echo "  --kvm_iso <path>: Path to the RHEL installation ISO (required for kvm)"
+	echo "  --kvm_xml <path>: Path to a custom libvirt XML domain definition (optional)"
+	echo "  --kvm_disk_size <GB>: Size of the guest disk in GB (default: 100)"
 	cleanup_and_exit "" 1
 }
 
@@ -3568,6 +3613,31 @@ set_general_value()
 				echo "$1 $2" >> $gl_cli_supplied_options
 				gl_java_version=`echo $2 | sed "s/java-//g"`
 			fi
+			shift_by=2
+		;;
+		--kvm_iso)
+			if [[ $gl_kvm_iso == "" ]]; then
+				echo "$1 $2" >> $gl_cli_supplied_options
+				gl_kvm_iso=$2
+				if [[ ! -f $gl_kvm_iso ]]; then
+					cleanup_and_exit "Error: KVM ISO file $gl_kvm_iso does not exist." 1
+				fi
+			fi
+			shift_by=2
+		;;
+		--kvm_xml)
+			if [[ $gl_kvm_xml == "" ]]; then
+				echo "$1 $2" >> $gl_cli_supplied_options
+				gl_kvm_xml=$2
+				if [[ ! -f $gl_kvm_xml ]]; then
+					cleanup_and_exit "Error: KVM XML file $gl_kvm_xml does not exist." 1
+				fi
+			fi
+			shift_by=2
+		;;
+		--kvm_disk_size)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_kvm_disk_size=$2
 			shift_by=2
 		;; 
 		--kit_upload_directory)
@@ -3879,6 +3949,9 @@ grab_cli_data()
 		"individ_vars"
 		"java_version"
 		"kit_upload_directory"
+		"kvm_iso"
+		"kvm_xml"
+		"kvm_disk_size"
 		"max_systems"
 		"mode"
 		"os_vendor"

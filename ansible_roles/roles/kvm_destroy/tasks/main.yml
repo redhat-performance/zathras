@@ -1,0 +1,44 @@
+---
+# tasks file for kvm_destroy
+#
+# Destroys the KVM guest and cleans up host resources
+
+- name: Load run vars to get guest name
+  include_vars:
+    file: "{{ working_dir }}/ansible_run_vars.yml"
+    name: run_vars
+
+- name: Set guest name fact
+  set_fact:
+    kvm_guest_name: "{{ run_vars.kvm_guest_name }}"
+  when: run_vars.kvm_guest_name is defined
+
+- name: Destroy KVM guest
+  block:
+  - name: Force stop the guest
+    command: virsh destroy {{ kvm_guest_name }}
+    ignore_errors: yes
+
+  - name: Undefine the guest and remove storage
+    command: virsh undefine {{ kvm_guest_name }} --remove-all-storage
+    ignore_errors: yes
+  when: kvm_guest_name is defined
+
+- name: Clean up NFS share
+  block:
+  - name: Unmount ISO from host
+    mount:
+      path: /iso_install_host
+      state: unmounted
+    ignore_errors: yes
+
+  - name: Remove NFS export entry
+    lineinfile:
+      path: /etc/exports
+      line: "/iso_install_host *(ro,sync,no_subtree_check,no_root_squash)"
+      state: absent
+    ignore_errors: yes
+
+  - name: Re-export NFS shares
+    command: exportfs -ra
+    ignore_errors: yes

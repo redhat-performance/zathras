@@ -225,7 +225,9 @@ do
 	attempts=1
 	while [ $attempts -ne $create_attempts ]
 	do
-		mkdir tf
+		if [[ $system_type != "kvm" ]]; then
+			mkdir tf
+		fi
 		echo ===== attempt $attempts of $create_attempts ==============
 		ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml &
 		ans_pid=$!
