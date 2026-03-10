@@ -69,7 +69,7 @@ resource "google_compute_instance" "test" {
 
   # copies ssh public key into the system for ssh access to the VM
   metadata = {
-    ssh-keys = "${var.test_user}:${file("${var.ssh_key_path}.pub")}"
+    ssh-keys = "${var.test_user}:${file(var.ssh_public_key_path)}"
   }
 
   # Ensures that instance is created after successful creation of networks
