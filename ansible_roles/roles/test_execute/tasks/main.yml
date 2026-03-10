@@ -17,6 +17,11 @@
     file: "tests_to_run/{{ test_exec }}.yml"
     name: test_data
 
+- name: instal git
+  ansible.builtin.package:
+    name: git
+    state: present
+  ignore_errors: yes
 #
 # Time we are starting the test.
 #
