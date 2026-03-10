@@ -53,7 +53,10 @@ worker_fsys=`mktemp /tmp/zathras_fs.XXXXX`
 out_file=`mktemp /tmp/zathras_fs.XXXXX`
 mount | grep ' (rw,' > $worker_mnt
 
-findmnt -D -t nosquashfs,notmpfs,nodevtmpfs -b  > $worker_fsys
+#
+# Filter out remote filesystems.
+#
+findmnt -D -t nosquashfs,notmpfs,nodevtmpfs,noproc,nosysfs -b | grep -vE 'nfs|cifs|smb|sshfs|fuse.sshfs| lustre' > $worker_fsys
 
 while IFS= read -r mnt_data
 do
