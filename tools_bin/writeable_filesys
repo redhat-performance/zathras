@@ -56,7 +56,7 @@ mount | grep ' (rw,' > $worker_mnt
 #
 # Filter out remote filesystems.
 #
-findmnt -D -t nosquashfs,notmpfs,nodevtmpfs,noproc,nosysfs -b | grep -vE 'nfs|cifs|smb|sshfs|fuse.sshfs| lustre' > $worker_fsys
+findmnt -D -t nosquashfs,notmpfs,nodevtmpfs,noproc,nosysfs -b | grep -vE 'nfs|cifs|smb|sshfs|fuse.sshfs|lustre' > $worker_fsys
 
 while IFS= read -r mnt_data
 do
