@@ -17,10 +17,31 @@
     file: "tests_to_run/{{ test_exec }}.yml"
     name: test_data
 
-- name: instal git
-  ansible.builtin.package:
-    name: git
-    state: present
+
+- name: check to see if git command is present
+  shell:
+      cmd: "which git"
+  register: git_check
+  ignore_errors: true
+
+- name: install git
+  block:
+    - name: Install git package if need be.
+      ansible.builtin.package:
+        name: git
+        state: present
+  rescue:
+    - name: If git not installed or failed to install bail.
+      include_role:
+        name: tf_delete
+      vars:
+        tf_dir: "tf"
+    - name: Aborting test
+      fail:
+        msg: "Git is not present"
+  when:
+    - git_check.rc != 0
+    - config_info.do_not_install_packages == 0
 
 #
 # Time we are starting the test.
