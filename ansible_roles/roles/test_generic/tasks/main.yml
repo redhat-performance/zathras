@@ -162,11 +162,11 @@
   - name: Add the line
     lineinfile:
       path: "{{ dest_dir }}/{{ test_data.exec_dir }}/test_failure"
-      line: "{{ dest_dir }}/{{ test_data.exec_dir }}/{{ test_data.test_script_to_run }} reported failure."
+      line: "{{ dest_dir }}/{{ test_data.exec_dir }}/{{ test_data.test_script_to_run }} reported failure: {{ test_out.rc }}."
       create: yes
   - name: retrieve the failure file
     fetch:
       src: "{{ dest_dir }}/{{ test_data.exec_dir }}/test_failure"
-      dest: "{{ working_dir }}/test_failure"
+      dest: "{{ working_dir }}/test_failure_{{ test_data.test_script_to_run }}"
       flat: yes
   when: test_out.rc != 0

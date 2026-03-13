@@ -381,28 +381,6 @@ cleanup_and_exit_on_break()
 #
 trap cleanup_and_exit_on_break SIGINT
 
-#
-# Generate report of test status.
-# 
-process_results()
-{
-	if [ $gl_first_invocation -eq 1 ]; then
-		sort -u $gl_run_info > ${gl_run_info}.sorted
-		while IFS= read -r run_data
-		do
-			pushd $gl_top_dir/$run_data >& /dev/null
-			$gl_top_dir/tools_bin/determine_test_status
-			$gl_top_dir/tools_bin/report_missing_failed_test
-			if [[ $? -ne 0 ]] && [[ $gl_retry_failed_tests -eq 1 ]]; then
-				handle_error_reruns
-			fi
-			popd  >& /dev/null
-		done < "${gl_run_info}.sorted"
-		rm ${gl_run_info}.sorted $gl_run_info 
-	fi
-}
-
-
 make_dir_report_errors()
 {
 	mkdir -p $1 2> /dev/null
@@ -1674,6 +1652,132 @@ generate_tags()
 }
 
 #
+# A rerun of one or more tests has been detected.  Using the information in the old run_burden_* script
+# build a rerun of the failed tests.
+#
+build_burden_rerun()
+{
+	test_list="${2}"
+	out_file="${3}"
+	run_string=""
+	echo $test_list
+	separ=""
+	skip=0
+	for argument in $1; do
+		if [[ $argument == "--tests" ]]; then
+			#
+			# Add the new tests in.  Skip the existing list in run_burden_
+			# Add the --retry_failed_tests 0 flag here to prevent an infinite rerun
+			# loop.
+			#
+			run_string=${run_string}${separ}"--tests $test_list --retry_failed_tests 0"
+			skip=1
+			continue
+		fi
+		if [[ $argument == "--run_file" ]]; then
+			#
+			# Update the run file information.
+			#
+			run_string=${run_string}${separ}"--run_file $out_file"
+			skip=1
+			continue
+		fi
+		if [[ $skip -eq 1 ]]; then
+			skip=0
+			continue
+		fi
+		#
+		# End of command, do not want to be placed in background.
+		#
+		run_string=${run_string}${separ}${argument}
+		separ=" "
+	done
+	echo "$run_string" >> $out_file
+}
+
+#
+# Determine if we have any test failures that require rerrunning.
+#
+handle_failure_reruns()
+{
+	rerun_file=""
+	test_list=""
+	separ=""
+
+
+	#
+	# Build the failed test summary file.
+	#
+	find . -print | grep test_failure_ > test_failure
+	if [[ $? -eq 0 ]]; then
+		#
+		# We have a list of failed tests.  Obtain the command used.
+		#
+		ls *cmd | sed "s/\.cmd//g" > test_names
+		#
+		# We have found failures, build the consolidated report.
+		#
+		while IFS= read -r line
+		do
+			fcommand=$( awk '{print $1}' $line )
+			rtc=$( awk '{print $4}' $line | sed "s/\.//g" )
+			#
+			# We need the actual test, not the whole string.  There is no
+			# guarntee loction of the test name in the command string.
+			# So we will go through the list of *.cmd and see if we can get a match.
+			#
+			for tname in `cat test_names`; do
+				if [[ $fcommand == */${tname}/* ]]; then
+					rburden=`ls run_burden_*`
+					echo "${tname},${rtc},$rburden" >> failed_test_report
+					break
+				fi
+			done
+		done < "test_failure"
+		#
+		# Need to only rerun the tests that failed
+		# with a rtc < 100. A rtc of 0 will never
+		# appear in the failed_test_report_file.
+		#
+		while IFS= read -r line
+		do
+			rtc=$( echo $line | cut -d',' -f2 )
+			if [[ $rtc -gt 99 ]]; then
+				continue
+			fi
+			if [[ $rerun_file == "" ]]; then
+				rerun_file=$( echo $line | cut -d',' -f3 )
+			fi
+			new_test=$( echo $line | cut -d',' -f1 )
+			test_list=${test_list}${separ}${new_test}
+			separ=","
+		done < failed_test_report
+		#
+		# Build the new run file to rerun this test just once.
+		#
+		if [[ $rerun_file != "" ]]; then
+			while IFS= read -r line
+			do
+				if [[ $line == "./burden"* ]]; then
+					build_burden_rerun "$line" "$test_list" "${rerun_file}rerun"
+				else
+					echo $line >> ${rerun_file}rerun
+				fi
+			done < $rerun_file
+			#
+			# Go and rerun the tests that failed that indicated to rerun.
+			#
+			cp ${rerun_file}rerun $gl_top_dir
+			pushd $gl_top_dir > /dev/null
+			chmod 755 ${rerun_file}rerun
+			./${rerun_file}rerun
+			popd > /dev/null
+		fi
+		rm -f test_names
+	fi
+}
+
+#
 #  Using all the options entered, create the working directory for the configuration and it's
 #  associated files.
 #
@@ -2178,32 +2282,10 @@ create_ansible_options()
 				echo "    ${test_location}" >> results_info
 				echo "    ${test_script_to_run}" >> results_info
 				echo "    ${test_specific}" >> results_info
-				timestamp=`date`
-				if [[ ${results_file} == "" ]]; then
-					timestamp=`date`
-					flock -x $gl_top_dir/failed_runs echo "${timestamp} ${test_sys}, Error: $i did not produce a results file" >> $gl_top_dir/failed_runs
-					echo "    Error: did not produce a results file" >> results_info
-				else
-					make_dir_report_errors junk
-					cd junk
-					for i in $results_file; do
-						unzip -q ../${i}
-						tfile=`ls *tar`
-						results_report=`tar xvf ${tfile} | grep test_results_report`
-						if [[ $results_report != "" ]]; then
-							grep -q Failed $results_report
-							if [ $? -ne 1 ]; then
-								flock -x $gl_top_dir/failed_runs echo "${timestamp} Error: System: ${test_sys}, Test, $i, reported failure" >> $gl_top_dir/failed_runs
-								echo "    Error: reported a failure" >> ../results_info
-							fi
-						fi
-						rm $tfile
-					done
-					cd ..
-					rm -rf junk
-					echo "    results_ptr: ${direct}/${results_file}" >> results_info
-				fi
 			done
+			if [[ $gl_retry_failed_tests -eq 1 ]]; then
+				handle_failure_reruns
+			fi
 			flock -x $gl_top_dir/results_info cat results_info >> $gl_top_dir/results_info
 		fi
 		if [[ $gl_archive_location != $value_not_set ]]; then
@@ -4054,50 +4136,6 @@ add_missing_test()
 	fi
 }
 
-handle_error_reruns()
-{
-	scenario_to_run=${gl_top_dir}/${gl_scenario_to_run}_fix
-	#
-	# Replace all +++ in the scenario file
-	#
-	sed "s/+++/\//g" ${gl_top_dir}/${gl_scenario_to_run} > $scenario_to_run
-
-	new_scen_file=${scenario_to_run}_rerun
-	rm -f $new_scen_file
-	gl_sys_index_rerun=1
-
-	#
-	# First get all the headers
-	#
-	while IFS= read -r test_info
-	do
-		if [[ $test_info  == "systems:"* ]]; then
-			echo $test_info >> $new_scen_file
-			break
-		fi
-		if [[ $test_info != *"use_spot:"* ]]; then
-			echo "$test_info" >> $new_scen_file
-		fi
-	done < "${scenario_to_run}"
-
-	while IFS= read -r bad_test
-	do
-		system=`echo $bad_test | cut -d':'  -f 2`
-		test=`echo $bad_test | cut -d':'  -f 3`
-		add_missing_test $system "$test" $scenario_to_run $new_scen_file $scenario_to_run
-	done < test_errors
-	#
-	# If we have spot failures, handle them here.
-	# We will not run spot on any test failure, it simplifies
-	# having to deal with spot but test failed vs spot failure.
-	# We have already removed the spot request in the scenario file.
-	#
-	rm */spot_failure
-	pushd $gl_top_dir > /dev/null
-	./burden --scenario  $new_scen_file --retry_failed_tests 0
-	popd > /dev/null
-}
-
 grab_vars_data()
 {
 	if [[ $gl_first_invocation -eq 1 ]]; then
@@ -4352,7 +4390,6 @@ fi
 #
 if [[ $gl_scenario_to_run != "" ]]; then
         run_scenario $gl_scenario_to_run
-	process_results
         cleanup_and_exit "" 0
 fi
 
@@ -4440,6 +4477,5 @@ fi
 # We try only once.
 #
 
-process_results
 popd > /dev/null
 cleanup_and_exit "" 0
