@@ -23,12 +23,12 @@ Version: 3.2
 | Option | Arguments | Description |
 |--------|-----------|-------------|
 | <nobr>`--tests`</nobr> | `<test>` | Test name(s) to execute. Use comma-separated list: `test1,test2`.<br> Overrides all other test options |
-| <nobr>`--test_iter`</nobr> | `<iterations>` | Number of test iterations. For cloud instances, terminates and recreates image per iteration. Default: 1 |
+| <nobr>`--test_iter`</nobr> | `<iterations>` | Number of test iterations. For cloud instances, terminates<br>and recreates image per iteration. Default: 1 |
 | <nobr>`--test_def_file`</nobr> | `<file>` | Test definition file to use |
-| <nobr>`--test_def_dir`</nobr> | `<dir>` | Test definition directory. Default: `<execution dir>/config`. Supports git repos with `https:` or `git:` prefix |
-| <nobr>`--test_override`</nobr> | `<options>` | Override options for specific test in scenario file (see [Test Override Format](#test-override-format)) |
+| <nobr>`--test_def_dir`</nobr> | `<dir>` | Test definition directory. Default: `<execution dir>/config`.<br> Supports git repos with `https:` or `git:` prefix |
+| <nobr>`--test_override`</nobr> | `<options>` | Override options for specific test in scenario file <br>(see [Test Override Format](#test-override-format)) |
 | <nobr>`--show_tests`</nobr> | - | List available tests as defined in `config/test_defs.yml` |
-| <nobr>`--test_versions`</nobr> | `<test>,<test>,...` | Show available versions and descriptions for specified tests (git repos only) |
+| <nobr>`--test_versions`</nobr> | `<test>,<test>,...` | Show available versions and descriptions for<br>specified tests (git repos only) |
 | <nobr>`--test_version_check`</nobr> | - | Check if running latest test versions, then exit. Default: no |
 | <nobr>`--update_test_versions`</nbsp> | - | Update templates to latest test versions (git repos only) |
 
