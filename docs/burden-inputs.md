@@ -65,7 +65,7 @@ Version: 3.2
 
 | Option | Arguments | Description |
 |--------|-----------|-------------|
-| <nobr>`--no_packages`</nobr> | - | Do not install any packages (sets both no_pip_packages and no_system_packages). Default: no |
+| <nobr>`--no_packages`</nobr> | - | Do not install any packages (sets both no_pip_packages<br>and no_system_packages). Default: no |
 | <nobr>`--no_pip_packages`</nobr> | - | Do not install pip packages. Default: no |
 | <nobr>`--no_system_packages`</nobr> | - | Do not install system packages (via dnf/apt/etc). Default: no |
 | <nobr>`--package_name`</nobr> | `<name>` | Override default package set in test config. Format:<br>`<os>_pkg` becomes `<os>_pkg_<ver>` |
