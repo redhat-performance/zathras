@@ -12,8 +12,8 @@ Version: 3.2
 
 ### System Configuration
 
-| Option                 | Arguments | Description |
-|------------------------|-----------|-------------|
+| Option | Arguments | Description |
+|--------|-----------|-------------|
 | <nobr>`--system_type`</nobr> | `<vendor>` | Cloud vendor or local system. Valid values: `aws`, `azure`, `gcp`, `ibm`, `local` |
 | <nobr>`--host_config`</nobr> | `<config>` | System specification and configuration (see [Host Configuration Format](#host-configuration-format)) |
 | <nobr>`--max_systems`</nobr> | `<n>` | Maximum number of burden subinstances (cloud/local systems) created from parent. Default: 3 |
@@ -30,7 +30,7 @@ Version: 3.2
 | <nobr>`--show_tests`</nobr> | - | List available tests as defined in `config/test_defs.yml` |
 | <nobr>`--test_versions`</nobr> | `<test>,<test>,...` | Show available versions and descriptions for specified tests (git repos only) |
 | <nobr>`--test_version_check`</nobr> | - | Check if running latest test versions, then exit. Default: no |
-| <nobr>`--update_test_versions`</nobr> | - | Update templates to latest test versions (git repos only) |
+| <nobr>`--&nbsp;update_test_versions&nbsp;`</nobr> | - | Update templates to latest test versions (git repos only) |
 
 ### Scenario Files
 
