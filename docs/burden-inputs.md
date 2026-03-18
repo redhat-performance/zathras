@@ -22,7 +22,7 @@ Version: 3.2
 
 | Option | Arguments | Description |
 |--------|-----------|-------------|
-| <nobr>`--tests`</nobr> | `<test>` | Test name(s) to execute. Use comma-separated list: `test1,test2`. Overrides all other test options |
+| <nobr>`--tests`</nobr> | `<test>` | Test name(s) to execute. Use comma-separated list: `test1,test2`.<br> Overrides all other test options |
 | <nobr>`--test_iter`</nobr> | `<iterations>` | Number of test iterations. For cloud instances, terminates and recreates image per iteration. Default: 1 |
 | <nobr>`--test_def_file`</nobr> | `<file>` | Test definition file to use |
 | <nobr>`--test_def_dir`</nobr> | `<dir>` | Test definition directory. Default: `<execution dir>/config`. Supports git repos with `https:` or `git:` prefix |
