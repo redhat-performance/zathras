@@ -12,8 +12,8 @@ Version: 3.2
 
 ### System Configuration
 
-| Option | Arguments | Description |
-|--------|-----------|-------------|
+| Option                 | Arguments | Description |
+|------------------------|-----------|-------------|
 | <nobr>`--system_type`</nobr> | `<vendor>` | Cloud vendor or local system. Valid values: `aws`, `azure`, `gcp`, `ibm`, `local` |
 | <nobr>`--host_config`</nobr> | `<config>` | System specification and configuration (see [Host Configuration Format](#host-configuration-format)) |
 | <nobr>`--max_systems`</nobr> | `<n>` | Maximum number of burden subinstances (cloud/local systems) created from parent. Default: 3 |
