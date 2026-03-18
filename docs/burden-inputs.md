@@ -36,7 +36,7 @@ Version: 3.2
 
 | Option | Arguments | Description |
 |--------|-----------|-------------|
-| <nobr>`--scenario`</nobr> | `<file>` | Read and execute scenario definition file. Supports git repos with `https:` or<br>`git:` prefix. Lines starting with `#` are comments. Lines starting with>br> `%` replace strings: `% <current>=<new>` |
+| <nobr>`--scenario`</nobr> | `<file>` | Read and execute scenario definition file. Supports git repos with `https:` or<br>`git:` prefix. Lines starting with `#` are comments. Lines starting with<br> `%` replace strings: `% <current>=<new>` |
 | <nobr>`--scenario_vars`</nobr> | `<file>` | Variable file for scenario file.<br>Default: `config/zathras_scenario_vars_def` |
 | <nobr>`--individ_vars`</nobr> | `<file>` | Individual burden settings file. Takes precedence over scenario file but<br>overridden by command line. Default: `config/zathras_specific_vals_def` |
 
