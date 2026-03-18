@@ -30,7 +30,7 @@ Version: 3.2
 | <nobr>`--show_tests`</nobr> | - | List available tests as defined in `config/test_defs.yml` |
 | <nobr>`--test_versions`</nobr> | `<test>,<test>,...` | Show available versions and descriptions for specified tests (git repos only) |
 | <nobr>`--test_version_check`</nobr> | - | Check if running latest test versions, then exit. Default: no |
-| <nobr><nbsp>`--update_test_versions&nbsp;`</nbsp></nobr> | - | Update templates to latest test versions (git repos only) |
+| <nobr>`--update_test_versions`</nbsp> | - | Update templates to latest test versions (git repos only) |
 
 ### Scenario Files
 
