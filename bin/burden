@@ -2228,6 +2228,10 @@ create_ansible_options()
 	if [[ $gl_run_chronicler -eq 1 ]]; then
 		chronicler_strict=$gl_run_chronicler_strict
 		[[ "${CHRONICLER_STRICT:-}" == "1" ]] && chronicler_strict=1
+		chronicler_verbose_args=()
+		if [[ "${CHRONICLER_VERBOSE:-}" == "1" ]] || [[ "$gl_ansible_verbosity" == "dense" ]]; then
+			chronicler_verbose_args=(--verbose)
+		fi
 		if ! python3 -c "import chronicler" 2>/dev/null; then
 			if [[ $chronicler_strict -eq 1 ]]; then
 				cleanup_and_exit "Chronicler required (--run_chronicler_strict or CHRONICLER_STRICT=1) but package not installed (pip install 'chronicler[opensearch]')." 1
@@ -2279,6 +2283,7 @@ PY
 					chronicler_first_line="${output%%$'\n'*}"
 					if [[ "$chronicler_first_line" == "DISCOVERY" ]]; then
 						if ! (cd "$gl_top_dir" && python3 -m chronicler.run_postprocessing \
+							"${chronicler_verbose_args[@]}" \
 							--input "$chronicler_input_abs" \
 							--opensearch); then
 							if [[ $chronicler_strict -eq 1 ]]; then
@@ -2291,6 +2296,7 @@ PY
 						IFS=$'\t' read -r chronicler_mode chronicler_legacy_cfg <<<"$output"
 						if [[ "$chronicler_mode" == "LEGACY" && -n "$chronicler_legacy_cfg" ]]; then
 							if ! (cd "$gl_top_dir" && python3 -m chronicler.run_postprocessing \
+								"${chronicler_verbose_args[@]}" \
 								--input "$chronicler_input_abs" \
 								--config "$chronicler_legacy_cfg" \
 								--opensearch); then
@@ -3488,6 +3494,7 @@ usage()
 	echo "  --run_chronicler: After tests complete, run Chronicler (pip install chronicler[opensearch]) to export to OpenSearch."
 	echo "  --run_chronicler_strict: Same as --run_chronicler but abort burden if Chronicler is missing, misconfigured, or fails."
 	echo "    (Alternatively set CHRONICLER_STRICT=1 with --run_chronicler.)"
+	echo "    Verbose Chronicler logs: CHRONICLER_VERBOSE=1 or --ansible_noise_level dense."
 	echo "  --scenario <scenario definition file>: Reads in a scenario and then runs it"
 	echo "    (if used, host configs are designated in the file).  If the scenario name starts with https: or git:"
 	echo "    then we are retrieving the scenario from a git repo. If the line in the scenario file starts with #"
