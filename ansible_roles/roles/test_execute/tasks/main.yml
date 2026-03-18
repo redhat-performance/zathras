@@ -42,6 +42,7 @@
   when:
     - git_check.rc != 0
     - config_info.do_not_install_packages == 0
+    - config_info.do_not_install_system_packages == 0
 
 #
 # Time we are starting the test.

@@ -425,6 +425,7 @@
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
       - config_info.do_not_install_packages == 0
+      - config_info.do_not_install_system_packages == 0
 
 - hosts: local
   vars_files: ansible_vars.yml
@@ -442,6 +443,7 @@
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
       - config_info.do_not_install_packages == 0
+      - config_info.do_not_install_system_packages == 0
 
 - hosts: install_group
   remote_user: config_info.test_user
