@@ -217,6 +217,7 @@ gl_disk_iops=0
 gl_disk_tp=0
 gl_no_clean_up=0
 gl_run_chronicler=0
+gl_run_chronicler_strict=0
 gl_cloud_number_disks=0
 gl_config_vars_file="config/zathras_scenario_vars_def"
 gl_config_vars_file_set=0
@@ -2225,8 +2226,14 @@ create_ansible_options()
 	# the Zathras top directory); if none match, legacy ../chronicler/config/export_config.yml.
 	#
 	if [[ $gl_run_chronicler -eq 1 ]]; then
+		chronicler_strict=$gl_run_chronicler_strict
+		[[ "${CHRONICLER_STRICT:-}" == "1" ]] && chronicler_strict=1
 		if ! python3 -c "import chronicler" 2>/dev/null; then
-			echo "INFO: Chronicler not installed (pip install 'chronicler[opensearch]'). Skipping post-processing export."
+			if [[ $chronicler_strict -eq 1 ]]; then
+				cleanup_and_exit "Chronicler required (--run_chronicler_strict or CHRONICLER_STRICT=1) but package not installed (pip install 'chronicler[opensearch]')." 1
+			else
+				echo "INFO: Chronicler not installed (pip install 'chronicler[opensearch]'). Skipping post-processing export."
+			fi
 		else
 			py_rc=0
 			output=$(python3 - "$gl_top_dir" 2>/dev/null <<'PY'
@@ -2249,7 +2256,11 @@ sys.exit(1)
 PY
 ) || py_rc=1
 			if [[ $py_rc -ne 0 || -z "$output" ]]; then
-				echo "INFO: No Chronicler export config found. Set CHRONICLER_CONFIG, install export_config.yml next to the chronicler package, add config/export_config.yml under Zathras top, or use legacy ${gl_top_dir}/../chronicler/config/export_config.yml. Skipping post-processing export."
+				if [[ $chronicler_strict -eq 1 ]]; then
+					cleanup_and_exit "Chronicler export config required but none found (CHRONICLER_CONFIG, package export_config.yml, Zathras config/export_config.yml, or legacy ../chronicler/config/export_config.yml)." 1
+				else
+					echo "INFO: No Chronicler export config found. Set CHRONICLER_CONFIG, install export_config.yml next to the chronicler package, add config/export_config.yml under Zathras top, or use legacy ${gl_top_dir}/../chronicler/config/export_config.yml. Skipping post-processing export."
+				fi
 			else
 				if [[ $gl_archive_location != $value_not_set ]]; then
 					chronicler_input_dir="$gl_archive_location"
@@ -2258,7 +2269,11 @@ PY
 				fi
 				chronicler_input_abs=$(cd "$chronicler_input_dir" 2>/dev/null && pwd)
 				if [[ -z "$chronicler_input_abs" || ! -d "$chronicler_input_abs" ]]; then
-					echo "WARNING: Chronicler input path is not a directory, skipping post-processing export."
+					if [[ $chronicler_strict -eq 1 ]]; then
+						cleanup_and_exit "Chronicler input path is not a directory: ${chronicler_input_dir}" 1
+					else
+						echo "WARNING: Chronicler input path is not a directory, skipping post-processing export."
+					fi
 				else
 					echo "Exporting results to OpenSearch via Chronicler..."
 					chronicler_first_line="${output%%$'\n'*}"
@@ -2266,7 +2281,11 @@ PY
 						if ! (cd "$gl_top_dir" && python3 -m chronicler.run_postprocessing \
 							--input "$chronicler_input_abs" \
 							--opensearch); then
-							echo "WARNING: Chronicler export failed, but continuing."
+							if [[ $chronicler_strict -eq 1 ]]; then
+								cleanup_and_exit "Chronicler export failed (--run_chronicler_strict or CHRONICLER_STRICT=1)." 1
+							else
+								echo "WARNING: Chronicler export failed, but continuing."
+							fi
 						fi
 					else
 						IFS=$'\t' read -r chronicler_mode chronicler_legacy_cfg <<<"$output"
@@ -2275,10 +2294,18 @@ PY
 								--input "$chronicler_input_abs" \
 								--config "$chronicler_legacy_cfg" \
 								--opensearch); then
-								echo "WARNING: Chronicler export failed, but continuing."
+								if [[ $chronicler_strict -eq 1 ]]; then
+									cleanup_and_exit "Chronicler export failed (--run_chronicler_strict or CHRONICLER_STRICT=1)." 1
+								else
+									echo "WARNING: Chronicler export failed, but continuing."
+								fi
 							fi
 						else
-							echo "WARNING: Chronicler config resolution unexpected output, skipping export."
+							if [[ $chronicler_strict -eq 1 ]]; then
+								cleanup_and_exit "Chronicler config resolution produced unexpected output." 1
+							else
+								echo "WARNING: Chronicler config resolution unexpected output, skipping export."
+							fi
 						fi
 					fi
 				fi
@@ -3459,6 +3486,8 @@ usage()
 	echo "  --results_prefix <prefix>: Run directory prefix"
 	echo "  --retry_failed_tests 0/1>: Indicates to retry any detected failed tests if set to 1 (1 is the default)."
 	echo "  --run_chronicler: After tests complete, run Chronicler (pip install chronicler[opensearch]) to export to OpenSearch."
+	echo "  --run_chronicler_strict: Same as --run_chronicler but abort burden if Chronicler is missing, misconfigured, or fails."
+	echo "    (Alternatively set CHRONICLER_STRICT=1 with --run_chronicler.)"
 	echo "  --scenario <scenario definition file>: Reads in a scenario and then runs it"
 	echo "    (if used, host configs are designated in the file).  If the scenario name starts with https: or git:"
 	echo "    then we are retrieving the scenario from a git repo. If the line in the scenario file starts with #"
@@ -3737,6 +3766,12 @@ set_general_value()
 			fi
 			shift_by=1
 		;;
+		--run_chronicler_strict)
+			echo "$1" >> $gl_cli_supplied_options
+			gl_run_chronicler=1
+			gl_run_chronicler_strict=1
+			shift_by=1
+		;;
 		--run_file)
 			gl_run_file=$2
 			shift_by=2
@@ -4002,6 +4037,7 @@ grab_cli_data()
 		"show_tests"
 		"test_version_check"
 		"run_chronicler"
+		"run_chronicler_strict"
 		"tf_list"
 		"tf_terminate_all"
 		"update_test_versions"
