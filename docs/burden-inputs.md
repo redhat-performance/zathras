@@ -112,7 +112,7 @@ Version: 3.2
 
 | Option | Arguments | Description |
 |--------|-----------|-------------|
-| <nobr>`--cloud_os_id`</nobr> | `<os_id>` | OS image ID (e.g., AWS AMI number). For multiple architectures: `x86:ami-xxx,arm64:ami-yyy` |
+| <nobr>`--cloud_os_id`</nobr> | `<os_id>` | OS image ID (e.g., AWS AMI number). For multiple architectures:<br>`x86:ami-xxx,arm64:ami-yyy` |
 | <nobr>`--create_only`</nobr> | - | Only perform VM creation and OS installation, then stop |
 | <nobr>`--terminate_cloud`</nobr> | `0`/`1` | Terminate (1) or leave running (0) cloud instance. Default: 1 (terminate) |
 | <nobr>`--create_attempts`</nobr> | `<n>` | Number of attempts to create instance with designated CPU type. Default: 5 |
