@@ -82,6 +82,26 @@ Run directory prefix
 ### --retry_failed_tests \<0/1>
 Indicates to retry any detected failed tests if set to 1 (1 is the default).
 
+### --run_chronicler
+After tests complete, runs [Chronicler](https://github.com/redhat-performance/chronicler) to parse benchmark archives and export to OpenSearch. Requires a pip-installed package: `pip install 'chronicler[opensearch]'`.
+
+Export settings are resolved the same way as the Chronicler CLI (in order): environment variable **`CHRONICLER_CONFIG`** (path to YAML), `export_config.yml` next to the installed Chronicler package, or under the Zathras top directory (`export_config.yml`, `config/export_config.yml`). If none of those exist, a legacy path is supported: `<zathras-top>/../chronicler/config/export_config.yml`.
+
+Chronicler runs with the Zathras top directory as working directory so relative config paths apply.
+
+### --run_chronicler_strict
+Same as `--run_chronicler`, but **burden exits with an error** if the Chronicler package is missing, no export configuration is found, the results input directory is missing, or the Chronicler export step fails. Use this in CI when OpenSearch export must succeed.
+
+Equivalent: `--run_chronicler` with environment **`CHRONICLER_STRICT=1`**.
+
+**Optional environment variables**
+
+| Variable | Effect |
+|----------|--------|
+| `CHRONICLER_CONFIG` | Path to Chronicler export YAML (recommended for automation). |
+| `CHRONICLER_STRICT=1` | Treat Chronicler failures as burden failures (with `--run_chronicler`). |
+| `CHRONICLER_VERBOSE=1` | Passes `--verbose` to Chronicler. Same effect as `--ansible_noise_level dense`. |
+
 ### --scenario \<scenario definition file>
 Reads in a scenario and then runs it (if used, host configs are designated in the file). 
 
