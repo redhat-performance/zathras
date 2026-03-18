@@ -58,7 +58,7 @@ Version: 3.2
 | <nobr>`--selinux_level`</nobr> | `<level>` | SELinux enforcement level. Values: `enforcing`, `permissive`, `disabled` |
 | <nobr>`--selinux_state`</nobr> | `<state>` | SELinux state. Values: `enabled`, `disabled` |
 | <nobr>`--java_version`</nobr> | `<version>` | Java version to install. Values: `java-8`, `java-11`, `java-17`, `java-21` |
-| <nobr>`--tuned_profiles`</nobr> | `<profiles>` | Comma-separated list of tuned profiles (RHEL only). For cloud environments, each profile creates a distinct instance |
+| <nobr>`--tuned_profiles`</nobr> | `<profiles>` | Comma-separated list of tuned profiles (RHEL only).<br>For cloud environments, each profile creates a distinct instance |
 | <nobr>`--tuned_reboot`</nobr> | - | Reboot when new tuned profile is set. Default: no reboot |
 
 ### Package Management
