@@ -48,7 +48,7 @@ Version: 3.2
 | <nobr>`--archive`</nobr> | `<dir>/<results>` | Location to save archive information |
 | <nobr>`--persistent_log`</nobr> | - | Enable persistent logging |
 | <nobr>`--retry_failed_tests`</nobr> | `0`/`1` | Retry detected failed tests if set to 1. Default: 1 |
-| <nobr>`--ansible_noise_level`</nobr> | `<level>` | Ansible output verbosity. Values: `normal` (standard), `dense` (task names only), `silence` (nothing) |
+| <nobr>`--ansible_noise_level`</nobr> | `<level>` | Ansible output verbosity. Values: `normal` (standard),<br>`dense` (task names only), `silence` (nothing) |
 
 ### Operating System Configuration
 
