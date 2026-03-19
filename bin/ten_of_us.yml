@@ -286,6 +286,8 @@
             status_file: "/tmp/cr_status"
       when:
         - config_info.system_type == "gcp"
+        - config_info.do_not_install_packages == 0
+        - config_info.config_info.do_not_install_system_packages == 0
 
     - name: Enable CodeReady Builder for IBM Cloud
       block:
@@ -307,6 +309,8 @@
             status_file: "/tmp/cr_status"
       when:
         - config_info.system_type == "ibm"
+        - config_info.do_not_install_packages == 0
+        - config_info.config_info.do_not_install_system_packages == 0
 
     - name: retrieve repo config status
       include_role:
@@ -425,6 +429,7 @@
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
       - config_info.do_not_install_packages == 0
+      - config_info.do_not_install_system_packages == 0
 
 - hosts: local
   vars_files: ansible_vars.yml
@@ -442,6 +447,7 @@
       - config_info.os_vendor == "rhel"
       - config_info.init_system == "yes"
       - config_info.do_not_install_packages == 0
+      - config_info.do_not_install_system_packages == 0
 
 - hosts: install_group
   remote_user: config_info.test_user
