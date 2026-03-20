@@ -189,6 +189,10 @@
   vars_files: ansible_vars.yml
   gather_facts: no
   tasks:
+  - name: Remove the tar_status file if it exists
+    ansible.builtin.file:
+      path: /tmp/tar_status
+      state: absent
   - name: install tools
     include_role:
       name: install_tools
@@ -224,6 +228,10 @@
 
   gather_facts: no
   tasks:
+  - name: Remove the cr_status file if it exists
+    ansible.builtin.file:
+      path: /tmp/cr_status
+      state: absent
   - name: install codeready repo (if RHEL)
     block:
     - name: Enable CodeReady Builder for AWS/Azure
@@ -346,6 +354,10 @@
   tasks:
   - name: enable SLES legacy module
     block:
+    - name: Remove the sles_legacy_status file if it exists
+      ansible.builtin.file:
+        path: /tmp/sles_legacy_status
+        state: absent
     - name: Enable sle-module-legacy/{{ ansible_distribution_version }}/{{ ansible_architecture }}
       shell: "SUSEConnect -p sle-module-legacy/{{ ansible_distribution_version }}/{{ ansible_architecture }}"
       register: suse_connect_result
@@ -414,6 +426,10 @@
 
   - name: rhel installation
     block:
+    - name: Remove the dev_env_status file if it exists
+      ansible.builtin.file:
+        path: /tmp/dev_env_status
+        state: absent
     - name: Gather the rpm package facts
       package_facts:
         manager: auto
