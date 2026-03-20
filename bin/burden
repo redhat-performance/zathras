@@ -1703,6 +1703,10 @@ run_chronicler_postprocessing()
 	if [[ "${CHRONICLER_VERBOSE:-}" == "1" ]] || [[ "$gl_ansible_verbosity" == "dense" ]]; then
 		chronicler_verbose_args=(--verbose)
 	fi
+	local chronicler_discovery_debug=0
+	if [[ "${CHRONICLER_VERBOSE:-}" == "1" ]] || [[ "$gl_ansible_verbosity" == "dense" ]] || [[ $chronicler_strict -eq 1 ]]; then
+		chronicler_discovery_debug=1
+	fi
 
 	if ! python3 -c "import chronicler" 2>/dev/null; then
 		chronicler_handle_error "$chronicler_strict" \
@@ -1713,30 +1717,41 @@ run_chronicler_postprocessing()
 
 	local py_rc=0
 	local output
-	output=$(python3 - "$gl_top_dir" 2>/dev/null <<'PY'
+	output=$(python3 - "$gl_top_dir" "$chronicler_discovery_debug" 2>/dev/null <<'PY'
 from pathlib import Path
 import sys
 ztop = Path(sys.argv[1]).resolve()
+debug = len(sys.argv) > 2 and sys.argv[2] == "1"
 legacy = ztop.parent / "chronicler" / "config" / "export_config.yml"
+discovery_exc = None
 try:
     from chronicler.config_discovery import resolve_export_config_path
     p, _prov = resolve_export_config_path(None, cwd=ztop)
     if p is not None and p.is_file():
         print("DISCOVERY")
         sys.exit(0)
-except Exception:
-    pass
+except Exception as e:
+    discovery_exc = e
 if legacy.is_file():
     print("LEGACY\t%s" % (legacy.resolve(),))
     sys.exit(0)
+if discovery_exc is not None and debug:
+    print("ERROR\t%s: %s" % (type(discovery_exc).__name__, discovery_exc))
 sys.exit(1)
 PY
 ) || py_rc=1
 
 	if [[ $py_rc -ne 0 || -z "$output" ]]; then
-		chronicler_handle_error "$chronicler_strict" \
-			"Chronicler export config required but none found (CHRONICLER_CONFIG, package export_config.yml, Zathras config/export_config.yml, or legacy ../chronicler/config/export_config.yml)." \
-			"INFO: No Chronicler export config found. Set CHRONICLER_CONFIG, install export_config.yml next to the chronicler package, add config/export_config.yml under Zathras top, or use legacy ${gl_top_dir}/../chronicler/config/export_config.yml. Skipping post-processing export."
+		if [[ "$output" == ERROR$'\t'* ]]; then
+			local discovery_err="${output#ERROR	}"
+			chronicler_handle_error "$chronicler_strict" \
+				"Chronicler config discovery failed: ${discovery_err}" \
+				"WARNING: Chronicler config discovery failed (${discovery_err}). No export config found (CHRONICLER_CONFIG, package export_config.yml, Zathras config/export_config.yml, or legacy ../chronicler/config/export_config.yml). Skipping post-processing export."
+		else
+			chronicler_handle_error "$chronicler_strict" \
+				"Chronicler export config required but none found (CHRONICLER_CONFIG, package export_config.yml, Zathras config/export_config.yml, or legacy ../chronicler/config/export_config.yml)." \
+				"INFO: No Chronicler export config found. Set CHRONICLER_CONFIG, install export_config.yml next to the chronicler package, add config/export_config.yml under Zathras top, or use legacy ${gl_top_dir}/../chronicler/config/export_config.yml. Skipping post-processing export."
+		fi
 		return 0
 	fi
 

@@ -104,6 +104,8 @@ Equivalent: `--run_chronicler` with environment **`CHRONICLER_STRICT=1`**.
 | `CHRONICLER_STRICT=1` | Treat Chronicler failures as burden failures (with `--run_chronicler`). |
 | `CHRONICLER_VERBOSE=1` | Passes `--verbose` to Chronicler. Same effect as `--ansible_noise_level dense`. |
 
+If config discovery throws an exception (for example an import or resolution error), the exception type and message are included in burden’s error output when **`CHRONICLER_VERBOSE=1`**, **`--run_chronicler_strict`** / **`CHRONICLER_STRICT=1`**, or **`--ansible_noise_level dense`** is in effect; otherwise you still get the generic “no export config found” style message when no config can be resolved.
+
 ### --scenario \<scenario definition file>
 Reads in a scenario and then runs it (if used, host configs are designated in the file). 
 
