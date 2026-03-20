@@ -228,7 +228,7 @@
 
   gather_facts: no
   tasks:
-  - name: Remove the tar_status file if it exists
+  - name: Remove the cr_status file if it exists
     ansible.builtin.file:
       path: /tmp/cr_status
       state: absent
@@ -354,7 +354,7 @@
   tasks:
   - name: enable SLES legacy module
     block:
-    - name: Remove the tar_status file if it exists
+    - name: Remove the sles_legacy_status file if it exists
       ansible.builtin.file:
         path: /tmp/sles_legacy_status
         state: absent
@@ -426,7 +426,7 @@
 
   - name: rhel installation
     block:
-    - name: Remove the tar_status file if it exists
+    - name: Remove the dev_env_status file if it exists
       ansible.builtin.file:
         path: /tmp/dev_env_status
         state: absent
