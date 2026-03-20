@@ -89,6 +89,8 @@ Export settings are resolved the same way as the Chronicler CLI (in order): envi
 
 Chronicler runs with the Zathras top directory as working directory so relative config paths apply.
 
+When **`--archive`** is set, benchmark output is copied under `<archive>/<run_prefix>/...`. Chronicler’s `--input` is set to `<archive>/<run_prefix>` when that directory exists, so export matches the current run; otherwise the archive root is used (for older layouts that stored runs directly under `<archive>`).
+
 ### --run_chronicler_strict
 Same as `--run_chronicler`, but **burden exits with an error** if the Chronicler package is missing, no export configuration is found, the results input directory is missing, or the Chronicler export step fails. Use this in CI when OpenSearch export must succeed.
 

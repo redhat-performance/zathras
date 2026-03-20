@@ -1742,7 +1742,14 @@ PY
 
 	local chronicler_input_dir
 	if [[ $gl_archive_location != $value_not_set ]]; then
-		chronicler_input_dir="$gl_archive_location"
+		# Results are archived under $archive/$run_prefix/... (see dir_list / run_dir). Scope
+		# Chronicler to that subtree; fall back to the archive root for older layouts.
+		local chronicler_archive_run="${gl_archive_location}/${gl_run_prefix}"
+		if [[ -d "$chronicler_archive_run" ]]; then
+			chronicler_input_dir="$chronicler_archive_run"
+		else
+			chronicler_input_dir="$gl_archive_location"
+		fi
 	else
 		chronicler_input_dir="${gl_top_dir}/${gl_run_prefix}"
 	fi
