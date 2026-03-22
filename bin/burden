@@ -216,6 +216,8 @@ gl_update_test_versions=0
 gl_disk_iops=0
 gl_disk_tp=0
 gl_no_clean_up=0
+gl_run_chronicler=0
+gl_run_chronicler_strict=0
 gl_cloud_number_disks=0
 gl_config_vars_file="config/zathras_scenario_vars_def"
 gl_config_vars_file_set=0
@@ -1674,6 +1676,143 @@ generate_tags()
 }
 
 #
+# Chronicler post-processing (--run_chronicler): strict mode exits via cleanup_and_exit;
+# non-strict echoes the warning or info message and returns.
+#
+chronicler_handle_error()
+{
+	local strict_flag=$1
+	local exit_msg=$2
+	local warn_msg=$3
+	if [[ $strict_flag -eq 1 ]]; then
+		cleanup_and_exit "$exit_msg" 1
+	fi
+	echo "$warn_msg"
+}
+
+#
+# Export benchmark results to OpenSearch via Chronicler after burden completes.
+#
+run_chronicler_postprocessing()
+{
+	[[ $gl_run_chronicler -eq 1 ]] || return 0
+
+	local chronicler_strict=$gl_run_chronicler_strict
+	[[ "${CHRONICLER_STRICT:-}" == "1" ]] && chronicler_strict=1
+	local chronicler_verbose_args=()
+	if [[ "${CHRONICLER_VERBOSE:-}" == "1" ]] || [[ "$gl_ansible_verbosity" == "dense" ]]; then
+		chronicler_verbose_args=(--verbose)
+	fi
+	local chronicler_discovery_debug=0
+	if [[ "${CHRONICLER_VERBOSE:-}" == "1" ]] || [[ "$gl_ansible_verbosity" == "dense" ]] || [[ $chronicler_strict -eq 1 ]]; then
+		chronicler_discovery_debug=1
+	fi
+
+	if ! python3 -c "import chronicler" 2>/dev/null; then
+		chronicler_handle_error "$chronicler_strict" \
+			"Chronicler required (--run_chronicler_strict or CHRONICLER_STRICT=1) but package not installed (pip install 'chronicler[opensearch]')." \
+			"INFO: Chronicler not installed (pip install 'chronicler[opensearch]'). Skipping post-processing export."
+		return 0
+	fi
+
+	local py_rc=0
+	local output
+	output=$(python3 - "$gl_top_dir" "$chronicler_discovery_debug" 2>/dev/null <<'PY'
+from pathlib import Path
+import sys
+ztop = Path(sys.argv[1]).resolve()
+debug = len(sys.argv) > 2 and sys.argv[2] == "1"
+legacy = ztop.parent / "chronicler" / "config" / "export_config.yml"
+discovery_exc = None
+try:
+    from chronicler.config_discovery import resolve_export_config_path
+    p, _prov = resolve_export_config_path(None, cwd=ztop)
+    if p is not None and p.is_file():
+        print("DISCOVERY")
+        sys.exit(0)
+except Exception as e:
+    discovery_exc = e
+if legacy.is_file():
+    print("LEGACY\t%s" % (legacy.resolve(),))
+    sys.exit(0)
+if discovery_exc is not None and debug:
+    print("ERROR\t%s: %s" % (type(discovery_exc).__name__, discovery_exc))
+sys.exit(1)
+PY
+) || py_rc=1
+
+	if [[ $py_rc -ne 0 || -z "$output" ]]; then
+		if [[ "$output" == ERROR$'\t'* ]]; then
+			local discovery_err="${output#ERROR	}"
+			chronicler_handle_error "$chronicler_strict" \
+				"Chronicler config discovery failed: ${discovery_err}" \
+				"WARNING: Chronicler config discovery failed (${discovery_err}). No export config found (CHRONICLER_CONFIG, package export_config.yml, Zathras config/export_config.yml, or legacy ../chronicler/config/export_config.yml). Skipping post-processing export."
+		else
+			chronicler_handle_error "$chronicler_strict" \
+				"Chronicler export config required but none found (CHRONICLER_CONFIG, package export_config.yml, Zathras config/export_config.yml, or legacy ../chronicler/config/export_config.yml)." \
+				"INFO: No Chronicler export config found. Set CHRONICLER_CONFIG, install export_config.yml next to the chronicler package, add config/export_config.yml under Zathras top, or use legacy ${gl_top_dir}/../chronicler/config/export_config.yml. Skipping post-processing export."
+		fi
+		return 0
+	fi
+
+	local chronicler_input_dir
+	if [[ $gl_archive_location != $value_not_set ]]; then
+		# Results are archived under $archive/$run_prefix/... (see dir_list / run_dir). Scope
+		# Chronicler to that subtree; fall back to the archive root for older layouts.
+		local chronicler_archive_run="${gl_archive_location}/${gl_run_prefix}"
+		if [[ -d "$chronicler_archive_run" ]]; then
+			chronicler_input_dir="$chronicler_archive_run"
+		else
+			chronicler_input_dir="$gl_archive_location"
+		fi
+	else
+		chronicler_input_dir="${gl_top_dir}/${gl_run_prefix}"
+	fi
+
+	local chronicler_input_abs
+	chronicler_input_abs=$(cd "$chronicler_input_dir" 2>/dev/null && pwd)
+	if [[ -z "$chronicler_input_abs" || ! -d "$chronicler_input_abs" ]]; then
+		chronicler_handle_error "$chronicler_strict" \
+			"Chronicler input path is not a directory: ${chronicler_input_dir}" \
+			"WARNING: Chronicler input path is not a directory, skipping post-processing export."
+		return 0
+	fi
+
+	echo "Exporting results to OpenSearch via Chronicler..."
+	local chronicler_first_line="${output%%$'\n'*}"
+	if [[ "$chronicler_first_line" == "DISCOVERY" ]]; then
+		if ! (cd "$gl_top_dir" && python3 -m chronicler.run_postprocessing \
+			"${chronicler_verbose_args[@]}" \
+			--input "$chronicler_input_abs" \
+			--opensearch); then
+			chronicler_handle_error "$chronicler_strict" \
+				"Chronicler export failed (--run_chronicler_strict or CHRONICLER_STRICT=1)." \
+				"WARNING: Chronicler export failed, but continuing."
+		fi
+		return 0
+	fi
+
+	local chronicler_mode chronicler_legacy_cfg
+	IFS=$'\t' read -r chronicler_mode chronicler_legacy_cfg <<<"$output"
+	if [[ "$chronicler_mode" == "LEGACY" && -n "$chronicler_legacy_cfg" ]]; then
+		if ! (cd "$gl_top_dir" && python3 -m chronicler.run_postprocessing \
+			"${chronicler_verbose_args[@]}" \
+			--input "$chronicler_input_abs" \
+			--config "$chronicler_legacy_cfg" \
+			--opensearch); then
+			chronicler_handle_error "$chronicler_strict" \
+				"Chronicler export failed (--run_chronicler_strict or CHRONICLER_STRICT=1)." \
+				"WARNING: Chronicler export failed, but continuing."
+		fi
+		return 0
+	fi
+
+	chronicler_handle_error "$chronicler_strict" \
+		"Chronicler config resolution produced unexpected output." \
+		"WARNING: Chronicler config resolution unexpected output, skipping export."
+}
+
+#
 #  Using all the options entered, create the working directory for the configuration and it's
 #  associated files.
 #
@@ -2216,6 +2355,14 @@ create_ansible_options()
 		rm -rf results_info tests*
 		popd > /dev/null
 	done
+
+	#
+	# If --run_chronicler was set, invoke Chronicler to process and export results.
+	# Requires: pip install 'chronicler[opensearch]'. Config is resolved like the
+	# Chronicler CLI (CHRONICLER_CONFIG, package export_config.yml, or paths under
+	# the Zathras top directory); if none match, legacy ../chronicler/config/export_config.yml.
+	#
+	run_chronicler_postprocessing
 }
 
 #
@@ -3389,6 +3536,10 @@ usage()
 	echo "  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits"
 	echo "  --results_prefix <prefix>: Run directory prefix"
 	echo "  --retry_failed_tests 0/1>: Indicates to retry any detected failed tests if set to 1 (1 is the default)."
+	echo "  --run_chronicler: After tests complete, run Chronicler (pip install chronicler[opensearch]) to export to OpenSearch."
+	echo "  --run_chronicler_strict: Same as --run_chronicler but abort burden if Chronicler is missing, misconfigured, or fails."
+	echo "    (Alternatively set CHRONICLER_STRICT=1 with --run_chronicler.)"
+	echo "    Verbose Chronicler logs: CHRONICLER_VERBOSE=1 or --ansible_noise_level dense."
 	echo "  --scenario <scenario definition file>: Reads in a scenario and then runs it"
 	echo "    (if used, host configs are designated in the file).  If the scenario name starts with https: or git:"
 	echo "    then we are retrieving the scenario from a git repo. If the line in the scenario file starts with #"
@@ -3660,6 +3811,19 @@ set_general_value()
 			gl_retry_failed_tests=$2
 			shift_by=2
 		;;
+		--run_chronicler)
+			if [[ $gl_run_chronicler -eq 0 ]]; then
+				echo "$1" >> $gl_cli_supplied_options
+				gl_run_chronicler=1
+			fi
+			shift_by=1
+		;;
+		--run_chronicler_strict)
+			echo "$1" >> $gl_cli_supplied_options
+			gl_run_chronicler=1
+			gl_run_chronicler_strict=1
+			shift_by=1
+		;;
 		--run_file)
 			gl_run_file=$2
 			shift_by=2
@@ -3921,6 +4085,8 @@ grab_cli_data()
 		"no_spot_recover"
 		"persistent_log"
 		"preflight_check"
+		"run_chronicler"
+		"run_chronicler_strict"
 		"show_os_versions"
 		"show_tests"
 		"test_version_check"
