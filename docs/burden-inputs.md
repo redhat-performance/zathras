@@ -49,6 +49,8 @@ Version: 3.2
 | <nobr>`--persistent_log`</nobr> | - | Enable persistent logging |
 | <nobr>`--retry_failed_tests`</nobr> | `0`/`1` | Retry detected failed tests if set to 1. Default: 1 |
 | <nobr>`--ansible_noise_level`</nobr> | `<level>` | Ansible output verbosity. Values: `normal` (standard),<br>`dense` (task names only), `silence` (nothing) |
+| <nobr>`--run_chronicler`</nobr> | - | After tests complete, run Chronicler (pip install<br>chronicler[opensearch]) to export to OpenSearch."
+| <nobr>`----run_chronicler_strict`</nobr> | - | ame as --run_chronicler but abort burden if Chronicler is missing,<br>misconfigured, or fails.
 
 ### Operating System Configuration
 
@@ -65,6 +67,7 @@ Version: 3.2
 
 | Option | Arguments | Description |
 |--------|-----------|-------------|
+| <nobr>`--force_upload`</nobr> | - | Used when creating a cloud image.  Will force all <br>to be uploaded |
 | <nobr>`--no_packages`</nobr> | - | Do not install any packages (sets both no_pip_packages<br>and no_system_packages). Default: no |
 | <nobr>`--no_pip_packages`</nobr> | - | Do not install pip packages. Default: no |
 | <nobr>`--no_system_packages`</nobr> | - | Do not install system packages (via dnf/apt/etc). Default: no |
