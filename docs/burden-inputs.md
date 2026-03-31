@@ -50,7 +50,7 @@ Version: 3.2
 | <nobr>`--retry_failed_tests`</nobr> | `0`/`1` | Retry detected failed tests if set to 1. Default: 1 |
 | <nobr>`--ansible_noise_level`</nobr> | `<level>` | Ansible output verbosity. Values: `normal` (standard),<br>`dense` (task names only), `silence` (nothing) |
 | <nobr>`--run_chronicler`</nobr> | - | After tests complete, run Chronicler (pip install<br>chronicler[opensearch]) to export to OpenSearch."
-| <nobr>`----run_chronicler_strict`</nobr> | - | ame as --run_chronicler but abort burden if Chronicler is missing,<br>misconfigured, or fails.
+| <nobr>`----run_chronicler_strict`</nobr> | - | Same as --run_chronicler but abort burden if Chronicler is missing,<br>misconfigured, or fails.
 
 ### Operating System Configuration
 
