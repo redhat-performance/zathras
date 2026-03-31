@@ -1,7 +1,5 @@
 # Burden Input Reference
 
-Version: 3.2
-
 ## Overview
 
 `burden` is the main execution tool of the Zathras automation framework. It supports two operating modes:
