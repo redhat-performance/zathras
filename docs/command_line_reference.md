@@ -19,7 +19,7 @@ Number of times we attempt to create an instance to get the desginated cpu type.
 Number of seconds to timeout on git requests. Default is 60.
 
 ### --system_type \<vendor>
-aws, azure, gcp or local.
+aws, azure, gcp, ibm or local.
 
 ### --host_config \<config options>
 Specification of the system and configuration. Possible values are "cloud" and "local".

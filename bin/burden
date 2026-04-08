@@ -3446,6 +3446,7 @@ usage()
 	echo "    perform the initial setup work"
 	echo "	--create_attempts: number of times we attempt to create an instance to get the"
 	echo "    designated cpu type"
+	echo "  --force_upload: Used when creating a cloud image.  Will force all packages to be uploaded."
 	echo "  --git_timeout: Number of seconds to timeout on git requests.  Default is 60"
 	echo "  --system_type <vendor>: aws, azure, gcp, or local"
 	echo "  --host_config <config options>: Specification of the system and configuration"

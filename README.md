@@ -107,3 +107,4 @@ For more detailed information, see:
 - **[Scenario Files](docs/scenario_files.md)** - Advanced scenario configuration
 - **[Testing Quickstart](docs/testing_quickstart.md)** - Step-by-step testing guides
 - **[Bare Metal Configuration](docs/bare_metal_configuration.md)** - Local system configuration for bare metal testing
+- **[Burden CLI input reference.](docs/burden-inputs.md)** - Detailed information on burdens cli input.
