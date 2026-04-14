@@ -288,8 +288,8 @@ gl_tf_sys_list=`mktemp /tmp/zathras_cl_systems.XXXXX`
 
 wait_for_procs()
 {
-	pids=$1
-	for pid in "${pids[*]}"; do
+	pids=("$@")
+	for pid in "${pids[@]}"; do
 		out_string=`echo $pid | cut -d ':' -f 2-`
 		wait_for=`echo $pid | cut -d ':' -f 1`
 		wait $wait_for
@@ -299,8 +299,8 @@ wait_for_procs()
 
 kill_off_procs()
 {
-	pids=$1
-	for pid in "${pids[*]}"; do
+	pids=("$@")
+	for pid in "${pids[@]}"; do
 		pid_to_kill=`echo $pid | cut -d ':' -f 1`
 		kill -2 $pid_to_kill
 	done
@@ -332,16 +332,10 @@ cleanup_and_exit()
 	cd $gl_top_dir
 
 	if [[ $gl_run_pindex -ne 0 ]]; then
-		kill_off_procs "$gl_run_pids"
-		wait_for_procs "$gl_run_pids" 
+		kill_off_procs "${gl_run_pids[@]}"
+		wait_for_procs "${gl_run_pids[@]}" 
 		gl_run_pindex=0
 		gl_run_pids=""
-	fi
-	if [[ $gl_burden_index -ne 0 ]]; then
-		kill_off_procs "${gl_burden_pids}"
-		wait_for_procs  "${gl_burden_pids}"
-		gl_burden_index=0
-		gl_burden_pids=""
 	fi
 	#
 	# We only check the failed report file if this is the burden process that
@@ -2257,7 +2251,7 @@ create_ansible_options()
 			gl_run_pids[${gl_run_pindex}]="${rpid}:${test_info_str} on ${host_or_cloud_inst}"
 			let "gl_run_pindex=$gl_run_pindex+1"
 			if [[ $gl_run_pindex -eq $gl_max_systems ]]; then
-				wait_for_procs "$gl_run_pids" 
+				wait_for_procs "${gl_run_pids[@]}" 
 				gl_run_pindex=0
 			fi
 		fi
@@ -2271,7 +2265,7 @@ create_ansible_options()
 	# Wait for everyone to finish up.
 	#
 	if [[ $gl_run_pindex != 0 ]]; then
-		wait_for_procs "$gl_run_pids" 
+		wait_for_procs "${gl_run_pids [@]}"
 		gl_run_pindex=0
 	fi
 
@@ -2906,6 +2900,7 @@ run_scenario()
 	override_options=""
 	override_options_gl=""
 	over_gl_separ=""
+	pindex=0
 	declare -a globals
 	declare -a test_values
 	scenario=$1
@@ -3098,13 +3093,14 @@ run_scenario()
 				# Wait for all outstanding tests to finish before we do more.
 				#
 				if [ $gl_burden_index != 0 ]; then
-					wait_for_procs  "${gl_burden_pids}"
+					wait_for_procs  "${gl_burden_pids[@]}"
 					gl_burden_index=0
 					gl_burden_pids=""
 				fi
 			else
 				tmpfile=$(mktemp /tmp/zath_temp_test_cli.XXXXXX)
 				run_burden_file="run_burden_$$_${pindex}"
+				let "pindex=${pindex}+1"
 				echo ./burden $test_cli --run_file $run_burden_file  >> $tmpfile
 				#
 				# Remove duplicate entries.
@@ -3128,6 +3124,10 @@ run_scenario()
 			 	./${run_burden_file} &
 	                        rpid=$!
 	                        gl_burden_pids[${gl_burden_index}]="${rpid}:${run_burden_file}"
+				#
+				# Give it a chance else we might collide.
+				#
+				sleep 5
 				let "gl_burden_index=$gl_burden_index+1"
 			fi
 			#
@@ -3154,7 +3154,7 @@ run_scenario()
 	# Wait for everyone to finish up.
 	#
 	if [[ $gl_burden_index -ne 0 ]]; then
-		wait_for_procs  "${gl_burden_pids}"
+		wait_for_procs  "${gl_burden_pids[@]}"
 		gl_burden_index=0
 		gl_burden_pids=""
 	fi
@@ -3446,7 +3446,6 @@ usage()
 	echo "    perform the initial setup work"
 	echo "	--create_attempts: number of times we attempt to create an instance to get the"
 	echo "    designated cpu type"
-	echo "  --force_upload: Used when creating a cloud image.  Will force all packages to be uploaded."
 	echo "  --git_timeout: Number of seconds to timeout on git requests.  Default is 60"
 	echo "  --system_type <vendor>: aws, azure, gcp, or local"
 	echo "  --host_config <config options>: Specification of the system and configuration"
