@@ -320,6 +320,7 @@ cleanup_and_exit()
 	rtc=$2
 	rtr_string=""
 
+
 	if [[ $rtc == "" ]]; then
 		rtc=0
 	fi
@@ -334,6 +335,7 @@ cleanup_and_exit()
 	if [[ $gl_run_pindex -ne 0 ]]; then
 		kill_off_procs "${gl_run_pids[@]}"
 		wait_for_procs "${gl_run_pids[@]}" 
+		gl_run_pids=()
 		gl_run_pindex=0
 		gl_run_pids=""
 	fi
@@ -2252,6 +2254,7 @@ create_ansible_options()
 			let "gl_run_pindex=$gl_run_pindex+1"
 			if [[ $gl_run_pindex -eq $gl_max_systems ]]; then
 				wait_for_procs "${gl_run_pids[@]}" 
+				gl_run_pids=()
 				gl_run_pindex=0
 			fi
 		fi
@@ -2265,7 +2268,8 @@ create_ansible_options()
 	# Wait for everyone to finish up.
 	#
 	if [[ $gl_run_pindex != 0 ]]; then
-		wait_for_procs "${gl_run_pids [@]}"
+		wait_for_procs "${gl_run_pids[@]}"
+		gl_run_pids=()
 		gl_run_pindex=0
 	fi
 
@@ -3094,6 +3098,7 @@ run_scenario()
 				#
 				if [ $gl_burden_index != 0 ]; then
 					wait_for_procs  "${gl_burden_pids[@]}"
+					gl_run_pids=()
 					gl_burden_index=0
 					gl_burden_pids=""
 				fi
@@ -3155,6 +3160,7 @@ run_scenario()
 	#
 	if [[ $gl_burden_index -ne 0 ]]; then
 		wait_for_procs  "${gl_burden_pids[@]}"
+		gl_run_pids=()
 		gl_burden_index=0
 		gl_burden_pids=""
 	fi
