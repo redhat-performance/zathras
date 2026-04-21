@@ -3872,6 +3872,10 @@ set_general_value()
 			gl_show_os_versions=1
 			shift_by=1
 		;;
+		--skip_test_version_check)                
+			gl_test_version_check=0
+            shift_by=1
+        ;;
 		--ssh_key_file)
 			if [[ $gl_ssh_key_file == "" ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -4095,6 +4099,7 @@ grab_cli_data()
 		"run_chronicler_strict"
 		"show_os_versions"
 		"show_tests"
+		"skip_test_version_check"
 		"test_version_check"
 		"tf_list"
 		"tf_terminate_all"
