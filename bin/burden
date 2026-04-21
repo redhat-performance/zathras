@@ -3557,6 +3557,7 @@ usage()
 	echo "  --ssh_key_file: Designates the ssh key file we are to use."
 	echo "  --show_os_versions: given the cloud type, and OS vendor, show the available os versions"
 	echo "  --show_tests:  list the available test as defined in config/test_defs.yml"
+	echo "  --skip_test_version_check:  Skip the initial check of test wrapper versions and just use what we have"
 	echo "  --test_def_file <file>: test definition file to use."
 	echo "  --test_def_dir <dir>: test definition directory.  Default is <execution dir>/config.  If"
 	echo "     https: or git: is at the start of the location, then we will pull from a git repo."
