@@ -1,0 +1,132 @@
+name: Test AWS
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: 'AWS region for testing'
+        required: false
+        default: 'us-east-1'
+      instance_type:
+        description: 'EC2 instance type (leave empty for default m5.xlarge)'
+        required: false
+      ami_id:
+        description: 'AMI ID (leave empty for default RHEL 9)'
+        required: false
+
+  # Automatic trigger on PR to main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'bin/**'
+      - 'ansible_roles/**'
+      - 'config/**'
+      - 'ci/test_scenarios/aws_ci_test.yml'
+      - '.github/workflows/test-aws.yml'
+      - '.github/actions/**'
+
+# Permissions required for OIDC authentication to AWS
+permissions:
+  id-token: write  # Required for requesting JWT
+  contents: read   # Required for actions/checkout
+  pull-requests: write  # Required for commenting on PRs
+
+env:
+  AWS_REGION: ${{ inputs.aws_region || 'us-east-1' }}
+  SCENARIO_FILE: ci/test_scenarios/aws_ci_test.yml
+
+jobs:
+  test-aws:
+    name: Test on AWS
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # Prevent runaway costs
+
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ZathrasCI-${{ github.run_id }}
+
+      - name: Verify AWS authentication
+        run: |
+          echo "Verifying AWS credentials..."
+          aws sts get-caller-identity
+          echo "AWS CLI configured successfully"
+
+      - name: Set up Zathras
+        uses: ./.github/actions/setup-zathras
+        with:
+          ssh-private-key: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+
+      - name: Determine AMI ID
+        id: ami
+        run: |
+          # Use provided AMI or find latest RHEL 9 AMI
+          if [ -n "${{ inputs.ami_id }}" ]; then
+            AMI_ID="${{ inputs.ami_id }}"
+            echo "Using provided AMI: $AMI_ID"
+          else
+            # Find latest RHEL 9 AMI in the region
+            AMI_ID=$(aws ec2 describe-images \
+              --region ${{ env.AWS_REGION }} \
+              --owners 309956199498 \
+              --filters "Name=name,Values=RHEL-9.*_HVM-*-x86_64-*" \
+                        "Name=state,Values=available" \
+              --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
+              --output text)
+            echo "Found latest RHEL 9 AMI: $AMI_ID"
+          fi
+          echo "ami_id=$AMI_ID" >> $GITHUB_OUTPUT
+
+      - name: Run Zathras test on AWS
+        id: test
+        uses: ./.github/actions/run-zathras-test
+        with:
+          scenario-file: ${{ env.SCENARIO_FILE }}
+          cloud-os-id: ${{ steps.ami.outputs.ami_id }}
+          additional-args: ${{ inputs.instance_type && format('--host_config {0}', inputs.instance_type) || '' }}
+
+      - name: Check for orphaned resources
+        if: always()
+        run: |
+          echo "Checking for orphaned EC2 instances..."
+          aws ec2 describe-instances \
+            --region ${{ env.AWS_REGION }} \
+            --filters "Name=tag:ManagedBy,Values=Zathras" \
+                      "Name=instance-state-name,Values=running,pending,stopping,stopped" \
+            --query 'Reservations[*].Instances[*].[InstanceId,State.Name,Tags[?Key==`Name`].Value|[0]]' \
+            --output table || true
+
+      - name: Post results to PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ steps.test.outputs.test-status }}';
+            const emoji = status === 'success' ? '✅' : '❌';
+            const body = `## ${emoji} AWS Test Results
+
+            **Status:** ${status}
+            **Region:** ${{ env.AWS_REGION }}
+            **AMI:** ${{ steps.ami.outputs.ami_id }}
+            **Workflow:** [Run #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ${status === 'success' ? 'All tests passed successfully!' : 'Tests failed. Check workflow logs for details.'}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail workflow if tests failed
+        if: steps.test.outputs.test-status != 'success'
+        run: |
+          echo "❌ AWS tests failed"
+          exit 1
