@@ -35,10 +35,16 @@
   - name: Remove NFS export entry
     lineinfile:
       path: /etc/exports
-      line: "/iso_install_host *(ro,sync,no_subtree_check,no_root_squash)"
+      line: "/iso_install_host 192.168.122.0/24(ro,sync,no_subtree_check,no_root_squash)"
       state: absent
     ignore_errors: yes
 
   - name: Re-export NFS shares
     command: exportfs -ra
+    ignore_errors: yes
+
+  - name: Remove ISO mount point directory
+    file:
+      path: /iso_install_host
+      state: absent
     ignore_errors: yes

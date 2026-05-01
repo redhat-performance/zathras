@@ -46,7 +46,7 @@
     --location {{ config_info.kvm_iso }}
     --initrd-inject {{ working_dir }}/config/kvm_kickstart.cfg
     --extra-args "inst.ks=file:/kvm_kickstart.cfg console=ttyS0,115200n8"
-    --os-variant rhel9-unknown
+    --os-variant {{ config_info.kvm_os_variant }}
     --network network=default
     --graphics none
     --noautoconsole

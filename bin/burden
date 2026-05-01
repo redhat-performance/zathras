@@ -231,6 +231,7 @@ gl_cpu_type_request="none"
 gl_kvm_iso=""
 gl_kvm_xml=""
 gl_kvm_disk_size=100
+gl_kvm_os_variant="rhel9-unknown"
 gl_run_file=""
 gl_failed_test_rpt="failed_tests"
 
@@ -1007,7 +1008,7 @@ set_region_zone_defaults()
 #
 remove_hostnames_added()
 {
-	if [[ $gl_system_type != "local" ]]; then
+	if [[ $gl_system_type != "local" ]] && [[ $gl_system_type != "kvm" ]]; then
 		cd $hostdir
 		ssh_files_to_remove=`ls remove_from_ssh_* 2> /dev/null`
 		if [ $? -eq 0 ]; then
@@ -1959,6 +1960,7 @@ create_ansible_options()
 			echo "  kvm_iso: ${gl_kvm_iso}" >> ansible_vars_main.yml
 			echo "  kvm_xml: ${gl_kvm_xml}" >> ansible_vars_main.yml
 			echo "  kvm_disk_size: ${gl_kvm_disk_size}" >> ansible_vars_main.yml
+			echo "  kvm_os_variant: ${gl_kvm_os_variant}" >> ansible_vars_main.yml
 		else
 			echo "  cloud_os_version: ${gl_cloud_os_version}" >> ansible_vars_main.yml
 		fi
@@ -1970,7 +1972,7 @@ create_ansible_options()
 		echo "  persistent_log: ${gl_persistent_log}" >> ansible_vars_main.yml
 		echo "  kit_upload_directory: ${gl_kit_upload_directory}" >> ansible_vars_main.yml
 		if [[ $gl_system_type == "kvm" ]]; then
-			echo "  ssh_key: kvm_guest_key" >> ansible_vars_main.yml
+			echo "  ssh_key: placeholder_set_by_kvm_create" >> ansible_vars_main.yml
 		elif [[ $gl_ssh_key_file == "" ]]; then
 			echo "  ssh_key: $HOME/.ssh/id_rsa" >> ansible_vars_main.yml
 		else
@@ -2174,7 +2176,7 @@ create_ansible_options()
 		worker=`echo $gl_test_list_out | cut -d' ' -f2- | sed "s/,/ /g"`
 		if [ -d "tests_to_run" ]; then
 			echo "========================================" > results_info
-			if [[ $gl_system_type != "local" ]]; then
+			if [[ $gl_system_type != "local" ]] && [[ $gl_system_type != "kvm" ]]; then
 				test_sys=`grep host_or_cloud_ins ansible_vars.yml | cut -d':' -f 2 | sed "s/ //g"`
 			else
 				test_sys=${gl_host_config}
@@ -3507,6 +3509,7 @@ usage()
 	echo "  --kvm_iso <path>: Path to the RHEL installation ISO (required for kvm)"
 	echo "  --kvm_xml <path>: Path to a custom libvirt XML domain definition (optional)"
 	echo "  --kvm_disk_size <GB>: Size of the guest disk in GB (default: 100)"
+	echo "  --kvm_os_variant <variant>: OS variant for virt-install (default: rhel9-unknown)"
 	cleanup_and_exit "" 1
 }
 
@@ -3638,8 +3641,16 @@ set_general_value()
 		--kvm_disk_size)
 			echo "$1 $2" >> $gl_cli_supplied_options
 			gl_kvm_disk_size=$2
+			if ! [[ $gl_kvm_disk_size =~ ^[0-9]+$ ]] || [[ $gl_kvm_disk_size -eq 0 ]]; then
+				cleanup_and_exit "Error: --kvm_disk_size must be a positive integer, got: $gl_kvm_disk_size" 1
+			fi
 			shift_by=2
-		;; 
+		;;
+		--kvm_os_variant)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_kvm_os_variant=$2
+			shift_by=2
+		;;
 		--kit_upload_directory)
 			echo "$1 $2" >> $gl_cli_supplied_options
 			gl_kit_upload_directory=$2
@@ -3952,6 +3963,7 @@ grab_cli_data()
 		"kvm_iso"
 		"kvm_xml"
 		"kvm_disk_size"
+		"kvm_os_variant"
 		"max_systems"
 		"mode"
 		"os_vendor"

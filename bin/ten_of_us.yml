@@ -520,6 +520,7 @@
       when:
         - config_info.cloud_numb_network_type == "public"
         - config_info.system_type != "local"
+        - config_info.system_type != "kvm"
         - config_info.cloud_numb_networks > 0
         - config_info.init_system == "yes"
 
@@ -904,8 +905,9 @@
       lineinfile:
         path: "{{ working_dir }}/cloud_timings"
         line: "terminate time: {{ (terminate_end_time.stdout) | int  - (terminate_start_time.stdout) | int }}"
-    when: 
+    when:
       - config_info.system_type != "local"
+      - config_info.system_type != "kvm"
       - config_info.cloud_terminate_instance == 1
       - config_info.term_system == "yes"
 
