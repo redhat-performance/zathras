@@ -1,0 +1,29 @@
+---
+# Generate SSH key pair and kickstart file for unattended install
+
+- name: Generate SSH key pair for guest
+  openssh_keypair:
+    path: "{{ working_dir }}/config/kvm_guest_key"
+    type: rsa
+    size: 4096
+    comment: "zathras-kvm-guest"
+    mode: '0600'
+
+- name: Read public key
+  slurp:
+    src: "{{ working_dir }}/config/kvm_guest_key.pub"
+  register: kvm_pub_key
+
+- name: Set guest name
+  set_fact:
+    kvm_guest_name: "zathras-kvm-{{ ansible_date_time.epoch }}"
+
+- name: Set public key fact
+  set_fact:
+    kvm_guest_pub_key: "{{ kvm_pub_key.content | b64decode | trim }}"
+
+- name: Render kickstart template
+  template:
+    src: kickstart.cfg.j2
+    dest: "{{ working_dir }}/config/kvm_kickstart.cfg"
+    mode: '0644'

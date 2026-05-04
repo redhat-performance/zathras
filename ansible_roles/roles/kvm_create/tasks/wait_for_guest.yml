@@ -1,0 +1,60 @@
+---
+# Wait for guest VM to be running, obtain its IP, and verify connectivity
+
+- name: Wait for VM to be in running state
+  command: virsh domstate {{ kvm_guest_name }}
+  register: vm_state
+  until: vm_state.stdout | trim == "running"
+  retries: 60
+  delay: 10
+
+- name: Wait for guest to obtain an IP address
+  shell: virsh domifaddr {{ kvm_guest_name }} --source lease | grep -oP '\d+\.\d+\.\d+\.\d+'
+  register: guest_ip
+  until: guest_ip.stdout | trim | length > 0
+  retries: 120
+  delay: 10
+
+- name: Set guest IP fact
+  set_fact:
+    kvm_guest_ip: "{{ guest_ip.stdout_lines[0] | trim }}"
+
+- name: Report guest IP
+  debug:
+    msg: "KVM guest {{ kvm_guest_name }} has IP {{ kvm_guest_ip }}"
+
+- name: Record guest IP as test_hostname
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    line: "test_hostname: {{ kvm_guest_ip }}"
+
+- name: Wait for SSH to be available
+  include_role:
+    name: wait_for_ssh
+  vars:
+    hostname: "{{ kvm_guest_ip }}"
+
+- name: Accept SSH host key and verify connectivity
+  command: >
+    ssh -o StrictHostKeyChecking=accept-new
+    -i {{ working_dir }}/config/kvm_guest_key
+    root@{{ kvm_guest_ip }} echo "SSH connection successful"
+  register: ssh_test
+  retries: 5
+  delay: 10
+  until: ssh_test.rc == 0
+
+- name: Verify NFS mount works inside guest
+  command: >
+    ssh -o StrictHostKeyChecking=no
+    -i {{ working_dir }}/config/kvm_guest_key
+    root@{{ kvm_guest_ip }} "mount /iso_install && ls /iso_install/BaseOS"
+  register: nfs_test
+  retries: 3
+  delay: 10
+  until: nfs_test.rc == 0
+  ignore_errors: yes
+
+- name: Report NFS mount status
+  debug:
+    msg: "NFS mount {{ 'succeeded' if nfs_test.rc == 0 else 'failed - guest repos may not work' }}"

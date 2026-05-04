@@ -1,0 +1,25 @@
+---
+# Calculate guest CPU and memory resources
+#
+# Guest CPUs = total host CPUs - 8 (minimum 2)
+# Guest memory = total host MB - 8192 (minimum 4096)
+
+- name: Get total host CPUs
+  command: nproc
+  register: host_cpus
+
+- name: Get total host memory in MB
+  shell: free -m | awk '/^Mem:/ {print $2}'
+  register: host_memory_mb
+
+- name: Calculate guest CPUs
+  set_fact:
+    kvm_guest_cpus: "{{ [((host_cpus.stdout | int) - 8), 2] | max }}"
+
+- name: Calculate guest memory in MB
+  set_fact:
+    kvm_guest_memory: "{{ [((host_memory_mb.stdout | int) - 8192), 4096] | max }}"
+
+- name: Report calculated resources
+  debug:
+    msg: "Guest will use {{ kvm_guest_cpus }} CPUs and {{ kvm_guest_memory }} MB memory (host has {{ host_cpus.stdout }} CPUs and {{ host_memory_mb.stdout }} MB)"

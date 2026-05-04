@@ -1,0 +1,39 @@
+---
+# Add the KVM guest to ansible host groups
+# Following the pattern from local_setup and aws_create
+
+- name: Add guest to test_group
+  add_host:
+    name: "{{ kvm_guest_ip }}"
+    groups: test_group
+    ansible_user: root
+    ansible_ssh_private_key_file: "{{ working_dir }}/config/kvm_guest_key"
+
+- name: Add guest to install_group
+  add_host:
+    name: "{{ kvm_guest_ip }}"
+    groups: install_group
+    ansible_user: root
+    ansible_ssh_private_key_file: "{{ working_dir }}/config/kvm_guest_key"
+
+- name: Add to persistent test_group file
+  include_role:
+    name: add_to_host_group
+  vars:
+    working_group_file: "{{ working_dir }}/ansible_test_group"
+    group_name: "test_group_list"
+    host_to_add: "{{ kvm_guest_ip }}"
+
+- name: Add to persistent install_group file
+  include_role:
+    name: add_to_host_group
+  vars:
+    working_group_file: "{{ working_dir }}/ansible_install_group"
+    group_name: "install_group_list"
+    host_to_add: "{{ kvm_guest_ip }}"
+
+- name: Update ssh_key in ansible_vars to use generated key
+  lineinfile:
+    path: "{{ working_dir }}/ansible_vars.yml"
+    regexp: '^\s*ssh_key:'
+    line: "  ssh_key: {{ working_dir }}/config/kvm_guest_key"

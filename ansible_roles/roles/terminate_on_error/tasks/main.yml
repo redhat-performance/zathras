@@ -18,7 +18,14 @@
     when:
       - config_info.cloud_terminate_instance == 1
       - config_info.term_system == "yes"
-      - config_info.system_type != "local"
+      - config_info.system_type in ['aws', 'gcp', 'azure', 'ibm']
+  - name: KVM terminate
+    include_role:
+      name: kvm_destroy
+    when:
+      - config_info.cloud_terminate_instance == 1
+      - config_info.term_system == "yes"
+      - config_info.system_type == "kvm"
   - name: Aborting test
     fail:
       msg: "{{ exit_msg }}"
