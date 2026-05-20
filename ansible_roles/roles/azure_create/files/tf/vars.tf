@@ -121,3 +121,9 @@ variable "disk_size" {
   type    = string
   default = ""
 }
+
+variable "use_custom_image" {
+  type        = bool
+  default     = false
+  description = "Set to true to use custom image from Azure Compute Gallery (source_image_id), false to use marketplace image (source_image_reference)"
+}
