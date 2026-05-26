@@ -1459,6 +1459,12 @@ aws_specific_os_version()
 					break
 				fi
 			fi
+			# Clean up ambiguation between arm64 and aarch64
+			if [[ "${architecture}" == "arm64" ]] && [[ "$ami_value" == *"aarch64"* ]]; then
+				echo "  cloud_os_version: ${ami_check}" >> ansible_vars_main.yml
+				ami_found=1
+				break
+			fi
 		fi
 	done
 	if [[ $ami_found -eq 0 ]]; then
