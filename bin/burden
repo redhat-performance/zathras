@@ -50,6 +50,8 @@
 cli=${0}
 arguments=("$@")
 version="3.2"
+AWS_DEFAULT_OUTPUT="text"
+export AWS_DEFAULT_OUTPUT
 #
 # This bash script generates the test parameters to be used by ansible. End results
 # is an ansible data file called ansible_vars_main.yml containing the following
