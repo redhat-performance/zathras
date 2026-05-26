@@ -26,6 +26,13 @@ pb_disk_type = "Premium_LRS"
 pb_disk_count = 1
 pb_vol_size = 500
 
+# Determine image source type: true for custom image (Azure Compute Gallery), false for marketplace
+{% if config_info.cloud_os_version == "none" %}
+use_custom_image = true
+{% else %}
+use_custom_image = false
+{% endif %}
+
 # Check "cloud_numb_networks", default value is "1" for both vars
 {% if config_info.cloud_numb_networks >= 1 %}
 vm_count = 2

@@ -196,10 +196,24 @@ Condensed usage information.
 ## Cloud-only options
 
 ## --cloud_os_id \<os id>
-Image of the OS to install (example aws aminumber)
-For multiple architectures, this is allowed"
-x86:ami-0fbec8a0a2beb6a71,arm64:ami-0cfa90ca3ebfc506e"
-Burden will select the right ami for the designated host."
+Image of the OS to install. Format varies by cloud provider:
+
+**AWS**: AMI ID or architecture-specific AMI IDs
+- Single architecture: `ami-0fbec8a0a2beb6a71`
+- Multiple architectures: `x86:ami-0fbec8a0a2beb6a71,arm64:ami-0cfa90ca3ebfc506e`
+  (Burden will select the right AMI for the designated host)
+
+**Azure**: Either marketplace URN or custom image resource ID
+- Marketplace image (URN format): `publisher:offer:sku:version`
+  - Example: `RedHat:RHEL:8-LVM:latest`
+  - Example: `Canonical:0001-com-ubuntu-server-focal:20_04-lts:latest`
+- Custom image from Azure Compute Gallery: `/subscriptions/{subscription-id}/resourceGroups/{rg}/providers/Microsoft.Compute/galleries/{gallery}/images/{image}/versions/{version}`
+  - Example: `/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/rhel9-custom/versions/1.0.0`
+- Managed image: `/subscriptions/{subscription-id}/resourceGroups/{rg}/providers/Microsoft.Compute/images/{image-name}`
+  - Example: `/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/myImagesRG/providers/Microsoft.Compute/images/rhel-9`
+
+**GCP**: Image name or full image path
+- Example: `projects/rhel-cloud/global/images/rhel-9-v20231010`
 
 ### --create_only
 Only do the VM creation and OS install action.

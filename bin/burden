@@ -203,7 +203,7 @@ gl_upload_rpms=$value_not_set
 gl_cli_supplied_options=""
 gl_test_override_options=""
 gl_warning_string=""
-gl_max_systems=3
+gl_max_systems=12
 gl_max_systems_set=0
 #
 # We want the version check on.  We do this, as no options to burden
@@ -1394,14 +1394,26 @@ azure_specific_os_version()
 	# The publisher field in the urn may be different case (go figure) then expected..
 	# So we need to go and pull the publisher from az_vm image show.
 	#
+	# Azure supports two types of image sources:
+	# 1. Marketplace images (URN format): publisher:offer:sku:version (e.g., RedHat:RHEL:8-LVM:latest)
+	# 2. Custom images from Azure Compute Gallery or Managed Images: resource ID path containing "subscription"
+	#    (e.g., /subscriptions/.../resourceGroups/.../providers/Microsoft.Compute/galleries/.../images/.../versions/...)
+	#
+	# The Terraform templates use a boolean variable 'use_custom_image' to determine which source to use.
+	# This is set based on whether cloud_os_version is "none" (custom image) or has a value (marketplace).
+	#
 	az_subscription=`az account show | grep id | cut -d'"' -f 4`
 	if [[ $gl_cloud_os_version == *"subscription"* ]]; then
+		# Custom image from Azure Compute Gallery or Managed Image
+		# Set marketplace parameters to "none" and use the full resource ID
 		azpublisher="none"
 		azoffer="none"
 		azsku="none"
 		azversion="none"
 		az_urn_sub=$gl_cloud_os_version
 	else
+		# Marketplace image using URN format (publisher:offer:sku:version)
+		# Parse the URN components
 		azpublisher=$(echo $gl_cloud_os_version | cut -f1 -d:)
 		azoffer=$(echo $gl_cloud_os_version | cut -f 2 -d:)
 		azsku=$(echo $gl_cloud_os_version | cut -f 3 -d:)

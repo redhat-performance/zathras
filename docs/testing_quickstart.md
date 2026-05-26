@@ -117,12 +117,13 @@ Zathras supports automated provisioning and testing on major cloud providers.
 
 ### Azure Testing Example
 
+#### Using Marketplace Image (URN format)
 ```yaml
-# Example: azure_scenario
+# Example: azure_marketplace_scenario
 global:
     ssh_key_file: /home/user/.ssh/azure-key
     terminate_cloud: 1
-    cloud_os_id: /subscriptions/xxx/resourceGroups/xxx/providers/Microsoft.Compute/images/rhel-9
+    cloud_os_id: RedHat:RHEL:8-LVM:latest
     os_vendor: rhel
     results_prefix: azure_fio_test
     system_type: azure
@@ -131,6 +132,26 @@ systems:
         tests: fio
         host_config: "Standard_D4s_v3:Disks;number=2;size=1000;type=Premium_LRS"
 ```
+
+#### Using Custom Image from Azure Compute Gallery
+```yaml
+# Example: azure_custom_image_scenario
+global:
+    ssh_key_file: /home/user/.ssh/azure-key
+    terminate_cloud: 1
+    cloud_os_id: /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/rhel9-custom/versions/1.0.0
+    os_vendor: rhel
+    results_prefix: azure_custom_test
+    system_type: azure
+systems:
+    system1:
+        tests: fio
+        host_config: "Standard_D4s_v3:Disks;number=2;size=1000;type=Premium_LRS"
+```
+
+**Note**: Azure supports two image source types:
+- **Marketplace images**: Use URN format `publisher:offer:sku:version` (e.g., `RedHat:RHEL:8-LVM:latest`)
+- **Custom images**: Use full resource ID path for Azure Compute Gallery images or Managed Images (must contain `/subscriptions/` in the path)
 
 ### GCP Testing Example
 
