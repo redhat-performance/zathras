@@ -232,112 +232,108 @@
     ansible.builtin.file:
       path: /tmp/cr_status
       state: absent
-  # TEMP: CodeReady Builder enable skipped (GCP/GCE experiments; re-enable when fixed).
-  # When this block is active again, set ten_of_us_codeready_cr_status_check: true on the
-  # local play "Terminate on repo failure" (cr_status) so missing-file false positives cannot occur.
-  # - name: install codeready repo (if RHEL)
-  #   block:
-  #   - name: Enable CodeReady Builder for AWS/Azure
-  #     block:
-  #     - name: get codeready repo name
-  #       shell:
-  #         cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
-  #       register: repo_name
-  #       ignore_errors: yes
-  #     - name: Record status of yum config success
-  #       include_role:
-  #         name: record_status
-  #       vars:
-  #         results: "{{ repo_name }}"
-  #         status_file: "/tmp/cr_status"
-  #     - name: aws upload the codeready repo
-  #       shell: "yum-config-manager --enable {{ repo_name.stdout }}"
-  #       register: yum_config
-  #       ignore_errors: yes
-  #     - name: Record status of yum config success
-  #       include_role:
-  #         name: record_status
-  #       vars:
-  #         results: "{{ yum_config }}"
-  #         status_file: "/tmp/cr_status"
-  #     when:
-  #       - config_info.system_type == "aws" or config_info.system_type == "azure"
-  #
-  #   - name: Enable CodeReady Builder for GCP
-  #     block:
-  #       - name: Install yum utils
-  #         become: yes
-  #         shell: "yum install yum-utils -y"
-  #
-  #       - name: get codeready repo name
-  #         shell:
-  #           cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
-  #         register: repo_name
-  #         ignore_errors: yes
-  #
-  #       - name: Record status of yum repolist success
-  #         include_role:
-  #           name: record_status
-  #         vars:
-  #           results: "{{ repo_name }}"
-  #           status_file: "/tmp/cr_status"
-  #
-  #       - name: Enable CodeReady Builder for GCP
-  #         shell: "yum-config-manager --enable {{ repo_name.stdout }}"
-  #         register: yum_config
-  #         ignore_errors: yes
-  #
-  #       - name: Record status of yum config success
-  #         include_role:
-  #           name: record_status
-  #         vars:
-  #           results: "{{ yum_config }}"
-  #           status_file: "/tmp/cr_status"
-  #     when:
-  #       - config_info.system_type == "gcp"
-  #       - config_info.do_not_install_packages == 0
-  #       - config_info.do_not_install_system_packages == 0
-  #
-  #   - name: Enable CodeReady Builder for IBM Cloud
-  #     block:
-  #       - name: Install yum utils
-  #         become: yes
-  #         shell: "yum install yum-utils -y"
-  #
-  #       - name: Enable CodeReady Builder for IBM Cloud
-  #         become: yes
-  #         shell: "yum-config-manager --enable codeready-builder-for-rhel-9-$(arch)-rpms"
-  #         register: yum_config
-  #         ignore_errors: yes
-  #
-  #       - name: Record status of yum config success
-  #         include_role:
-  #           name: record_status
-  #         vars:
-  #           results: "{{ yum_config }}"
-  #           status_file: "/tmp/cr_status"
-  #     when:
-  #       - config_info.system_type == "ibm"
-  #       - config_info.do_not_install_packages == 0
-  #       - config_info.do_not_install_system_packages == 0
-  #
-  #   - name: retrieve repo config status
-  #     include_role:
-  #       name: retrieve_status
-  #     vars:
-  #       status_file: "cr_status"
-  #     when:
-  #       - config_info.system_type != "local"
-  #   when:
-  #     - config_info.os_vendor == "rhel"
+  - name: install codeready repo (if RHEL)
+    block:
+    - name: Enable CodeReady Builder for AWS/Azure
+      block:
+      - name: get codeready repo name
+        shell:
+          cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
+        register: repo_name
+        ignore_errors: yes
+      - name: Record status of yum config success
+        include_role:
+          name: record_status
+        vars:
+          results: "{{ repo_name }}"
+          status_file: "/tmp/cr_status"
+      - name: aws upload the codeready repo
+        shell: "yum-config-manager --enable {{ repo_name.stdout }}"
+        register: yum_config
+        ignore_errors: yes
+      - name: Record status of yum config success
+        include_role:
+          name: record_status
+        vars:
+          results: "{{ yum_config }}"
+          status_file: "/tmp/cr_status"
+      when:
+        - config_info.system_type == "aws" or config_info.system_type == "azure"
+
+    - name: Enable CodeReady Builder for GCP
+      block:
+        - name: Install yum utils
+          become: yes
+          shell: "yum install yum-utils -y"
+
+        - name: get codeready repo name
+          shell:
+            cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
+          register: repo_name
+          ignore_errors: yes
+
+        - name: Record status of yum repolist success
+          include_role:
+            name: record_status
+          vars:
+            results: "{{ repo_name }}"
+            status_file: "/tmp/cr_status"
+
+        - name: Enable CodeReady Builder for GCP
+          shell: "yum-config-manager --enable {{ repo_name.stdout }}"
+          register: yum_config
+          ignore_errors: yes
+
+        - name: Record status of yum config success
+          include_role:
+            name: record_status
+          vars:
+            results: "{{ yum_config }}"
+            status_file: "/tmp/cr_status"
+      when:
+        - config_info.system_type == "gcp"
+        - config_info.do_not_install_packages == 0
+        - config_info.do_not_install_system_packages == 0
+
+    - name: Enable CodeReady Builder for IBM Cloud
+      block:
+        - name: Install yum utils
+          become: yes
+          shell: "yum install yum-utils -y"
+
+        - name: Enable CodeReady Builder for IBM Cloud
+          become: yes
+          shell: "yum-config-manager --enable codeready-builder-for-rhel-9-$(arch)-rpms"
+          register: yum_config
+          ignore_errors: yes
+
+        - name: Record status of yum config success
+          include_role:
+            name: record_status
+          vars:
+            results: "{{ yum_config }}"
+            status_file: "/tmp/cr_status"
+      when:
+        - config_info.system_type == "ibm"
+        - config_info.do_not_install_packages == 0
+        - config_info.do_not_install_system_packages == 0
+
+    - name: retrieve repo config status
+      include_role:
+        name: retrieve_status
+      vars:
+        status_file: "cr_status"
+      when:
+        - config_info.system_type != "local"
+    when:
+      - config_info.os_vendor == "rhel"
 
 - hosts: local
   vars_files: ansible_vars.yml
   gather_facts: no
   vars:
-    # False while CodeReady install + retrieve_status for cr_status is commented out above.
-    # Set true when that block is re-enabled so a real CodeReady failure is still caught.
-    ten_of_us_codeready_cr_status_check: false
+    # Set to true now that CodeReady Builder is re-enabled for testing
+    ten_of_us_codeready_cr_status_check: true
   tasks:
   - name: Terminate on repo failure
     include_role:
