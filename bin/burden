@@ -288,8 +288,8 @@ gl_tf_sys_list=`mktemp /tmp/zathras_cl_systems.XXXXX`
 
 wait_for_procs()
 {
-	pids=$1
-	for pid in "${pids[*]}"; do
+	pids=("$@")
+	for pid in "${pids[@]}"; do
 		out_string=`echo $pid | cut -d ':' -f 2-`
 		wait_for=`echo $pid | cut -d ':' -f 1`
 		wait $wait_for
@@ -299,8 +299,8 @@ wait_for_procs()
 
 kill_off_procs()
 {
-	pids=$1
-	for pid in "${pids[*]}"; do
+	pids=("$@")
+	for pid in "${pids[@]}"; do
 		pid_to_kill=`echo $pid | cut -d ':' -f 1`
 		kill -2 $pid_to_kill
 	done
@@ -320,6 +320,7 @@ cleanup_and_exit()
 	rtc=$2
 	rtr_string=""
 
+
 	if [[ $rtc == "" ]]; then
 		rtc=0
 	fi
@@ -332,16 +333,11 @@ cleanup_and_exit()
 	cd $gl_top_dir
 
 	if [[ $gl_run_pindex -ne 0 ]]; then
-		kill_off_procs "$gl_run_pids"
-		wait_for_procs "$gl_run_pids" 
+		kill_off_procs "${gl_run_pids[@]}"
+		wait_for_procs "${gl_run_pids[@]}" 
+		gl_run_pids=()
 		gl_run_pindex=0
 		gl_run_pids=""
-	fi
-	if [[ $gl_burden_index -ne 0 ]]; then
-		kill_off_procs "${gl_burden_pids}"
-		wait_for_procs  "${gl_burden_pids}"
-		gl_burden_index=0
-		gl_burden_pids=""
 	fi
 	#
 	# We only check the failed report file if this is the burden process that
@@ -1463,6 +1459,12 @@ aws_specific_os_version()
 					break
 				fi
 			fi
+			# Clean up ambiguation between arm64 and aarch64
+			if [[ "${architecture}" == "arm64" ]] && [[ "$ami_value" == *"aarch64"* ]]; then
+				echo "  cloud_os_version: ${ami_check}" >> ansible_vars_main.yml
+				ami_found=1
+				break
+			fi
 		fi
 	done
 	if [[ $ami_found -eq 0 ]]; then
@@ -2257,7 +2259,8 @@ create_ansible_options()
 			gl_run_pids[${gl_run_pindex}]="${rpid}:${test_info_str} on ${host_or_cloud_inst}"
 			let "gl_run_pindex=$gl_run_pindex+1"
 			if [[ $gl_run_pindex -eq $gl_max_systems ]]; then
-				wait_for_procs "$gl_run_pids" 
+				wait_for_procs "${gl_run_pids[@]}" 
+				gl_run_pids=()
 				gl_run_pindex=0
 			fi
 		fi
@@ -2271,7 +2274,8 @@ create_ansible_options()
 	# Wait for everyone to finish up.
 	#
 	if [[ $gl_run_pindex != 0 ]]; then
-		wait_for_procs "$gl_run_pids" 
+		wait_for_procs "${gl_run_pids[@]}"
+		gl_run_pids=()
 		gl_run_pindex=0
 	fi
 
@@ -2906,6 +2910,7 @@ run_scenario()
 	override_options=""
 	override_options_gl=""
 	over_gl_separ=""
+	pindex=0
 	declare -a globals
 	declare -a test_values
 	scenario=$1
@@ -3098,13 +3103,15 @@ run_scenario()
 				# Wait for all outstanding tests to finish before we do more.
 				#
 				if [ $gl_burden_index != 0 ]; then
-					wait_for_procs  "${gl_burden_pids}"
+					wait_for_procs  "${gl_burden_pids[@]}"
+					gl_run_pids=()
 					gl_burden_index=0
 					gl_burden_pids=""
 				fi
 			else
 				tmpfile=$(mktemp /tmp/zath_temp_test_cli.XXXXXX)
 				run_burden_file="run_burden_$$_${pindex}"
+				let "pindex=${pindex}+1"
 				echo ./burden $test_cli --run_file $run_burden_file  >> $tmpfile
 				#
 				# Remove duplicate entries.
@@ -3128,6 +3135,10 @@ run_scenario()
 			 	./${run_burden_file} &
 	                        rpid=$!
 	                        gl_burden_pids[${gl_burden_index}]="${rpid}:${run_burden_file}"
+				#
+				# Give it a chance else we might collide.
+				#
+				sleep 5
 				let "gl_burden_index=$gl_burden_index+1"
 			fi
 			#
@@ -3154,7 +3165,8 @@ run_scenario()
 	# Wait for everyone to finish up.
 	#
 	if [[ $gl_burden_index -ne 0 ]]; then
-		wait_for_procs  "${gl_burden_pids}"
+		wait_for_procs  "${gl_burden_pids[@]}"
+		gl_run_pids=()
 		gl_burden_index=0
 		gl_burden_pids=""
 	fi
@@ -3446,7 +3458,6 @@ usage()
 	echo "    perform the initial setup work"
 	echo "	--create_attempts: number of times we attempt to create an instance to get the"
 	echo "    designated cpu type"
-	echo "  --force_upload: Used when creating a cloud image.  Will force all packages to be uploaded."
 	echo "  --git_timeout: Number of seconds to timeout on git requests.  Default is 60"
 	echo "  --system_type <vendor>: aws, azure, gcp, or local"
 	echo "  --host_config <config options>: Specification of the system and configuration"
@@ -3552,6 +3563,7 @@ usage()
 	echo "  --ssh_key_file: Designates the ssh key file we are to use."
 	echo "  --show_os_versions: given the cloud type, and OS vendor, show the available os versions"
 	echo "  --show_tests:  list the available test as defined in config/test_defs.yml"
+	echo "  --skip_test_version_check:  Skip the initial check of test wrapper versions and just use what we have"
 	echo "  --test_def_file <file>: test definition file to use."
 	echo "  --test_def_dir <dir>: test definition directory.  Default is <execution dir>/config.  If"
 	echo "     https: or git: is at the start of the location, then we will pull from a git repo."
@@ -3867,6 +3879,10 @@ set_general_value()
 			gl_show_os_versions=1
 			shift_by=1
 		;;
+		--skip_test_version_check)                
+			gl_test_version_check=0
+            shift_by=1
+        ;;
 		--ssh_key_file)
 			if [[ $gl_ssh_key_file == "" ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -4090,6 +4106,7 @@ grab_cli_data()
 		"run_chronicler_strict"
 		"show_os_versions"
 		"show_tests"
+		"skip_test_version_check"
 		"test_version_check"
 		"tf_list"
 		"tf_terminate_all"

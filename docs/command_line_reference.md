@@ -136,6 +136,9 @@ Given the cloud type and OS vendor, show the available operating system versions
 ### --show_tests
 List the available test as defined in config/test_defs.yml
 
+### --skip_test_version_check
+Skip the initial check of test wrapper versions and just use what we have
+
 ### --test_def_file \<file>
 Test definition file to use.
  
