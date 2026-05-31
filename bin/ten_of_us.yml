@@ -265,27 +265,25 @@
   #
   #   - name: Enable CodeReady Builder for GCP
   #     block:
-  #
   #       - name: Install yum utils
   #         become: yes
   #         shell: "yum install yum-utils -y"
   #
-  #       #- name: get codeready repo name
-  #       #  shell:
-  #       #    cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
-  #       #    warn: false
-  #       #    register: repo_name
-  #       #    ignore_errors: yes
-  #       #- name: Record status of yum config success
-  #       #  include_role:
-  #       #    name: record_status
-  #       #  vars:
-  #       #    results: "{{ repo_name }}"
-  #       #   status_file: "/tmp/cr_status"
+  #       - name: get codeready repo name
+  #         shell:
+  #           cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
+  #         register: repo_name
+  #         ignore_errors: yes
+  #
+  #       - name: Record status of yum repolist success
+  #         include_role:
+  #           name: record_status
+  #         vars:
+  #           results: "{{ repo_name }}"
+  #           status_file: "/tmp/cr_status"
   #
   #       - name: Enable CodeReady Builder for GCP
-  #         become: yes
-  #         shell: "yum-config-manager --enable rhui-codeready-builder-for-rhel-9-x86_64-rhui-rpms"
+  #         shell: "yum-config-manager --enable {{ repo_name.stdout }}"
   #         register: yum_config
   #         ignore_errors: yes
   #
