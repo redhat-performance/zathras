@@ -50,6 +50,8 @@
 cli=${0}
 arguments=("$@")
 version="3.2"
+AWS_DEFAULT_OUTPUT="text"
+export AWS_DEFAULT_OUTPUT
 #
 # This bash script generates the test parameters to be used by ansible. End results
 # is an ansible data file called ansible_vars_main.yml containing the following
@@ -352,12 +354,23 @@ cleanup_and_exit()
 	separ=""
 
 	if [[ -f $gl_tf_sys_list ]]; then
+		delete_tfs=""
 		while IFS= read -r run_data
 		do
-			delete_tfs="${delete_tfs}${separ}${run_data}"
-			separ=","
+			#
+			# Only if we have a running state for the vm
+			#
+			if [[ -d ${run_data}/terraform.tfstate.d ]]; then
+				grep -q "\"instance_state\": \"running\""  ${run_data}/tf//terraform.tfstate.d/*/terraform.tfstate 2> /dev/null
+				if [[ $? -eq 0 ]]; then
+					delete_tfs="${delete_tfs}${separ}${run_data}"
+					separ=","
+				fi
+			fi
 		done < $gl_tf_sys_list
-		$UTILS_DIR/terraform_ops --terminate_list "$delete_tfs"
+		if [[ $delete_tfs != "" ]]; then
+			$UTILS_DIR/terraform_ops --terminate_list "$delete_tfs"
+		fi
 	fi
 	rm -f $gl_cli_supplied_options $gl_run_info ${gl_run_info}.sorted $gl_tf_sys_list
 	#
@@ -2265,6 +2278,7 @@ create_ansible_options()
 			fi
 		fi
 	done
+
 	if [ $gl_preflight -ne 0 ]; then
 		echo Preflight complete
 		exit 0
