@@ -268,7 +268,7 @@
 
         - name: get codeready repo name
           shell:
-            cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
+            cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1 | head -1"
           register: repo_name
           ignore_errors: yes
 
