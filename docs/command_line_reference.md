@@ -62,7 +62,7 @@ Do not install system packages via dnf/apt/zypper/etc, default is no.
 Do not recover from a spot system going away.
 
 ### --os_vendor \<os vendor>
-Currently rhel, ubuntu, amazon, suse.
+Currently rhel, ubuntu, amazon, suse, azurelinux.
 
 ### --package_name \<name>
 Use this set of packages to override the default in the test config file instead of the default. Default format package name \<os>_pkg, new name \<os>_pkg_\<ver>.

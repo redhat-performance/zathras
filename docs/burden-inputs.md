@@ -54,7 +54,7 @@
 
 | Option | Arguments | Description |
 |--------|-----------|-------------|
-| <nobr>`--os_vendor`</nobr> | `<vendor>` | OS provider. Valid values: `rhel`, `ubuntu`, `amazon`, `suse`, `private`, `none` |
+| <nobr>`--os_vendor`</nobr> | `<vendor>` | OS provider. Valid values: `rhel`, `ubuntu`, `amazon`, `azurelinux`, `suse`, `private`, `none` |
 | <nobr>`--selinux_level`</nobr> | `<level>` | SELinux enforcement level. Values: `enforcing`, `permissive`, `disabled` |
 | <nobr>`--selinux_state`</nobr> | `<state>` | SELinux state. Values: `enabled`, `disabled` |
 | <nobr>`--java_version`</nobr> | `<version>` | Java version to install. Values: `java-8`, `java-11`, `java-17`, `java-21` |
