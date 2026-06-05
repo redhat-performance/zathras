@@ -5,3 +5,6 @@ output "public_ip_address" {
 output "internal_ip_list" {
  value = data.azurerm_network_interface.testnic1[*].private_ip_address
 }
+output "resource_group_name" {
+ value = azurerm_resource_group.resource_group.name
+}
