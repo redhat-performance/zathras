@@ -99,8 +99,9 @@ report_usage()
 spot_recover=1
 create_attempts=5
 ssh_key_file=""
+ssh_pub_key_file=""
 ansible_noise_level="normal"
-while getopts "a:c:d:f:s:S:t:l:" o; do
+while getopts "a:c:d:f:p:s:S:t:l:" o; do
         case "${o}" in
 		a)
 			create_attempts=${OPTARG}
@@ -116,6 +117,9 @@ while getopts "a:c:d:f:s:S:t:l:" o; do
 		;;
 		l)
 			ansible_noise_level=${OPTARG}
+		;;
+		p)
+			ssh_pub_key_file=${OPTARG}
 		;;
 		S)
 			spot_recover=${OPTARG}
@@ -162,6 +166,14 @@ if [[ $ssh_key_file != "" ]]; then
 	fi
 	chmod 500 config/user.pem_test
 fi
+if [[ $ssh_pub_key_file != "" ]]; then
+	cp $ssh_pub_key_file config/user.pub_test
+	if [ ! -s $ssh_pub_key_file ]; then
+		echo "${ssh_pub_key_file} is zero length, please fix.  Test is exiting"
+		exit 1
+	fi
+	chmod 400 config/user.pub_test
+fi
 
 #
 # figure out how many files we have to set /proc/* etc. This allows us to only terminate the
@@ -179,6 +191,9 @@ remove_perm_file()
 {
 	if [[ $ssh_key_file != "" ]]; then
 		rm -f config/user.pem_test
+	fi
+	if [[ $ssh_pub_key_file != "" ]]; then
+		rm -f config/user.pub_test
 	fi
 }
 
