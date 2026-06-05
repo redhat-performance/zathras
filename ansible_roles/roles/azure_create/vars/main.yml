@@ -1,2 +1,2 @@
 ---
-ssh_key_data: "{{ lookup('file', '/home/'+config_info.user_running+'/.ssh/id_rsa.pub') }}"
+ssh_key_data: "{{ lookup('file', config_info.ssh_pub_key) if (config_info.ssh_pub_key is defined and config_info.ssh_pub_key != 'none_designated') else lookup('file', config_info.ssh_key) }}"

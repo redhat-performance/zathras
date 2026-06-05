@@ -65,6 +65,14 @@
       set_fact:
         dash_i_value: "ssh_i_option: \"\""
       when: config_info.ssh_key == "none_designated"
+    - name: set ssh public key file
+      set_fact:
+        ssh_pub_key_value: "ssh_pub_key_option: \"{{ config_info.ssh_pub_key }}\""
+      when: config_info.ssh_pub_key is defined and config_info.ssh_pub_key != "none_designated"
+    - name: No ssh public key file designated, default null string.
+      set_fact:
+        ssh_pub_key_value: "ssh_pub_key_option: \"\""
+      when: config_info.ssh_pub_key is not defined or config_info.ssh_pub_key == "none_designated"
 
 #
 # Preset the tf.rtc file
@@ -89,6 +97,12 @@
       lineinfile:
         path: "{{ working_dir }}/ansible_run_vars.yml"
         line: "{{ dash_i_value }}"
+        create: yes
+
+    - name: add the ssh public key line to the file
+      lineinfile:
+        path: "{{ working_dir }}/ansible_run_vars.yml"
+        line: "{{ ssh_pub_key_value }}"
         create: yes
 
     - name: aws operations
