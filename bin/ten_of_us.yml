@@ -262,27 +262,25 @@
 
     - name: Enable CodeReady Builder for GCP
       block:
-
         - name: Install yum utils
           become: yes
           shell: "yum install yum-utils -y"
 
-        #- name: get codeready repo name
-        #  shell:
-        #    cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1"
-        #    warn: false
-        #    register: repo_name
-        #    ignore_errors: yes
-        #- name: Record status of yum config success
-        #  include_role:
-        #    name: record_status
-        #  vars:
-        #    results: "{{ repo_name }}"
-        #   status_file: "/tmp/cr_status"
+        - name: get codeready repo name
+          shell:
+            cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1 | head -1"
+          register: repo_name
+          ignore_errors: yes
+
+        - name: Record status of yum repolist success
+          include_role:
+            name: record_status
+          vars:
+            results: "{{ repo_name }}"
+            status_file: "/tmp/cr_status"
 
         - name: Enable CodeReady Builder for GCP
-          become: yes
-          shell: "yum-config-manager --enable rhui-codeready-builder-for-rhel-9-x86_64-rhui-rpms"
+          shell: "yum-config-manager --enable {{ repo_name.stdout }}"
           register: yum_config
           ignore_errors: yes
 
@@ -295,7 +293,7 @@
       when:
         - config_info.system_type == "gcp"
         - config_info.do_not_install_packages == 0
-        - config_info.config_info.do_not_install_system_packages == 0
+        - config_info.do_not_install_system_packages == 0
 
     - name: Enable CodeReady Builder for IBM Cloud
       block:
@@ -333,6 +331,9 @@
 - hosts: local
   vars_files: ansible_vars.yml
   gather_facts: no
+  vars:
+    # Set to true now that CodeReady Builder is re-enabled for testing
+    ten_of_us_codeready_cr_status_check: true
   tasks:
   - name: Terminate on repo failure
     include_role:
@@ -340,7 +341,10 @@
     vars:
       status_file: "cr_status"
       exit_msg: "Code repo installation failure"
-    when: (config_info.os_vendor == "rhel") and (config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp")
+    when:
+      - ten_of_us_codeready_cr_status_check | bool
+      - config_info.os_vendor == "rhel"
+      - config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp"
 
 #
 # Enable SLES legacy module
