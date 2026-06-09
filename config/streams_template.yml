@@ -1,5 +1,5 @@
 location: https://github.com/redhat-performance/streams-wrapper/archive/refs/tags
-exec_dir: "streams-wrapper-2.5/streams"
-repo_file: "v2.5.tar.gz"
+exec_dir: "streams-wrapper-2.9/streams"
+repo_file: "v2.9.tar.gz"
 os_supported: all
 test_script_to_run: streams_run
