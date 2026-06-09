@@ -1,5 +1,5 @@
 location: https://github.com/redhat-performance/iozone-wrapper/archive/refs/tags
-exec_dir: "iozone-wrapper-3.0/iozone"
-repo_file: "v3.0.tar.gz"
+exec_dir: "iozone-wrapper-4.01/iozone"
+repo_file: "v4.01.tar.gz"
 storage_required: "yes"
 test_script_to_run: iozone_run.sh
