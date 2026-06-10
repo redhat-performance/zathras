@@ -2,3 +2,6 @@
 output "public_ip_address" {
  value = data.azurerm_public_ip.publicip[*].ip_address
 }
+output "resource_group_name" {
+ value = azurerm_resource_group.resource_group.name
+}
