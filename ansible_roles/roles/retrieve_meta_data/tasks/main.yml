@@ -5,6 +5,32 @@
 #
 - name: Retrieve the azure meta data and set the tags
   block:
+    #
+    # ansible builtin install is not working on azurelinux at this time,
+    # use dnf instead.
+    #
+  - name: Install jq
+    shell: "dnf install -y jq"
+  - name: Grab the metadata
+    shell: curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq > /tmp/meta_data.yml
+    register: azure_meta_data
+  - name: retrieve the azure metadata
+    fetch:
+      src: "/tmp/meta_data.yml"
+      dest: "{{ working_dir }}/meta_data.yml"
+      flat: yes
+  rescue:
+    - name: Report Error
+      lineinfile:
+        path: "{{ results_file }}"
+        line: "status: failed to grab metadata"
+        create: yes
+  when:
+    - config_info.system_type == "azure"
+    - config_info.os_vendor == "azure"
+
+- name: Retrieve the azure meta data and set the tags azure os
+  block:
   - name: Install jq
     ansible.builtin.package:
       name: jq
@@ -29,6 +55,7 @@
         create: yes
   when:
     - config_info.system_type == "azure"
+    - config_info.os_vendor != "azure"
 
 - name: Retrieve the gcp meta data
   block:

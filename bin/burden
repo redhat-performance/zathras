@@ -134,7 +134,7 @@ gl_git_timeout=60
 gl_git_timeout_set=0
 gl_archive_location=$value_not_set
 gl_error_repo_errors=1
-gl_valid_os_vendors="rhel ubuntu amazon suse private none"
+gl_valid_os_vendors="azure rhel ubuntu amazon suse private none"
 gl_valid_system_types="aws azure gcp ibm local"
 gl_package_name=$value_not_set
 gl_show_tests=0
@@ -435,6 +435,8 @@ azure_image_lookup()
 		publisher=RedHat
 	elif [[ $gl_os_vendor == "suse" ]]; then
 		publisher=SUSE
+	elif [[ $gl_os_vendor == "azure" ]]; then
+		publisher=Azure
 	else
 		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, suse" 1 ${gl_system_type}
 	fi
@@ -442,7 +444,14 @@ azure_image_lookup()
 		echo "Pulling requested Azure OS image information, may take a bit."
 		end_date=`date +"%Y"`
 		let "start_date=$end_date-1"
-		az vm image list --all --publisher $publisher --output tsv | grep -E ".$start_date|.$end_date"
+		if [[ $publisher == "Azure" ]]; then
+			#
+			# Filter everything out but azurelinux-4
+			#
+			az vm image list --all --publisher $publisher --output tsv | grep "azurelinux-4" | grep -E ".$start_date|.$end_date"
+		else
+			az vm image list --all --publisher $publisher --output tsv | grep -E ".$start_date|.$end_date"
+		fi
 		cleanup_and_exit "" 0
 	else
 		work_with=`echo $gl_cloud_os_version | sed "s/,/ /g"`
@@ -526,6 +535,8 @@ show_aws_images()
 		filter="Name=name,Values=amz*,al2023*"
 	elif [[ $gl_os_vendor == "suse" ]]; then
 		filter="Name=name,Values=suse*"
+	elif [[ $gl_os_vendor == "azure" ]]; then
+		filter="Name=name,Values=Azure*"
 	elif [[ $gl_os_vendor != "private"  ]]; then
 		cleanup_and_exit "Unknown os vendor $gl_os_vendor, valid types are ubuntu, rhel, amazon, suse, private" 1 ${gl_system_type}
 	fi
