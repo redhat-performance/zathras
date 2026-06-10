@@ -12,6 +12,9 @@ run_label = "{{ config_info.user_running }}-{{ config_info.run_label | lower() |
 region = "{{ config_info.cloud_region }}"
 
 ssh_key_path = "{{ config_info.ssh_key }}"
+{% if config_info.ssh_pub_key is defined and config_info.ssh_pub_key != "none_designated" %}
+ssh_pub_key_path = "{{ config_info.ssh_pub_key }}"
+{% endif %}
 
 test_user = "{{ config_info.test_user }}"
 
