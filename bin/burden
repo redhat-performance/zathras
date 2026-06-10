@@ -81,6 +81,7 @@ export AWS_DEFAULT_OUTPUT
 #   update_type: what is the update repository (example ftp, iso).
 #   gl_persistent_log: enable persistent logging
 #   gl_ssh_key_file: Points to the ssh config file we are to use.  If not set, we will not use one.
+#   gl_ssh_pub_key_file: Points to the ssh public key file.  If not set, we will not use one.
 #   gl_java_version: Version of Java to load: currently java-8, java-11, java-17, or java-21
 #   gl_rhel_tuned_setting: tuned configuration to use
 #   gl_cloud_execute_tests: If set to 1, we will execute test on the cloud image, else
@@ -190,6 +191,7 @@ gl_selinux_state=$value_not_set
 gl_selinux_state_set=0
 gl_ibm_api_key=""
 gl_ssh_key_file=""
+gl_ssh_pub_key_file=""
 gl_show_os_versions=0;
 gl_test_def_file=""
 gl_test_def_dir="${gl_top_dir}/config"
@@ -2112,6 +2114,11 @@ create_ansible_options()
 		else
 			echo "  ssh_key: ${gl_ssh_key_file}" >> ansible_vars_main.yml
 		fi
+		if [[ $gl_ssh_pub_key_file == "" ]]; then
+			echo "  ssh_pub_key: none_designated" >> ansible_vars_main.yml
+		else
+			echo "  ssh_pub_key: ${gl_ssh_pub_key_file}" >> ansible_vars_main.yml
+		fi
 		#
 		# local system type, user is expected to be root. cloud systems are expected
 		# to be non-root. Note: user_parent_home_dir is set after set_user_name
@@ -2248,6 +2255,9 @@ create_ansible_options()
 			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir"
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
+			fi
+			if [[ "$gl_ssh_pub_key_file" != "" ]]; then
+				base_string="${base_string} -p $gl_ssh_pub_key_file"
 			fi
 			if [[ $gl_ansible_verbosity != "normal" ]]; then
 				base_string=${base_string}" -l $gl_ansible_verbosity"
@@ -3574,7 +3584,8 @@ usage()
 	echo "  --scenario_vars <file>: file that contains the variables for the scenario file. The default is config/zathras_scenario_vars_def."
 	echo "  --selinux_level: enforcing/permissive/disabled"
 	echo "  --selinux_state: disabled/enabled"
-	echo "  --ssh_key_file: Designates the ssh key file we are to use."
+	echo "  --ssh_key_file: Designates the ssh private key file we are to use."
+	echo "  --ssh_pub_key_file: Designates the ssh public key file we are to use."
 	echo "  --show_os_versions: given the cloud type, and OS vendor, show the available os versions"
 	echo "  --show_tests:  list the available test as defined in config/test_defs.yml"
 	echo "  --skip_test_version_check:  Skip the initial check of test wrapper versions and just use what we have"
@@ -3585,6 +3596,7 @@ usage()
 	echo "    Example:"
 	echo "      global:"
 	echo "        ssh_key_file: /home/test_user/permissions/aws_region_2_ssh_key"
+	echo "        ssh_pub_key_file: /home/test_user/permissions/aws_region_2_ssh_key.pub"
 	echo "        terminate_cloud: 1"
 	echo "        cloud_os_id: aminumber"
 	echo "        os_vendor: rhel"
@@ -3905,6 +3917,14 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--ssh_pub_key_file)
+			if [[ $gl_ssh_pub_key_file == "" ]]; then
+				echo "$1 $2" >> $gl_cli_supplied_options
+				gl_ssh_pub_key_file=$2
+				verify_data verify_ssh_key_file $gl_ssh_pub_key_file
+			fi
+			shift_by=2
+		;;
 		--system_type)
 			if [[ $gl_system_type == "" ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -4083,6 +4103,7 @@ grab_cli_data()
 		"run_file"
 		"scenario"
 		"ssh_key_file"
+		"ssh_pub_key_file"
 		"tuned_profiles"
 		"scenario_vars"
 		"selinux_level"

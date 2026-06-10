@@ -121,6 +121,7 @@ Zathras supports automated provisioning and testing on major cloud providers.
 # Example: azure_scenario
 global:
     ssh_key_file: /home/user/.ssh/azure-key
+    ssh_pub_key_file: /home/user/.ssh/azure-key.pub
     terminate_cloud: 1
     cloud_os_id: /subscriptions/xxx/resourceGroups/xxx/providers/Microsoft.Compute/images/rhel-9
     os_vendor: rhel

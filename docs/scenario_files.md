@@ -64,6 +64,7 @@ This scenario would run a test on public cloud using AWS with two hosts, "m5.xla
 
     global:
         ssh_key_file: /home/test_user/permissions/aws_region_2_ssh_key
+        ssh_pub_key_file: /home/test_user/permissions/aws_region_2_ssh_key.pub
         terminate_cloud: 1
         cloud_os_id: aminumber
         os_vendor: rhel
