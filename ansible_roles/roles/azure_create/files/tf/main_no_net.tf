@@ -4,6 +4,10 @@ terraform {
       source = "hashicorp/azurerm"
       version = "~>2.0"
     }
+    random = {
+      source = "hashicorp/random"
+      version = "~>3.0"
+    }
   }
 }
 provider "azurerm" {
@@ -11,8 +15,12 @@ provider "azurerm" {
   subscription_id = var.az_subscription
 }
 
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
 resource "azurerm_resource_group" "resource_group" {
-    name     = var.resource_group
+    name     = "${var.resource_group}-${random_id.suffix.hex}"
     location = var.location
     tags     = local.tags
 }
