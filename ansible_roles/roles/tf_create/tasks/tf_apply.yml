@@ -25,4 +25,4 @@
     regexp: '^(.*)rtc:(.*)$'
     line: "rtc: 0"
     backrefs: yes
-  when: create.rc == 0 and '"Error" not in create.stdout_lines' and '"Error" not in create.stdout'
+  when: create.rc == 0 and "Error" not in create.stdout_lines and "Error" not in create.stdout
