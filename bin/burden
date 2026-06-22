@@ -4535,7 +4535,7 @@ fi
 if [[ $gl_scenario_to_run != "" ]]; then
         run_scenario $gl_scenario_to_run
 	process_results
-        cleanup_and_exit "" 0
+        cleanup_and_exit "" $gl_ansible_failed
 fi
 
 #
