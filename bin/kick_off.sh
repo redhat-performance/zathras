@@ -21,6 +21,7 @@
 
 top_dir=`pwd`
 ans_pid="0"
+ans_rtc=0
 
 cleanup_and_exit()
 {
@@ -230,6 +231,7 @@ do
 		ansible-playbook -i ./inventory --extra-vars "working_dir=${curdir} ansible_python_interpreter=/usr/bin/python3 delete_tf=none" ten_of_us.yml &
 		ans_pid=$!
 		wait $ans_pid
+		ans_rtc=$?
 		ans_pid=0
 		#
 		if [ $spot_recover -eq 1 ] && [[ ! -f "test_returned" ]] && [[ ! -f "cpu_type_failure" ]]; then
@@ -310,4 +312,4 @@ rm -f *status
 # Remove  misc files
 #
 rm -rf terraform_data.yml test_info upload* ignore.yml tags_defaults ansible.cfg config ansible_install_group add_vars_tf add_main_vars.tf add_main_tf_vars ansible_test_group
-exit 0
+exit $ans_rtc
