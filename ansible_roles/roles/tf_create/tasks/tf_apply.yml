@@ -13,16 +13,24 @@
   debug:
     var: create
 
+- name: Determine if terraform succeeded
+  ansible.builtin.set_fact:
+    tf_success: '{{ create.rc == 0 and "Error" not in create.stdout_lines and "Error" not in create.stdout }}'
+
 #
 # update the return status, to be used by the calling module.  We could
 # use set facts here, but chose to use a file instead for debugging purposes.
 # We can not write directly out the rtc, because spot returns ok, even
 # when it failed. So we need to check.
 #
-- name: Save the tf operation return code, success
+- name: Save the tf operation return code
   lineinfile:
     path: "{{ working_dir }}/tf.rtc"
     regexp: '^(.*)rtc:(.*)$'
-    line: "rtc: 0"
+    line: "rtc: {{ '0' if tf_success else '1' }}"
     backrefs: yes
-  when: create.rc == 0 and "Error" not in create.stdout_lines and "Error" not in create.stdout
+
+- name: Fail if terraform failed
+  when: not tf_success
+  ansible.builtin.fail:
+    msg: "Terraform failure"
