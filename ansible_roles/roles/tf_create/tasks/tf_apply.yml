@@ -2,10 +2,12 @@
 
 - name: Create resources
   shell: |
+    set -o pipefail
     terraform workspace select {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}
     terraform apply plan.tfplan 2>&1 | tee {{ working_dir }}/tf/terraform_apply.out
   args:
     chdir: "{{ working_dir }}/tf"
+    executable: /bin/bash
   register: create
   ignore_errors: yes
 
@@ -15,7 +17,7 @@
 
 - name: Determine if terraform succeeded
   ansible.builtin.set_fact:
-    tf_success: '{{ create.rc == 0 and "Error" not in create.stdout_lines and "Error" not in create.stdout }}'
+    tf_success: '{{ create.rc == 0 }}'
 
 #
 # update the return status, to be used by the calling module.  We could
