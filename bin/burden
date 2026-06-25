@@ -236,6 +236,7 @@ gl_bootc_mode=0
 gl_cpu_type_request="none"
 gl_run_file=""
 gl_failed_test_rpt="failed_tests"
+gl_ansible_failed=0
 
 #
 # Make sure the lock directory exists
@@ -297,6 +298,9 @@ wait_for_procs()
 		out_string=`echo $pid | cut -d ':' -f 2-`
 		wait_for=`echo $pid | cut -d ':' -f 1`
 		wait $wait_for
+		if [ $? -ne 0 ]; then
+			gl_ansible_failed=1
+		fi
 		echo Finished $out_string
 	done
 }
@@ -2281,13 +2285,13 @@ create_ansible_options()
 				# Do not allow simultaneous runs to the same local host.
 				#
 				touch $gl_top_dir/lock_dir/${host_or_cloud_inst}
-				flock -x $gl_top_dir/lock_dir/${host_or_cloud_inst} kick_off.sh $base_string | tee ${run_dir}/ansible_log &
+				flock -x $gl_top_dir/lock_dir/${host_or_cloud_inst} kick_off.sh $base_string > >(tee ${run_dir}/ansible_log) &
 			else
 				#
 				# Cloud does not require exclusive locks on execution
 				# as we create a new cloud image.
 				#
-				kick_off.sh $base_string | tee ${run_dir}/ansible_log &
+				kick_off.sh $base_string > >(tee ${run_dir}/ansible_log) &
 			fi
 			rpid=$!
 			gl_run_pids[${gl_run_pindex}]="${rpid}:${test_info_str} on ${host_or_cloud_inst}"
@@ -4583,7 +4587,7 @@ fi
 if [[ $gl_scenario_to_run != "" ]]; then
         run_scenario $gl_scenario_to_run
 	process_results
-        cleanup_and_exit "" 0
+        cleanup_and_exit "" $gl_ansible_failed
 fi
 
 #
@@ -4672,4 +4676,4 @@ fi
 
 process_results
 popd > /dev/null
-cleanup_and_exit "" 0
+cleanup_and_exit "" $gl_ansible_failed
