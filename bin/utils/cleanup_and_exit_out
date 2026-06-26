@@ -185,4 +185,7 @@ if [[ $restore_file != "" ]]; then
 		mv $from $to
 	done
 fi
+#
+# Do not worry about unlocking anything, caller is responsible for that.
+#
 exit $rtc
