@@ -1,6 +1,6 @@
 gl_lock_exclusive()
 {
-	gl_lock=${1}
+	local gl_lock=${1}
 	local -n have_locked=$2
 	sleep_for=${3}
 
@@ -22,7 +22,7 @@ gl_lock_exclusive()
 
 gl_unlock_exclusive()
 {
-	gl_lock=${1}
+	local gl_lock=${1}
 	local -n have_locked=$2
 	if [[ $have_locked -eq 1 ]]; then
 		if [[ $gl_debug_lock -eq 1 ]]; then

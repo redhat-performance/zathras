@@ -322,7 +322,6 @@ wait_for_gl_procs()
 }
 wait_for_burden_procs()
 {
-	pids=("$@")
 	for pid in "${gl_burden_pids[@]}"; do
 		out_string=`echo $pid | cut -d ':' -f 2-`
 		wait_for=`echo $pid | cut -d ':' -f 1`
@@ -4471,6 +4470,7 @@ grab_vars_data
 
 if [[ $gl_total_sys_file == "" ]]; then
 	gl_total_sys_file=$(mktemp /tmp/zathras_sys_cnt.XXXXX)
+	echo 0 > $gl_total_sys_file
 	gl_total_sys_file_created=1
 fi
 echo "--gl_total_sys_file $gl_total_sys_file" >> $gl_cli_supplied_options
