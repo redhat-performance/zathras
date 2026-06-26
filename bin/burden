@@ -304,17 +304,21 @@ source $UTILS_DIR/gl_lock_ops
 
 wait_for_gl_procs()
 {
-	for pid in "${gl_run_pids[@]}"; do
-		out_string=`echo $pid | cut -d ':' -f 2-`
-		wait_for=`echo $pid | cut -d ':' -f 1`
-		wait $wait_for
-		echo Finished $out_string
-		gl_lock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap 120
-		gl_total_systems=$(cat $gl_total_sys_file)
-		let "gl_total_systems=${gl_total_systems}-1"
-		echo $gl_total_systems > $gl_total_sys_file
-		gl_unlock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap
-	done
+	if [[ $gl_run_pindex -ne 0 ]]; then 
+		for pid in "${gl_run_pids[@]}"; do
+			out_string=`echo $pid | cut -d ':' -f 2-`
+			wait_for=`echo $pid | cut -d ':' -f 1`
+			wait $wait_for
+			echo Finished $out_string
+			gl_lock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap 120
+			gl_total_systems=$(cat $gl_total_sys_file)
+			let "gl_total_systems=${gl_total_systems}-1"
+			echo $gl_total_systems > $gl_total_sys_file
+			gl_unlock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap
+		done
+	else
+		sleep 60
+	fi
 }
 wait_for_burden_procs()
 {
