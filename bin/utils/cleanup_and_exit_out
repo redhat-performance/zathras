@@ -185,5 +185,7 @@ if [[ $restore_file != "" ]]; then
 		mv $from $to
 	done
 fi
-source ${UTILS_DIR}/gl_unlock_exclusive
+#
+# Do not worry about unlocking anything, caller is responsible for that.
+#
 exit $rtc

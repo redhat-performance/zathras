@@ -209,6 +209,18 @@ gl_test_override_options=""
 gl_warning_string=""
 gl_max_systems=3
 gl_max_systems_set=0
+
+#
+# gl_total_sys_file: Is created on the first invocation of burden and is propagated via the
+#                    cli to all the children.  It is used to keep track of how many systems
+#                    we have running.  It will honor the cap on systems across all the children.
+#                    Using an exported variable will not work, because each subshell gets its
+#                    own private copy of the exported variable.
+# gl_total_sys_file_created: If set to 1 we will delete the gl_total_sys_file file at the
+#                            end of the run.
+#
+gl_total_sys_file=""
+gl_total_sys_file_created=0
 #
 # We want the version check on.  We do this, as no options to burden
 # should provide a usage.  The --test_version_check option is present
@@ -272,17 +284,19 @@ fi
 #
 # To do this:
 #  Locking exclusive: Attempt to make the directory $gl_lock.  If the mkdir
-#     fails, then sleep for 4 seconds, and repeat.  If mkdir passes, then set 
-#     $gl_have_locked to be 0, and break from the loop.
-# Unlocking exclusive: Simply remove the dir $gl_lock and set $gl_have_locked
+#     fails, then sleep for x seconds, and repeat.  If mkdir passes, then set 
+#     gl_have_locked* to be 1, and break from the loop.
+# Unlocking exclusive: Simply remove the dir $gl_lock and set gl_have_locked*
 #     to be 0.
 #
-# $gl_have_locked is to make sure we do not attempt to remove the lock if we do not
+# $gl_have_locked* is to make sure we do not attempt to remove the lock if we do not
 #     own it.  The cleanup_and_exit routine simply attempts to unlock it everytime,
 #     this prevents that from happening if we do not own the lock.
 #
-gl_lock=${gl_top_dir}/gl_lock
-gl_have_locked=0
+gl_lock_multi=${gl_top_dir}/gl_lock_multi
+gl_lock_sys_cap=${gl_top_dir}/gl_lock_sys_cap
+gl_have_locked_multi=0
+gl_have_locked_sys_cap=0
 gl_debug_lock=0
 
 declare -a gl_run_pids
@@ -291,10 +305,35 @@ declare -a gl_burden_pids
 gl_burden_index=0
 gl_tf_sys_list=`mktemp /tmp/zathras_cl_systems.XXXXX`
 
-wait_for_procs()
+source $UTILS_DIR/gl_lock_ops
+
+wait_for_gl_procs()
 {
-	pids=("$@")
-	for pid in "${pids[@]}"; do
+	if [[ $gl_run_pindex -ne 0 ]]; then 
+		for pid in "${gl_run_pids[@]}"; do
+			out_string=`echo $pid | cut -d ':' -f 2-`
+			wait_for=`echo $pid | cut -d ':' -f 1`
+			wait $wait_for
+			echo Finished $out_string
+			#
+			# Do not batch the decrement.  As soon as a process
+			# finishes, we want to allow another system to get going.
+			# Batching, we will have to wait for all of the processes
+			# to complete.
+			#
+			gl_lock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap 120
+			gl_total_systems=$(cat $gl_total_sys_file)
+			let "gl_total_systems=${gl_total_systems}-1"
+			echo $gl_total_systems > $gl_total_sys_file
+			gl_unlock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap
+		done
+	else
+		sleep 60
+	fi
+}
+wait_for_burden_procs()
+{
+	for pid in "${gl_burden_pids[@]}"; do
 		out_string=`echo $pid | cut -d ':' -f 2-`
 		wait_for=`echo $pid | cut -d ':' -f 1`
 		wait $wait_for
@@ -342,7 +381,7 @@ cleanup_and_exit()
 
 	if [[ $gl_run_pindex -ne 0 ]]; then
 		kill_off_procs "${gl_run_pids[@]}"
-		wait_for_procs "${gl_run_pids[@]}" 
+		wait_for_gl_procs
 		gl_run_pids=()
 		gl_run_pindex=0
 		gl_run_pids=""
@@ -379,11 +418,17 @@ cleanup_and_exit()
 		fi
 	fi
 	rm -f $gl_cli_supplied_options $gl_run_info ${gl_run_info}.sorted $gl_tf_sys_list
+	if [[ $gl_total_sys_file_created -eq 1 ]]; then
+		rm -f $gl_total_sys_file
+	fi
 	#
 	# In case we have a lock
 	#
-	if [[ $gl_have_locked -eq 1 ]]; then
-		source $UTILS_DIR/gl_unlock_exclusive
+	if [[ $gl_have_locked_multi -eq 1 ]]; then
+		gl_unlock_exclusive $gl_lock_multi gl_have_locked_multi
+	fi
+	if [[ $gl_have_locked_sys_cap -eq 1 ]]; then
+		gl_unlock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap
 	fi
 	source $UTILS_DIR/cleanup_and_exit_out --fail_report $gl_failed_test_rpt --msg_string "$1" --rtc $rtc --pid $BASHPID $scenario_restore $sysname --top_dir $gl_top_dir
 }
@@ -918,13 +963,13 @@ general_setup()
 	# Only build the tar files once.  Also make sure to only allow one process
 	# operating here.
 	#
-	source $UTILS_DIR/gl_lock_exclusive
+	gl_lock_exclusive $gl_lock_multi gl_have_locked_multi 4
 	if [[ ! -f "bin.tar" ]]; then
 		tar cf bin.tar bin
 		tar cf tools_bin.tar tools_bin
 		tar cf sysctl_settings.tar sysctl_settings
 	fi
-	source $UTILS_DIR/gl_unlock_exclusive
+	gl_unlock_exclusive $gl_lock_multi gl_have_locked_multi
 }
 
 #
@@ -1964,7 +2009,7 @@ create_ansible_options()
 		#
 		# Azure, we have a limit on resource group name, need the test_index.
 		#
-		source $UTILS_DIR/gl_lock_exclusive
+		gl_lock_exclusive $gl_lock_multi gl_have_locked_multi 4
 		if [[ $gl_system_type == "azure" ]]; then
 			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${host_or_cloud_inst}
 		else
@@ -1996,7 +2041,7 @@ create_ansible_options()
 		fi
 		echo ${gl_run_prefix}/${gl_os_vendor}/${gl_system_type} >> $gl_run_info
 		make_dir_report_errors $run_dir
-		source $UTILS_DIR/gl_unlock_exclusive
+		gl_unlock_exclusive $gl_lock_multi gl_have_locked_multi
 		dir_list=$dir_list$run_dir" "
 		cp ${gl_test_def_dir}/test_defs.yml $run_dir
 		cp ${gl_test_def_dir}/full_test_defs.yml $run_dir
@@ -2267,6 +2312,21 @@ create_ansible_options()
 			popd > /dev/null
 		fi
 		if [ $gl_preflight -eq 0 ]; then
+			while true; do
+				gl_lock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap 120
+				gl_total_systems=$(cat $gl_total_sys_file)
+				if [[ $gl_total_systems -lt $gl_max_systems ]]; then
+					let "gl_total_systems=${gl_total_systems}+1"
+					echo $gl_total_systems > $gl_total_sys_file
+					gl_unlock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap
+					break
+				fi
+				gl_unlock_exclusive $gl_lock_sys_cap gl_have_locked_sys_cap
+				wait_for_gl_procs
+				gl_run_pids=()
+				gl_run_pindex=0
+			done
+
 			base_string="-t $gl_top_dir -d $run_dir -f $gl_sys_file -a $gl_create_attempts -S $gl_spot_recover -c $gl_test_def_dir"
 			if [[ "$gl_ssh_key_file" != "" ]]; then
 				base_string="${base_string} -s $gl_ssh_key_file"
@@ -2296,11 +2356,6 @@ create_ansible_options()
 			rpid=$!
 			gl_run_pids[${gl_run_pindex}]="${rpid}:${test_info_str} on ${host_or_cloud_inst}"
 			let "gl_run_pindex=$gl_run_pindex+1"
-			if [[ $gl_run_pindex -eq $gl_max_systems ]]; then
-				wait_for_procs "${gl_run_pids[@]}" 
-				gl_run_pids=()
-				gl_run_pindex=0
-			fi
 		fi
 	done
 
@@ -2313,7 +2368,7 @@ create_ansible_options()
 	# Wait for everyone to finish up.
 	#
 	if [[ $gl_run_pindex != 0 ]]; then
-		wait_for_procs "${gl_run_pids[@]}"
+		wait_for_gl_procs
 		gl_run_pids=()
 		gl_run_pindex=0
 	fi
@@ -2551,7 +2606,7 @@ check_for_terraform()
 #
 package_check()
 {
-	source $UTILS_DIR/gl_lock_exclusive
+	gl_lock_exclusive $gl_lock_multi gl_have_locked_multi 4
 	if [[ ! -f utils_version ]]; then
 		check_for_pip3
 		check_for_ansible
@@ -2564,7 +2619,7 @@ package_check()
 		fi
 		check_for_terraform
 	fi
-	source $UTILS_DIR/gl_unlock_exclusive
+	gl_unlock_exclusive $gl_lock_multi gl_have_locked_multi
 }
 
 #
@@ -3142,7 +3197,7 @@ run_scenario()
 				# Wait for all outstanding tests to finish before we do more.
 				#
 				if [ $gl_burden_index != 0 ]; then
-					wait_for_procs  "${gl_burden_pids[@]}"
+					wait_for_burden_procs  "${gl_burden_pids[@]}"
 					gl_run_pids=()
 					gl_burden_index=0
 					gl_burden_pids=""
@@ -3204,7 +3259,7 @@ run_scenario()
 	# Wait for everyone to finish up.
 	#
 	if [[ $gl_burden_index -ne 0 ]]; then
-		wait_for_procs  "${gl_burden_pids[@]}"
+		wait_for_burden_procs
 		gl_run_pids=()
 		gl_burden_index=0
 		gl_burden_pids=""
@@ -3741,6 +3796,13 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		#
+		# Internal use only.
+		#
+		--gl_total_sys_file)
+			gl_total_sys_file=${2}
+			shift_by=2
+		;;
  		--host_config)
 			echo "$1 $2" >> $gl_cli_supplied_options
 			if [[ $gl_host_config == "" ]]; then
@@ -3922,8 +3984,8 @@ set_general_value()
 		;;
 		--skip_test_version_check)                
 			gl_test_version_check=0
-            shift_by=1
-        ;;
+			shift_by=1
+		;;
 		--ssh_key_file)
 			if [[ $gl_ssh_key_file == "" ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -4104,6 +4166,7 @@ grab_cli_data()
 		"create_attempts"
 		"dir_index"
 		"git_timeout"
+		"gl_total_sys_file"
 		"host_config"
 		"ibm_api_key"
 		"individ_vars"
@@ -4449,17 +4512,29 @@ first_invocation()
 		fi
 	fi
 
-	source $UTILS_DIR/gl_lock_exclusive
+	gl_lock_exclusive $gl_lock_multi gl_have_locked_multi 4
 	if [[ ! -f test_info ]] || [[ $gl_test_version_check -eq 1 ]] || [[ $gl_update_test_versions -eq 1 ]]; then
 		integrate_templates ${gl_test_def_dir}/test_defs.yml
 		cat $gl_test_def_dir/full_test_defs.yml | yq . > test_info
 	fi
-	source $UTILS_DIR/gl_unlock_exclusive
+	gl_unlock_exclusive $gl_lock_multi gl_have_locked_multi
 }
 
 cli_data="$@"
 grab_cli_data "$@"
 grab_vars_data
+
+#
+# First invocation of burden will take care of this, so there will only be one trying
+# to create this.  This value is inherited by all the children.
+#
+if [[ $gl_total_sys_file == "" ]]; then
+	gl_total_sys_file=$(mktemp /tmp/zathras_sys_cnt.XXXXX)
+	echo 0 > $gl_total_sys_file
+	gl_total_sys_file_created=1
+fi
+echo "--gl_total_sys_file $gl_total_sys_file" >> $gl_cli_supplied_options
+
 if [[ $gl_scenario_to_run != "" ]]; then
 	replace_scenario_vars
 fi

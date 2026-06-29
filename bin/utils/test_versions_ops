@@ -204,5 +204,8 @@ done
 test_version_ops
 
 if [ $update_test_versions -eq 1 ]; then
+	#
+	# Do not need to worry about any locking here, as this is a single operation.
+	#
 	source ${UTILS_DIR}/cleanup_and_exit_out --msg_string "Update of test versions completed" --rtc 0
 fi
