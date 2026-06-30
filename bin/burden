@@ -473,6 +473,11 @@ make_dir_report_errors()
 	fi
 }
 
+parse_vmtype()
+{
+	echo $1 | cut -d':' -f 1 | cut -d'[' -f1
+}
+
 #
 # Show the OS versions available for azure for a specific OS vendor.
 #
@@ -1499,7 +1504,8 @@ azure_specific_os_version()
 
 aws_specific_os_version()
 {
-	vmtype=`echo $1 | cut -d':' -f 1`
+	
+	vmtype=`parse_vmtype $1`
 	ami_found=0
 
 	#
@@ -1922,7 +1928,7 @@ create_ansible_options()
 		#
 		set_region_zone_defaults
 
-		ct_config=`echo ${create_host} | cut -d: -f1 | cut -d'[' -f 1`
+		ct_config=`parse_vmtype ${create_host}`
 		#
 		# Do we need to parse the config options, ie region, zone???
 		#
@@ -1948,8 +1954,6 @@ create_ansible_options()
 			elif [[ $gl_system_type == "gcp" ]]; then
 				#TODO: Default else doesn't work for gcp and shouldn't be set anyways
 				gl_cloud_region=${gl_cloud_region}
-			else
-				gl_cloud_region=${gl_cloud_region}${gl_cloud_region_zone}
 			fi
 		fi
 		#
@@ -2083,7 +2087,7 @@ create_ansible_options()
 		echo "  "local_run_dir: $running_dir >> ansible_vars_main.yml
 		verify_system_type $gl_system_type
 		echo "  "system_type: $gl_system_type >> ansible_vars_main.yml
-		system_name=`echo $create_host | cut -d':' -f1`
+		system_name=`parse_vmtype $create_host`
 		export_host_config_info=`echo "${system_name}" | sed "s/&/-/g"`
 		echo "  "host_config: $system_name >> ansible_vars_main.yml
 		echo "  "host_config_info: $export_host_config_info >> ansible_vars_main.yml
@@ -2784,7 +2788,7 @@ verify_host_config()
 	gl_disks_present=0
 
 	for entry in $verify_config; do
-		vm_instance=`echo $entry | cut -d':' -f 1`
+		vm_instance=`parse_vmtype $entry`
 		if [[ $gl_system_type == "aws" ]]; then
 			aws ec2 describe-instance-types --instance-types $vm_instance > /dev/null
 			if [[ $? -ne 0 ]]; then
@@ -4503,7 +4507,7 @@ first_invocation()
 		if [ $? -ne 0 ]; then
 			cleanup_and_exit "Break up of scenario file failed" 1
 		fi
-		fields=`grep "\[" ${gl_scenario_to_run}`
+		fields=`grep "\[" ${gl_scenario_to_run} | grep -v 'host_config:'`
 		if [[ $fields != "" ]]; then
 			cleanup_and_exit "Error: following fields in ${gl_scenario_to_run} has no entry in ${gl_config_vars_file}:\n${fields}" 1
 		fi
