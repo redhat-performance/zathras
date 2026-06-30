@@ -6,7 +6,7 @@ on:
 
 env:
   IMAGE_REGISTRY: quay.io
-  IMAGE_NAME: quay.io/zathras/zathras
+  IMAGE_NAME: zathras/zathras
 
 jobs:
   containerize:
@@ -24,12 +24,24 @@ jobs:
         
       - name: Setup Buildx
         uses: docker/setup-buildx-action@v3
+      
+      - name: Build tag list
+        run: |
+          IMAGE_BASE=${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE_TAGS=${IMAGE_BASE}:${{ github.sha }}
+
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            IMAGE_TAGS="${IMAGE_TAGS},${IMAGE_BASE}:latest"
+          fi
+          
+          echo "IMAGE_TAGS=$IMAGE_TAGS" >> $GITHUB_ENV
 
       - name: Build Container
         uses: docker/build-push-action@v6
         with:
           push: ${{ github.event_name == 'push' }}
-          tags: ${{ env.IMAGE_URL }}:latest
+          tags: ${{ env.IMAGE_TAGS }}
+          provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
