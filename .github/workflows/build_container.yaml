@@ -32,14 +32,26 @@ jobs:
 
           if [[ "${{ github.event_name }}" == "push" ]]; then
             IMAGE_TAGS="${IMAGE_TAGS},${IMAGE_BASE}:latest"
+          elif [[ "${{ github.event_name }}" == "release" ]]; then
+            LOCAL_MAJOR=$(echo "${{ github.ref_name }}" | cut -d'.' -f1)
+            LOCAL_MINOR=$(echo "${{ github.ref_name }}" | cut -d'.' -f2)
+            LOCAL_PATCH=$(echo "${{ github.ref_name }}" | cut -d'.' -f3)
+            
+            # Don't care about other majors
+            REMOTE_TAGS=$( (skopeo list-tags docker://$IMAGE_BASE | jq -r '.Tags[]' | grep -E "^$LOCAL_MAJOR\.") || echo "" && echo "${{ github.ref_name }}")
+            if [[ $(echo "$REMOTE_TAGS" | sort -V | tail -n1) == "${{ github.ref_name}}" ]]; then
+              IMAGE_TAGS="${IMAGE_TAGS},${IMAGE_BASE}:${LOCAL_MAJOR}"
+            fi
+
+            IMAGE_TAGS="${IMAGE_TAGS},${IMAGE_BASE}:${LOCAL_MAJOR}.${LOCAL_MINOR},${IMAGE_BASE}:${{ github.ref_name }}"
           fi
-          
+          echo "$IMAGE_TAGS"
           echo "IMAGE_TAGS=$IMAGE_TAGS" >> $GITHUB_ENV
 
       - name: Build Container
         uses: docker/build-push-action@v6
         with:
-          push: ${{ github.event_name == 'push' }}
+          push: ${{ github.event_name == 'push' || github.event_name == 'release' }}
           tags: ${{ env.IMAGE_TAGS }}
           provenance: false
           cache-from: type=gha
