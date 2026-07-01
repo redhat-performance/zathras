@@ -52,6 +52,10 @@ variable "ssh_pub_key_path" {
   default = ""
 }
 
+locals {
+  ssh_pub_key_path = var.ssh_pub_key_path != "" ? var.ssh_pub_key_path : "${var.ssh_key_path}.pub"
+}
+
 variable "vm_image" {
   type    = string
   default = "none"
