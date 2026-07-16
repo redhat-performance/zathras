@@ -514,8 +514,7 @@ azure_image_lookup()
 				az vm image show --urn $urn --output tsv 2>&1 > /dev/null
 				rtc=$?
 			else
-				resource_group=`echo $urn | cut -d'/' -f 5`
-				az resource list --resource-group $resource_group | grep -q $urn
+				az sig image-version show --ids $urn --output none 2>/dev/null
 				rtc=$?
 			fi
 			if [[ $rtc -ne 0 ]]; then
