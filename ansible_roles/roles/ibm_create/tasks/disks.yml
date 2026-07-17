@@ -1,0 +1,28 @@
+---
+- name: Grab number of disks
+  shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 1 | cut -d\"'\" -f 2"
+  register: disk_count_raw
+
+- name: Grab disk type
+  shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 2"
+  register: disk_type_raw
+
+- name: Grab disk size
+  shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 3"
+  register: disk_size_raw
+
+- name: Set disk variables
+  set_fact:
+    disk_count: "{{ disk_count_raw.stdout }}"
+    disk_type: "{{ disk_type_raw.stdout }}"
+    disk_size: "{{ disk_size_raw.stdout }}"
+
+- name: Copy disks.tf to work location
+  copy:
+    src: tf/disks.tf
+    dest: "{{ working_dir }}/tf/"
+
+- name: Update tfvars with disk settings
+  blockinfile:
+    dest: "{{ working_dir }}/tf/env.tfvars"
+    block: "{{ lookup('template', 'tfvars_disks.j2') }}"

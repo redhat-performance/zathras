@@ -74,6 +74,10 @@
     src: "{{ working_dir }}/tfvars.j2"
     dest: "{{ working_dir }}/tf/env.tfvars"
 
+- name: Handle disks
+  include_tasks: disks.yml
+  when: config_info.cloud_disks != "none" and "'0:na:na:0' not in config_info.cloud_disks"
+
 - name: grab create start time
   command: "date -u +%s"
   register: create_time_start

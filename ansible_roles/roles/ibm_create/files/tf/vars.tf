@@ -63,3 +63,21 @@ variable "resource_group_id" {
   type        = string
   default     = ""
 }
+
+variable "disk_count" {
+  description = "Number of data volumes per instance"
+  type        = number
+  default     = 0
+}
+
+variable "disk_size" {
+  description = "Size of each data volume in GB"
+  type        = number
+  default     = 100
+}
+
+variable "disk_profile" {
+  description = "IBM Cloud volume profile"
+  type        = string
+  default     = "general-purpose"
+}
