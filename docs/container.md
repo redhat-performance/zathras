@@ -7,9 +7,17 @@
 |------------|-----------|
 | Local Systems | :white_check_mark: |
 | AWS | :white_check_mark:|
-| Azure | :x: |
+| Azure | :construction: |
 | GCP | :x: |
-| IBM Cloud | :x: |
+| IBM Cloud | :construction: |
+
+:white_check_mark: - Full support, should be able to use the default entrypoint
+
+:construction: - Works but requires manual command invocations, requiring 
+changing the container entrypoint by using something like
+`--entrypoint /bin/bash`.
+
+:x: - No support, should work but needs package installation in order to function.
 
 ## Volumes
 
@@ -29,8 +37,20 @@ Local configs should be placed in a volume, but it cannot be mounted anywhere, i
 `-v $CONFIG_PATH:/zathras/local_configs`
 
 ## Enviornment Variables
-| Variable Name | Cloud Type | Purpose |
-|---------------|------------|---------|
-| `AWS_ACCESS_KEY_ID` | AWS | Credentials to create AWS systems |
-| `AWS_SECRET_ACCESS_KEY` | AWS | Credentials to create AWS systems |
-| `AWS_DEFAULT_REGION` | AWS | Region to create the AWS system(s) |
+### AWS
+| Variable Name | Purpose |
+|---------------|---------|
+| `AWS_ACCESS_KEY_ID` | Credentials to create AWS systems |
+| `AWS_SECRET_ACCESS_KEY` | Credentials to create AWS systems |
+| `AWS_DEFAULT_REGION` | Region to create the AWS system(s) |
+
+### Azure
+Requires `az login` to run.  Consult the [documentation](https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli?view=azure-cli-latest)
+on how to provide the needed information.
+
+### IBMCloud
+Requires `ibmcloud login` to function.  Consult the [documentation](https://cloud.ibm.com/docs/cli?topic=cli-ibmcloud_cli#ibmcloud_login)
+on how to provide the needed information.
+
+Once logged in, run `ibmcloud target -g <resource group name>` to set the resource group.
+
