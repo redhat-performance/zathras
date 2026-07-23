@@ -4,18 +4,20 @@ import json
 
 def _main(file):
 	data = json.load(file)
-
+	approved = False
 	for review in data['latestReviews']:
 		if review['state'] == "CHANGES_REQUESTED":
 			return "inprogress"
+		elif review['state'] == 'APPROVED':
+			approved = True
 	
 	if len(data['reviewRequests']) > 0:
 		return "review"
 
-	if len(data['latestReviews']) > 0:
+	if len(data['latestReviews']) > 0 and approved:
 		return "approved"
 	
-	return "inprogress" #No PR Requests and no reviews
+	return "inprogress" #No PR Requests and no reviews, or only comments
 
 if __name__ == "__main__":
 	import sys
