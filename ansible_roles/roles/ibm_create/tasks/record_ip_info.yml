@@ -75,3 +75,17 @@
     path: "{{ working_dir }}/ansible_run_vars.yml"
     regexp: "^ssh_i_option:"
     line: "ssh_i_option: -i {{ config_info.ssh_key }}"
+
+- name: Record uperf server IP for network tests
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^ct_uperf_server_ip:"
+    line: "ct_uperf_server_ip: {{ private_ip_list[0] }}"
+  when: private_ip_list is defined and private_ip_list | length > 1
+
+- name: Record uperf client list for network tests
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^ct_uperf_client_list:"
+    line: "ct_uperf_client_list: {{ private_ip_list[1] }}"
+  when: private_ip_list is defined and private_ip_list | length > 1
