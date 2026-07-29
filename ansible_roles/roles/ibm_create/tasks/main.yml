@@ -147,3 +147,12 @@
 
 - name: Add host to test and install groups
   include_tasks: add_host_to_groups.yml
+
+- name: Setup SSH key exchange for inter-VM communication (required for uperf)
+  include_role:
+    name: ssh_key_exchange
+  vars:
+    ip_list:
+      - "{{ public_ip_list[0] }}"
+      - "{{ public_ip_list[1] }}"
+  when: public_ip_list | length > 1
