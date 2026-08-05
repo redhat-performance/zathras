@@ -25,25 +25,8 @@
 
 - name: Get IBM Cloud SSH key name
   shell: |
-    # Try to find a key with "zathras" in the name first (most specific)
-    zathras_key=$(ibmcloud is keys --output json | jq -r '.[] | select(.name | contains("zathras")) | .name' | head -1)
-    if [ -n "$zathras_key" ]; then
-      echo "$zathras_key"
-      exit 0
-    fi
-    # Try to find a key matching the username pattern
-    user_key=$(ibmcloud is keys --output json | jq -r '.[] | select(.name | contains("'{{ config_info.user_running }}'")) | .name' | head -1)
-    if [ -n "$user_key" ]; then
-      echo "$user_key"
-      exit 0
-    fi
-    # Fall back to first available key
-    first_key=$(ibmcloud is keys --output json | jq -r '.[0].name')
-    if [ -n "$first_key" ] && [ "$first_key" != "null" ]; then
-      echo "$first_key"
-      exit 0
-    fi
-    exit 1
+    ssh_fingerprint=$(ssh-keygen -lf "{{ config_info.ssh_key }}" | awk '{ print $2 }')
+    ibmcloud is keys --output json | jq -er --arg fingerprint "$ssh_fingerprint" '.[] | select(.fingerprint == $fingerprint) | .name' || exit 1
   register: ibm_ssh_key_name
   failed_when: false
 
