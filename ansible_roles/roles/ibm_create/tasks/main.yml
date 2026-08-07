@@ -25,7 +25,7 @@
 
 - name: Get SSH Key fingerprint
   shell: |
-    ssh-keygen -lf "{{ config_info.ssh_key }}" | awk '{ print $2 }'
+    ssh-keygen -lf {{ config_info.ssh_key | quote }} | awk '{ print $2 }'
   register: ssh_key_fingerprint
   changed_when: false
 
