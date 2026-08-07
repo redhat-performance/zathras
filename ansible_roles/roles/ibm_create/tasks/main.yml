@@ -23,12 +23,26 @@
   register: resource_group_id
   ignore_errors: yes
 
-- name: Get IBM Cloud SSH key name
+- name: Get SSH Key fingerprint
   shell: |
-    ssh_fingerprint=$(ssh-keygen -lf "{{ config_info.ssh_key }}" | awk '{ print $2 }')
-    ibmcloud is keys --output json | jq -er --arg fingerprint "$ssh_fingerprint" '.[] | select(.fingerprint == $fingerprint) | .name' || exit 1
-  register: ibm_ssh_key_name
-  failed_when: false
+    ssh-keygen -lf "{{ config_info.ssh_key }}" | awk '{ print $2 }'
+  register: ssh_key_fingerprint
+  changed_when: false
+
+- name: Get IBMCloud SSH Keys
+  shell: |
+    ibmcloud is keys --output json
+  register: ibm_ssh_keys
+  changed_when: false
+
+- name: Find IBMCloud SSH Key name
+  ansible.builtin.set_fact:
+    ibm_ssh_key_name:
+      stdout: >-
+        {{
+          (ibm_ssh_keys.stdout | from_json | selectattr('fingerprint', 'equalto', ssh_key_fingerprint.stdout) | first).name | default('')
+        }}
+      rc: "{{ ibm_ssh_keys.rc + ssh_key_fingerprint.rc }}"
 
 - name: Fail if no SSH key found in IBM Cloud
   fail:
