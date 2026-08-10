@@ -23,29 +23,26 @@
   register: resource_group_id
   ignore_errors: yes
 
-- name: Get IBM Cloud SSH key name
+- name: Get SSH Key fingerprint
   shell: |
-    # Try to find a key with "zathras" in the name first (most specific)
-    zathras_key=$(ibmcloud is keys --output json | jq -r '.[] | select(.name | contains("zathras")) | .name' | head -1)
-    if [ -n "$zathras_key" ]; then
-      echo "$zathras_key"
-      exit 0
-    fi
-    # Try to find a key matching the username pattern
-    user_key=$(ibmcloud is keys --output json | jq -r '.[] | select(.name | contains("'{{ config_info.user_running }}'")) | .name' | head -1)
-    if [ -n "$user_key" ]; then
-      echo "$user_key"
-      exit 0
-    fi
-    # Fall back to first available key
-    first_key=$(ibmcloud is keys --output json | jq -r '.[0].name')
-    if [ -n "$first_key" ] && [ "$first_key" != "null" ]; then
-      echo "$first_key"
-      exit 0
-    fi
-    exit 1
-  register: ibm_ssh_key_name
-  failed_when: false
+    ssh-keygen -lf {{ config_info.ssh_key | quote }} | awk '{ print $2 }'
+  register: ssh_key_fingerprint
+  changed_when: false
+
+- name: Get IBMCloud SSH Keys
+  shell: |
+    ibmcloud is keys --output json
+  register: ibm_ssh_keys
+  changed_when: false
+
+- name: Find IBMCloud SSH Key name
+  ansible.builtin.set_fact:
+    ibm_ssh_key_name:
+      stdout: >-
+        {{
+          (ibm_ssh_keys.stdout | from_json | selectattr('fingerprint', 'equalto', ssh_key_fingerprint.stdout) | first).name | default('')
+        }}
+      rc: "{{ ibm_ssh_keys.rc + ssh_key_fingerprint.rc }}"
 
 - name: Fail if no SSH key found in IBM Cloud
   fail:
