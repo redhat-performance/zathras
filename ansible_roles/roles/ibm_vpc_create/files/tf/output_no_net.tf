@@ -13,7 +13,7 @@ output "instance_name0" {
 # Output for the public IP - using floating IP
 resource "ibm_is_floating_ip" "floating_ip" {
   count          = var.vm_count
-  name           = "${var.run_label}-fip-${format("%02d", count.index)}"
+  name           = "${local.name_prefix}-fip-${format("%02d", count.index)}"
   target         = ibm_is_instance.instance[count.index].primary_network_interface[0].id
   resource_group = data.ibm_resource_group.resource_group.id
 }
