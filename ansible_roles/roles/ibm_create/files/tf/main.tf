@@ -13,7 +13,7 @@ terraform {
 }
 
 resource "random_id" "suffix" {
-  byte_length = 2
+  byte_length = 4
 }
 
 # Configure the IBM Cloud Provider
@@ -36,8 +36,13 @@ resource "ibm_is_vpc" "zathras_vpc" {
 }
 
 locals {
-  vpc_id      = var.vpc_name != "" ? data.ibm_is_vpc.zathras_vpc[0].id : ibm_is_vpc.zathras_vpc[0].id
-  name_prefix = "${var.run_label}-${random_id.suffix.hex}"
+  vpc_id = var.vpc_name != "" ? data.ibm_is_vpc.zathras_vpc[0].id : ibm_is_vpc.zathras_vpc[0].id
+  # IBM Cloud caps names at 63 chars. Longest pattern here is
+  # "<run_label>-<suffix>-<machine_type>-private-subnet-<idx>": 9 (suffix) +
+  # 20 (worst-case machine_type) + 16 ("-private-subnet-") + 2 (idx) = 47
+  # reserved, leaving 15 chars for run_label.
+  run_label_safe = substr(var.run_label, 0, 15)
+  name_prefix    = "${local.run_label_safe}-${random_id.suffix.hex}"
 }
 
 # Create subnet

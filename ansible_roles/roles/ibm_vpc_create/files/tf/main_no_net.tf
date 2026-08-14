@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     ibm = {
-      source = "IBM-Cloud/ibm"
+      source  = "IBM-Cloud/ibm"
       version = "~> 1.49.0"
     }
     random = {
@@ -18,12 +18,17 @@ provider "ibm" {
 }
 
 resource "random_id" "suffix" {
-  byte_length = 2
+  byte_length = 4
 }
 
 locals {
-  tags        = var.vpc_tags
-  name_prefix = "${var.run_label}-${random_id.suffix.hex}"
+  tags = var.vpc_tags
+  # IBM Cloud caps names at 63 chars. Longest pattern here is
+  # "<run_label>-<suffix>-attachment-<idx>": 9 (suffix) + 14
+  # ("-attachment-<idx>") = 23 reserved, leaving 39 chars for run_label
+  # (kept consistent with main_net.tf's budget for this module).
+  run_label_safe = substr(var.run_label, 0, 39)
+  name_prefix    = "${local.run_label_safe}-${random_id.suffix.hex}"
 }
 
 # Define resource group
@@ -59,7 +64,7 @@ resource "ibm_is_security_group_rule" "security_group_rule_ssh" {
   group     = ibm_is_security_group.security_group.id
   direction = "inbound"
   remote    = "0.0.0.0/0"
-  
+
   tcp {
     port_min = 22
     port_max = 22
@@ -88,16 +93,16 @@ resource "ibm_is_instance" "instance" {
   image          = var.image_name
   keys           = [data.ibm_is_ssh_key.ssh_key.id]
   resource_group = data.ibm_resource_group.resource_group.id
-  
+
   primary_network_interface {
     name            = "eth0"
     subnet          = ibm_is_subnet.subnet.id
     security_groups = [ibm_is_security_group.security_group.id]
   }
-  
+
   # Placement group can be configured here if needed
   # PRIORITYSPOT - will be replaced by Ansible
   # EVICTIONPOLICY - will be replaced by Ansible
-  
+
   tags = local.tags
 }
