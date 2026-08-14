@@ -4,8 +4,16 @@ terraform {
       source  = "IBM-Cloud/ibm"
       version = "~> 1.70"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
   required_version = ">= 1.0"
+}
+
+resource "random_id" "suffix" {
+  byte_length = 4
 }
 
 # Configure the IBM Cloud Provider
@@ -22,22 +30,24 @@ data "ibm_is_vpc" "zathras_vpc" {
 # Get or create VPC
 resource "ibm_is_vpc" "zathras_vpc" {
   count          = var.vpc_name == "" ? 1 : 0
-  name           = "${var.run_label}-vpc-${formatdate("YYYYMMDDHHmmss", timestamp())}"
+  name           = "${local.name_prefix}-vpc"
   resource_group = var.resource_group_id
   tags           = [var.User, var.Project]
-
-  lifecycle {
-    ignore_changes = [name]
-  }
 }
 
 locals {
   vpc_id = var.vpc_name != "" ? data.ibm_is_vpc.zathras_vpc[0].id : ibm_is_vpc.zathras_vpc[0].id
+  # IBM Cloud caps names at 63 chars. Longest pattern here is
+  # "<run_label>-<suffix>-<machine_type>-private-subnet-<idx>": 9 (suffix) +
+  # 20 (worst-case machine_type) + 16 ("-private-subnet-") + 2 (idx) = 47
+  # reserved, leaving 15 chars for run_label.
+  run_label_safe = substr(var.run_label, 0, 15)
+  name_prefix    = "${local.run_label_safe}-${random_id.suffix.hex}"
 }
 
 # Create subnet
 resource "ibm_is_subnet" "zathras_subnet" {
-  name                     = "${var.run_label}-${var.machine_type}-subnet"
+  name                     = "${local.name_prefix}-${var.machine_type}-subnet"
   vpc                      = local.vpc_id
   zone                     = var.zone
   total_ipv4_address_count = 256
@@ -46,7 +56,7 @@ resource "ibm_is_subnet" "zathras_subnet" {
 
 # Create security group
 resource "ibm_is_security_group" "zathras_sg" {
-  name           = "${var.run_label}-${var.machine_type}-sg"
+  name           = "${local.name_prefix}-${var.machine_type}-sg"
   vpc            = local.vpc_id
   resource_group = var.resource_group_id
 }
@@ -73,7 +83,7 @@ data "ibm_is_ssh_key" "zathras_ssh_key" {
 # Create VSI (Virtual Server Instance)
 resource "ibm_is_instance" "test" {
   count          = var.vm_count
-  name           = "${var.run_label}-${var.machine_type}-${count.index}"
+  name           = "${local.name_prefix}-${var.machine_type}-${count.index}"
   vpc            = local.vpc_id
   zone           = var.zone
   profile        = var.machine_type
@@ -108,7 +118,7 @@ resource "ibm_is_instance" "test" {
 # Create floating IP for public access
 resource "ibm_is_floating_ip" "zathras_floating_ip" {
   count          = var.vm_count
-  name           = "${var.run_label}-${var.machine_type}-fip-${count.index}"
+  name           = "${local.name_prefix}-${var.machine_type}-fip-${count.index}"
   target         = ibm_is_instance.test[count.index].primary_network_interface[0].id
   resource_group = var.resource_group_id
   tags           = [var.User, var.Project]
@@ -117,7 +127,7 @@ resource "ibm_is_floating_ip" "zathras_floating_ip" {
 # Create private subnets for additional networks
 resource "ibm_is_subnet" "zathras_private_subnet" {
   count                    = var.network_count
-  name                     = "${var.run_label}-${var.machine_type}-private-subnet-${count.index}"
+  name                     = "${local.name_prefix}-${var.machine_type}-private-subnet-${count.index}"
   vpc                      = local.vpc_id
   zone                     = var.zone
   total_ipv4_address_count = 256

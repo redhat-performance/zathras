@@ -1,8 +1,12 @@
 terraform {
   required_providers {
     ibm = {
-      source = "IBM-Cloud/ibm"
+      source  = "IBM-Cloud/ibm"
       version = "~> 1.49.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
   required_version = ">= 1.0"
@@ -13,8 +17,17 @@ provider "ibm" {
   # API key authentication via environment variables (IC_API_KEY or IBMCLOUD_API_KEY)
 }
 
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
 locals {
   tags = var.vpc_tags
+  # IBM Cloud caps names at 63 chars. Longest pattern here is
+  # "<run_label>-<suffix>-nic-private-<idx>": 9 (suffix) + 15
+  # ("-nic-private-<idx>") = 24 reserved, leaving 39 chars for run_label.
+  run_label_safe = substr(var.run_label, 0, 39)
+  name_prefix    = "${local.run_label_safe}-${random_id.suffix.hex}"
 }
 
 # Define resource group
@@ -24,14 +37,14 @@ data "ibm_resource_group" "resource_group" {
 
 # Create virtual private cloud
 resource "ibm_is_vpc" "vpc" {
-  name           = "${var.run_label}-vpc"
+  name           = "${local.name_prefix}-vpc"
   resource_group = data.ibm_resource_group.resource_group.id
   tags           = local.tags
 }
 
 # Create public subnet
 resource "ibm_is_subnet" "subnet" {
-  name            = "${var.run_label}-subnet"
+  name            = "${local.name_prefix}-subnet"
   vpc             = ibm_is_vpc.vpc.id
   zone            = var.zone
   ipv4_cidr_block = "10.240.0.0/24"
@@ -40,7 +53,7 @@ resource "ibm_is_subnet" "subnet" {
 
 # Create private subnet
 resource "ibm_is_subnet" "private_subnet" {
-  name            = "${var.run_label}-private-subnet"
+  name            = "${local.name_prefix}-private-subnet"
   vpc             = ibm_is_vpc.vpc.id
   zone            = var.zone
   ipv4_cidr_block = "10.240.1.0/24"
@@ -49,7 +62,7 @@ resource "ibm_is_subnet" "private_subnet" {
 
 # Create security group
 resource "ibm_is_security_group" "security_group" {
-  name           = "${var.run_label}-sg"
+  name           = "${local.name_prefix}-sg"
   vpc            = ibm_is_vpc.vpc.id
   resource_group = data.ibm_resource_group.resource_group.id
 }
@@ -59,7 +72,7 @@ resource "ibm_is_security_group_rule" "security_group_rule_ssh" {
   group     = ibm_is_security_group.security_group.id
   direction = "inbound"
   remote    = "0.0.0.0/0"
-  
+
   tcp {
     port_min = 22
     port_max = 22
@@ -81,23 +94,23 @@ data "ibm_is_ssh_key" "ssh_key" {
 # Create instances
 resource "ibm_is_instance" "instance" {
   count          = var.vm_count
-  name           = "${var.run_label}-instance-${format("%02d", count.index)}"
+  name           = "${local.name_prefix}-instance-${format("%02d", count.index)}"
   vpc            = ibm_is_vpc.vpc.id
   zone           = var.zone
   profile        = var.machine_type
   image          = var.image_name
   keys           = [data.ibm_is_ssh_key.ssh_key.id]
   resource_group = data.ibm_resource_group.resource_group.id
-  
+
   primary_network_interface {
     name            = "eth0"
     subnet          = ibm_is_subnet.subnet.id
     security_groups = [ibm_is_security_group.security_group.id]
   }
-  
+
   # Placement group can be configured here if needed
   # PRIORITYSPOT - will be replaced by Ansible
   # EVICTIONPOLICY - will be replaced by Ansible
-  
+
   tags = local.tags
 }
