@@ -441,7 +441,7 @@ cleanup_and_exit_on_break()
 #
 # Signal catcher
 #
-trap cleanup_and_exit_on_break SIGINT
+trap cleanup_and_exit_on_break SIGINT SIGTERM
 
 #
 # Generate report of test status.

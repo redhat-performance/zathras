@@ -35,11 +35,17 @@ tf_terminate()
 	for tf_del in $dirs; do
 		if [[ -d $tf_del ]]; then
 			pushd $tf_del > /dev/null
-			terraform show | grep -q "No resources"
+			terraform show 2>/dev/null | grep -q "No resources"
 			if [[ $? -ne 0 ]]; then
 				terraform plan -var-file=env.tfvars -destroy -out=destroy.tfplan
 				if [ $? -eq 0 ]; then
 					terraform apply "destroy.tfplan"
+					if [ $? -eq 0 ]; then
+						cd ..
+						rm -rf tf
+					else
+						echo "Warning: Destroy failed for $tf_del, keeping tf directory to avoid orphaned resources"
+					fi
 				else
 					#
 					# We do not want to exit out on an error.  The instance could have been
@@ -48,12 +54,10 @@ tf_terminate()
 					#
 					echo "Warning: Unable to create the plan for $tf_del"
 				fi
+			else
+				cd ..
+				rm -rf tf
 			fi
-			#
-			# Get rid of the tf directory
-			#
-			cd ..
-			rm -rf tf
 			popd > /dev/null
 		fi
 	done

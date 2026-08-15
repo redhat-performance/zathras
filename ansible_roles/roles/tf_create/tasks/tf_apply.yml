@@ -32,6 +32,14 @@
     line: "rtc: {{ '0' if tf_success else '1' }}"
     backrefs: yes
 
+- name: Clean up partial resources on failure
+  when: not tf_success
+  include_role:
+    name: tf_delete
+  vars:
+    tf_dir: "tf"
+  ignore_errors: yes
+
 - name: Fail if terraform failed
   when: not tf_success
   ansible.builtin.fail:
