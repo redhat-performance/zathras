@@ -3309,8 +3309,10 @@ verify_test_configuration()
 	#
 	if [[ $gl_test_version_check -eq 1 ]] || [[ $gl_update_test_versions -eq 1 ]]; then
 		source $UTILS_DIR/test_versions_ops --update_test_versions $gl_update_test_versions --test_version_check $gl_test_version_check --config_dir config
+		if [[ $gl_update_test_versions -eq 1 ]]; then
+			cleanup_and_exit "Update of test versions completed." 0
+		fi
 	fi
-
 	#
 	# Verify any upload_extra files.  They are expected to be local on the system
 	#
