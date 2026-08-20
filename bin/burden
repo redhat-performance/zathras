@@ -3784,6 +3784,7 @@ set_general_value()
 			shift_by=2
 		;;
 		--force_upload)
+			echo "--force_upload" >> $gl_cli_supplied_options
 			gl_cloud_force_upload=1
 			shift_by=1
 		;;
