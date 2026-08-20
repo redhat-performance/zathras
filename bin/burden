@@ -3023,7 +3023,7 @@ run_scenario()
 	#
 	# Verify all tests that are present are valid tests.
 	#
-	verify__test_list=`grep \"tests\": $gl_parse_file | cut -d\" -f 4`
+	verify_test_list=`grep \"tests\": $gl_parse_file | cut -d\" -f 4`
 	for i in $verify_test_list;
 	do
 		verify_test $i
