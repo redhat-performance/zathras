@@ -4478,7 +4478,7 @@ first_invocation()
 			#
 			# Use the value provided
 			#
-			if [[ ${test_def_info} == *"https:"* ]] || [[ "${gl_scenario_to_run}" == *"git:"* ]]; then
+			if [[ ${test_def_info} == *"https:"* ]] || [[ "${test_def_info}" == *"git:"* ]]; then
 				git_area=`echo $test_def_info | cut -d':' -f 2- | sed "s/ //g"`
 				#
 				# Pulling from git
