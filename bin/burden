@@ -510,7 +510,7 @@ azure_image_lookup()
 		work_with=`echo $gl_cloud_os_version | sed "s/,/ /g"`
 		for urn in $work_with; do
 			if [[ $urn != *"subscription"* ]]; then
-				az vm image show --urn $urn --output tsv 2>&1 > /dev/null
+				az vm image show --urn $urn --output tsv > /dev/null 2>&1
 				rtc=$?
 			else
 				az sig image-version show --ids $urn --output none 2>/dev/null
