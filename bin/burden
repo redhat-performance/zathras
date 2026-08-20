@@ -1901,7 +1901,6 @@ PY
 create_ansible_options()
 {
 	dir_list=""
-	rpid=1
 
 	#
 	# Parse the test list and make sure they all exist
