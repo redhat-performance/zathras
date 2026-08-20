@@ -3723,7 +3723,7 @@ usage()
 	echo "  --os_vendor <os vendor>: currently rhel, ubuntu, amazon, suse"
 	echo "  --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running."
 	echo "      Default is to terminate"
-	echo "  --use_spot: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not"
+	echo "  --use_spot 0/1: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not"
 	echo "      to use spot_pricing"
 	cleanup_and_exit "" 1
 }
