@@ -1263,7 +1263,7 @@ reduce_options()
 		#
 		# indicate if we are using nvme storage.  AWS is always nvme.
 		#
-		if [[ $gl_system_type == "aws" || ($gl_system_type == "azure" && "$gl_host_config" =~ "^Standard_L[[:digit:]]*_v2*") ]]; then
+		if [[ $gl_system_type == "aws" || ($gl_system_type == "azure" && "$gl_host_config" =~ ^Standard_L[[:digit:]]*_v2* ]]; then
 			gl_host_uses_nvme=1
 		else
 			gl_host_uses_nvme=0
