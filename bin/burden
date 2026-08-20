@@ -459,7 +459,7 @@ process_results()
 			fi
 			popd  >& /dev/null
 		done < "${gl_run_info}.sorted"
-		rm ${gl_run_info}.sorted $gl_run_info 
+		rm -f ${gl_run_info}.sorted $gl_run_info 
 	fi
 }
 
@@ -785,7 +785,7 @@ list_tests_available()
 		fi
 	done < "test_info"
 	sort $out_file
-	rm $out_file
+	rm -f $out_file
 	cleanup_and_exit "" 0
 }
 
@@ -2308,7 +2308,7 @@ create_ansible_options()
 				if [[ $? -eq 0 ]]; then
 					sed "s/^${orig_package}:/${orig_package}_orig:/g" $i > temp
 					sed "s/^${gl_package_name}:/${orig_package}:/g" temp > $i
-					rm temp
+					rm -f temp
 				else
 					echo Warning: $i does not contain $gl_package_name
 					echo If it is present, then check config/entry_order to make
@@ -2440,7 +2440,7 @@ create_ansible_options()
 								echo "    Error: reported a failure" >> ../results_info
 							fi
 						fi
-						rm $tfile
+						rm -f $tfile
 					done
 					cd ..
 					rm -rf junk
@@ -2527,7 +2527,7 @@ check_for_yq()
 	echo "Running with yq version ${yq_version}, tested with 2.10.0"
 	max_vers=$(version_greater_equal "3.2.3" $yq_version)
 	if [[ $max_vers != "3.2.3" ]]; then
-		rm utils_version
+		rm -f utils_version
 		cleanup_and_exit "yq needs to be version 3.2.3 or earlier, running $yq_version." 1
 	fi
 	report_util_version yq_version "${yq_version}"
@@ -2961,7 +2961,7 @@ convert_scenario_file()
 
 	tmp_run_file=$(mktemp /tmp/zath_temp_run.XXXXXX)
 	./parse_reduce_$$ | sed "s/+++/\//g" > $tmp_run_file
-	rm ./parse_reduce_$$
+	rm -f ./parse_reduce_$$
 	parse_file_tmp=$(mktemp /tmp/parse_file_tmp.XXXXXX)
 	gl_parse_file=$(mktemp /tmp/parse_file.XXXXXX)
 	cat $tmp_run_file | yq .  > $parse_file_tmp
@@ -2987,7 +2987,7 @@ convert_scenario_file()
 	if [ $ps_cnt != $sc_cnt ]; then
 		cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
 	fi
-	rm $tmp_run_file $scenario_cnvt_file
+	rm -f $tmp_run_file $scenario_cnvt_file
 }
 
 #
@@ -3224,7 +3224,7 @@ run_scenario()
 				cat  $tmpfile >> ${run_burden_file}
 				echo "bpid=\$!" >> $run_burden_file
 				echo "wait \$bpid" >> $run_burden_file
-				rm $tmpfile
+				rm -f $tmpfile
 				chmod 755 ${run_burden_file}
 			 	./${run_burden_file} &
 	                        rpid=$!
@@ -3268,7 +3268,7 @@ run_scenario()
 	if [[ $gl_update_target != $value_not_set ]]; then
 		$UTILS_DIR/cleanup_install_lock $BASHPID
 	fi
-	rm $working_scenario
+	rm -f $working_scenario
 }
 
 #
@@ -3364,7 +3364,7 @@ verify_test_configuration()
 		fi
 		cleanup_and_exit "Error: Unknown test_run_from value: $fline" 1
 	done < "${verify_tmp_file}"
-	rm ${verify_tmp_file}
+	rm -f ${verify_tmp_file}
 	if [ $bail_out -eq 1 ]; then
 		cleanup_and_exit "Error: At least one get tag is not known." 1
 	fi
@@ -3434,7 +3434,7 @@ process_test_template_data()
 				fi
 			done < $default_template
 		fi
-		rm $tmpfile
+		rm -f $tmpfile
 	else
 		mv  $tmpfile $new_file
 	fi
@@ -4388,7 +4388,7 @@ handle_error_reruns()
 	# having to deal with spot but test failed vs spot failure.
 	# We have already removed the spot request in the scenario file.
 	#
-	rm */spot_failure
+	rm -f */spot_failure
 	pushd $gl_top_dir > /dev/null
 	./burden --scenario  $new_scen_file --retry_failed_tests 0
 	popd > /dev/null
@@ -4469,7 +4469,7 @@ first_invocation()
 		#
 		sed "s/####/\//g" $gl_scenario_to_run | sed "s/_____/\&/g" > $tfile
 		mv $tfile $gl_scenario_to_run
-		rm $cfile
+		rm -f $cfile
 	fi
 
 	if [[ $gl_scenario_to_run != "" ]]; then
