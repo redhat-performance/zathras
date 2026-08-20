@@ -170,7 +170,6 @@ gl_top_dir=`pwd`
 # initialize arguments
 #
 gl_cloud_force_upload=0
-gl_cloud_force_upload_set=0
 gl_cloud_os_version=""
 gl_cloud_terminate_instance=1
 gl_cloud_terminate_instance_set=0
@@ -403,10 +402,10 @@ cleanup_and_exit()
 		while IFS= read -r run_data
 		do
 			#
-			# Only if we have a running state for the vm
+			# Only if we have a running state for the vm.  Note tf directory is part of ${run_data}
 			#
 			if [[ -d ${run_data}/terraform.tfstate.d ]]; then
-				grep -q "\"instance_state\": \"running\""  ${run_data}/tf//terraform.tfstate.d/*/terraform.tfstate 2> /dev/null
+				grep -q "\"instance_state\": \"running\""  ${run_data}//terraform.tfstate.d/*/terraform.tfstate 2> /dev/null
 				if [[ $? -eq 0 ]]; then
 					delete_tfs="${delete_tfs}${separ}${run_data}"
 					separ=","
@@ -460,7 +459,7 @@ process_results()
 			fi
 			popd  >& /dev/null
 		done < "${gl_run_info}.sorted"
-		rm ${gl_run_info}.sorted $gl_run_info 
+		rm -f ${gl_run_info}.sorted $gl_run_info 
 	fi
 }
 
@@ -469,7 +468,7 @@ make_dir_report_errors()
 {
 	mkdir -p $1 2> /dev/null
 	if [ $? -ne 0 ]; then
-		cleanup_and_exit "Error Unable to make the directory $1"
+		cleanup_and_exit "Error Unable to make the directory $1" 1
 	fi
 }
 
@@ -511,7 +510,7 @@ azure_image_lookup()
 		work_with=`echo $gl_cloud_os_version | sed "s/,/ /g"`
 		for urn in $work_with; do
 			if [[ $urn != *"subscription"* ]]; then
-				az vm image show --urn $urn --output tsv 2>&1 > /dev/null
+				az vm image show --urn $urn --output tsv > /dev/null 2>&1
 				rtc=$?
 			else
 				az sig image-version show --ids $urn --output none 2>/dev/null
@@ -786,7 +785,7 @@ list_tests_available()
 		fi
 	done < "test_info"
 	sort $out_file
-	rm $out_file
+	rm -f $out_file
 	cleanup_and_exit "" 0
 }
 
@@ -924,7 +923,7 @@ make_list_of_rpms_to_upload()
 	rpm_uploads=`echo $gl_upload_rpms | sed "s/,/ /g"`
 	for rpm in $rpm_uploads; do
 		if [[ ! -f ${rpm} ]] && [[ ${rpm} != "none" ]];  then
-			cleanup_and_exit "${file_to_upload}: Can not find" 1
+			cleanup_and_exit "${rpm}: Can not find" 1
 		fi
 		echo "  - ${rpm}" >> upload_rpms.yml
 	done
@@ -1050,23 +1049,26 @@ set_region_zone_defaults()
 		fi
 		obtain_zone
 	elif [[ $gl_system_type == "azure" ]]; then
-		gl_cloud_region=`az configure --list-defaults -o tsv | grep location | awk '{print $3}'`
+		woker=$(az configure --list-defaults -o tsv)
 		if [ $? -eq 1 ]; then
 			cleanup_and_exit "Unable to retrieve the azure region" 1
 		fi
+		gl_cloud_region=$(echo $worker | grep location | awk '{print $3}')
 		obtain_zone
 	elif [[ $gl_system_type == "gcp" ]]; then
-		gl_cloud_region=`gcloud config list compute/region --quiet  | grep region | awk '{ print $3 }'`
+		worker=$(gcloud config list compute/region --quiet)
 		if [ $? -eq 1 ]; then
 			cleanup_and_exit "Unable to retrieve the gcp region" 1
 		fi
+		gl_cloud_region=$(echo $worker | grep region | awk '{ print $3 }')
 		gl_cloud_region_zone=`gcloud config list compute/zone --quiet | grep zone | awk '{ print $3 }'`
 	elif [[ $gl_system_type == "ibm" ]]; then
-		gl_cloud_region=`ibmcloud target --output json | jq -r '.region.name' 2>/dev/null`
+		worker=$(ibmcloud target --output json)
 		if [ $? -eq 1 ] || [ -z "$gl_cloud_region" ]; then
 			echo "Warning: Unable to retrieve IBM Cloud region, using default us-south"
 			gl_cloud_region="us-south"
 		fi
+		gl_cloud_region=$(echo $worker | jq -r '.region.name' 2>/dev/null)
 		obtain_zone
 	fi
 }
@@ -1116,8 +1118,11 @@ check_for_dup_config_entries()
 		cleanup_and_exit "Error: Field  ${1} is present, but has no entries, ${gl_top_dir}/local_configs/${gl_host_config_info}.config" 1
 	fi
 
-	numb_entries=`uniq -c $entries_check | awk '{print $1}'`
-	if [[ $numb_entries -gt 1 ]]; then
+	numb_uniq_entries=$(sort  -u $entries_check | wc -l)
+	#
+	# Just the number of lines, do not want the file name
+	numb_entries=$(wc -l $entries_check | wk '{print $1}' )
+	if [[ $numb_entries -ne $numb_uniq_entries ]]; then
 		rm -f $entries_check
 		cleanup_and_exit "Error: Duplicate ${1} entries in ${gl_top_dir}/local_configs/${gl_host_config_info}.config" 1
 	fi
@@ -1264,7 +1269,7 @@ reduce_options()
 		#
 		# indicate if we are using nvme storage.  AWS is always nvme.
 		#
-		if [[ $gl_system_type == "aws" || ($gl_system_type == "azure" && "$gl_host_config" =~ "^Standard_L[[:digit:]]*_v2*") ]]; then
+		if [[ $gl_system_type == "aws" || ($gl_system_type == "azure" && "$gl_host_config" =~ ^Standard_L[[:digit:]]+s_v2$) ]]; then
 			gl_host_uses_nvme=1
 		else
 			gl_host_uses_nvme=0
@@ -1281,13 +1286,13 @@ reduce_options()
 	# Set network information.
 	#
 	if [[ $option_string == *"Network"* ]]; then
-		obtain_network_info $entry
+		obtain_network_info $option_string
 		found=1
 	fi
 
-	if [[ $entry == *"CPU_type"* ]]; then
-		gl_cpu_type_request=`echo $entry | cut -d'=' -f 2`
-		fields=`echo "$entry" | sed "s/&/ /g"`
+	if [[ $option_string == *"CPU_type"* ]]; then
+		gl_cpu_type_request=`echo $option_string | cut -d'=' -f 2`
+		fields=`echo "$option_string" | sed "s/&/ /g"`
 		for i in $fields; do
 			if  [[ $i == *"CPU_type"* ]]; then
 				gl_cpu_type_request=`echo $i | cut -d'=' -f 2`
@@ -1297,9 +1302,9 @@ reduce_options()
 		found=1
 	fi
 
-	if [[ $entry == *"Cloud_Placement"* ]]; then
-		gl_cloud_placement=`echo $entry | cut -d'=' -f 2`
-		fields=`echo "$entry" | sed "s/&/ /g"`
+	if [[ $option_string == *"Cloud_Placement"* ]]; then
+		gl_cloud_placement=`echo $option_string | cut -d'=' -f 2`
+		fields=`echo "$option_string" | sed "s/&/ /g"`
 		for i in $fields; do
 			if  [[ $i == *"Cloud_Placement"* ]]; then
 				gl_cloud_placement=`echo $i | cut -d'=' -f 2`
@@ -1316,7 +1321,7 @@ reduce_options()
 		gl_spot_increment=`echo $data | cut -d':' -f 3`
 		gl_spot_cap=`echo $data | cut -d':' -f 4`
 		if [[ $gl_spot_cap != "0" ]]; then
-			if [[ $gl_spot_increment == "0" ]]; then
+			if [[ $gl_spot_increment -= "0" ]]; then
 				cleanup_and_exit "Error: must designate a spot_increment when spot cap is designated." 1
 			fi
 		fi
@@ -1587,10 +1592,11 @@ retrieve_spot_from_config()
 			#
 			# For AWS obtain the possible starting price.
 			#
-			worker=`aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types $host_or_cloud_inst | tail -1 | awk '{ print $2 }'`
+			worker=$(aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types $host_or_cloud_inst)
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
 			fi
+			gl_spot_price=$(echo $worker | tail -1 | awk '{ print $2 }')
 			gl_spot_price=$worker
 			gl_spot_cap=$gl_base_cost
 			#
@@ -1901,7 +1907,6 @@ PY
 create_ansible_options()
 {
 	dir_list=""
-	rpid=1
 
 	#
 	# Parse the test list and make sure they all exist
@@ -2305,7 +2310,7 @@ create_ansible_options()
 				if [[ $? -eq 0 ]]; then
 					sed "s/^${orig_package}:/${orig_package}_orig:/g" $i > temp
 					sed "s/^${gl_package_name}:/${orig_package}:/g" temp > $i
-					rm temp
+					rm -f temp
 				else
 					echo Warning: $i does not contain $gl_package_name
 					echo If it is present, then check config/entry_order to make
@@ -2391,7 +2396,6 @@ create_ansible_options()
 		else
 			pushd $direct > /dev/null
 		fi
-		worker=`echo $gl_test_list_out | cut -d' ' -f2- | sed "s/,/ /g"`
 		if [ -d "tests_to_run" ]; then
 			echo "========================================" > results_info
 			if [[ $gl_system_type != "local" ]]; then
@@ -2431,13 +2435,13 @@ create_ansible_options()
 						tfile=`ls *tar`
 						results_report=`tar xvf ${tfile} | grep test_results_report`
 						if [[ $results_report != "" ]]; then
-							grep -q Failed $results_report
+							echo "$results_report" | grep -q Failed
 							if [ $? -ne 1 ]; then
 								flock -x $gl_top_dir/failed_runs echo "${timestamp} Error: System: ${test_sys}, Test, $i, reported failure" >> $gl_top_dir/failed_runs
 								echo "    Error: reported a failure" >> ../results_info
 							fi
 						fi
-						rm $tfile
+						rm -f $tfile
 					done
 					cd ..
 					rm -rf junk
@@ -2484,7 +2488,7 @@ update_the_image()
 		fi
 		tools_bin/update_system --update_target $target_image --requestor $BASHPID --update_type $image_type
 		if [ $? -ne 0 ]; then
-			cleanup_and_exit "Update of image has failed."
+			cleanup_and_exit "Update of image has failed." 1
 		fi
 	fi
 
@@ -2524,7 +2528,7 @@ check_for_yq()
 	echo "Running with yq version ${yq_version}, tested with 2.10.0"
 	max_vers=$(version_greater_equal "3.2.3" $yq_version)
 	if [[ $max_vers != "3.2.3" ]]; then
-		rm utils_version
+		rm -f utils_version
 		cleanup_and_exit "yq needs to be version 3.2.3 or earlier, running $yq_version." 1
 	fi
 	report_util_version yq_version "${yq_version}"
@@ -2534,7 +2538,7 @@ check_for_jq()
 {
 	which jq 2> /dev/null
 	if [[ $? -eq 1 ]]; then
-		cleanup_and_exit "jq needs to be installed, to use the --test_def, please install.\nyum install jq\n"
+		cleanup_and_exit "jq needs to be installed, to use the --test_def, please install.\nyum install jq\n" 1
 	fi 
 	jq_version=`jq --version`
 	report_util_version jq_version "${jq_version}"
@@ -2596,10 +2600,11 @@ check_for_pip3()
 check_for_terraform()
 {
 
-	terraform_version=`terraform --version | head -1`
+	worker=$(terraform --version)
 	if [[ $? -eq 1 ]]; then
 		cleanup_and_exit "terraform command needs to be installed.\n" 1
 	fi
+	terraform_version=$(echo $worker | head -1)
 	report_util_version terraform_version "${terraform_version}"
 }
 
@@ -2697,14 +2702,6 @@ verify_system_type()
 	if [[ $sys_type_found -eq 0 ]]; then
 		cleanup_and_exit "Error: $1, is an unrecognized system type.  Valid system types are designated via --system_type.  Valid system types are $gl_valid_system_types" 1
 	fi
-}
-
-#
-# Verify that the force_upload variable is a boolean value.
-#
-verify_force_upload_value()
-{
-	bool_error $1 force_upload
 }
 
 #
@@ -2808,10 +2805,11 @@ verify_host_config()
 			fi
 		fi
 		if [[ $entry == *"Disks"* ]] && [[ $gl_disks_present == "0" ]]; then
-			gl_disks_present=`bin/parse_disk_line \"$entry\" | cut -d':' -f4`
+			gl_disks_present=$(bin/parse_disk_line \"$entry\")
 			if [[ $? -ne 0 ]]; then
-				cleanup_and_exit "Error: Invalid disk line. ${string}" 1
+				cleanup_and_exit "Error: Invalid disk line. ${entry}" 1
 			fi
+			gl_disks_present=$(echo $gl_disks_present | cut -d':' -f4)
 			if [[ $gl_disks_present == "0" ]]; then
 				if [[ $entry == *"type=internal"* ]]; then
 					gl_internal_disks=1
@@ -2930,7 +2928,7 @@ replace_scenario_vars()
 		done
 		grep -v  "^%" $scenario_wrk_file1 > ${gl_scenario_to_run}_cnvt
 		gl_scenario_to_run=${gl_scenario_to_run}_cnvt
-		rm -rf  scenario_wrk_file2 scenario_wrk_file1
+		rm -rf  $scenario_wrk_file2 $scenario_wrk_file1
 	fi
 }
 
@@ -2964,7 +2962,7 @@ convert_scenario_file()
 
 	tmp_run_file=$(mktemp /tmp/zath_temp_run.XXXXXX)
 	./parse_reduce_$$ | sed "s/+++/\//g" > $tmp_run_file
-	rm ./parse_reduce_$$
+	rm -f ./parse_reduce_$$
 	parse_file_tmp=$(mktemp /tmp/parse_file_tmp.XXXXXX)
 	gl_parse_file=$(mktemp /tmp/parse_file.XXXXXX)
 	cat $tmp_run_file | yq .  > $parse_file_tmp
@@ -2990,7 +2988,7 @@ convert_scenario_file()
 	if [ $ps_cnt != $sc_cnt ]; then
 		cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
 	fi
-	rm $tmp_run_file $scenario_cnvt_file
+	rm -f $tmp_run_file $scenario_cnvt_file
 }
 
 #
@@ -3032,7 +3030,7 @@ run_scenario()
 	#
 	# Verify all tests that are present are valid tests.
 	#
-	verify_gl_test_list=`grep \"tests\": $gl_parse_file | cut -d\" -f 4`
+	verify_test_list=`grep \"tests\": $gl_parse_file | cut -d\" -f 4`
 	for i in $verify_test_list;
 	do
 		verify_test $i
@@ -3227,7 +3225,7 @@ run_scenario()
 				cat  $tmpfile >> ${run_burden_file}
 				echo "bpid=\$!" >> $run_burden_file
 				echo "wait \$bpid" >> $run_burden_file
-				rm $tmpfile
+				rm -f $tmpfile
 				chmod 755 ${run_burden_file}
 			 	./${run_burden_file} &
 	                        rpid=$!
@@ -3271,7 +3269,7 @@ run_scenario()
 	if [[ $gl_update_target != $value_not_set ]]; then
 		$UTILS_DIR/cleanup_install_lock $BASHPID
 	fi
-	rm $working_scenario
+	rm -f $working_scenario
 }
 
 #
@@ -3337,7 +3335,7 @@ verify_test_configuration()
 					grep -q $test_name $gl_scenario_to_run
 					rtc=$?
 				else
-					 echo $gl_test_list_out | grep -q
+					 echo $gl_test_list_out | grep -q $test_name
 					 rtc=$?
 				fi
 				#
@@ -3367,7 +3365,7 @@ verify_test_configuration()
 		fi
 		cleanup_and_exit "Error: Unknown test_run_from value: $fline" 1
 	done < "${verify_tmp_file}"
-	rm ${verify_tmp_file}
+	rm -f ${verify_tmp_file}
 	if [ $bail_out -eq 1 ]; then
 		cleanup_and_exit "Error: At least one get tag is not known." 1
 	fi
@@ -3395,10 +3393,11 @@ process_test_template_data()
 	new_file=$(mktemp /tmp/zath_temp_template.XXXXXX)
 
 	if [[ $expansion_required -eq 1 ]]; then
-		temp=`grep "test_template:" $tmpfile | cut -d: -f 2 | sed "s/ //g"`
+		temp=$(grep "test_template:" $tmpfile)
 		if [[ $? -ne 0 ]]; then
 			file_template=""
 		else
+			temp=$(echo $temp | cut -d: -f 2 | sed "s/ //g")
 			file_template=$4/$temp
 		fi
 		#
@@ -3436,7 +3435,7 @@ process_test_template_data()
 				fi
 			done < $default_template
 		fi
-		rm $tmpfile
+		rm -f $tmpfile
 	else
 		mv  $tmpfile $new_file
 	fi
@@ -3707,7 +3706,7 @@ usage()
 	echo "  --tuned_profiles <comma separated list of tuned profiles>, only for RHEL.  Designates the tuned"
 	echo "    profiles to use.  if the system type is a cloud environment, then each tuned profile is a"
 	echo "    distinct cloud instance."
-	echo "  --tuned_reboot: reboot when a new tuned is set.  Default is not to reboot"
+	echo "  --tuned_reboot 0/1: reboot when a new tuned is set.  Default is not to reboot"
 	echo "  --upload_rpms <rpm 1>,<rpm 2>....: Comma separated list of rpms (full path) to upload and install"
 	echo "  --update_target: Image to update"
 	echo "    Note:  only 1 update image can be used, makes no difference"
@@ -3725,7 +3724,7 @@ usage()
 	echo "  --os_vendor <os vendor>: currently rhel, ubuntu, amazon, suse"
 	echo "  --terminate_cloud: If 1, terminate the cloud instance, if 0 leave the cloud image running."
 	echo "      Default is to terminate"
-	echo "  --use_spot: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not"
+	echo "  --use_spot 0/1: uses spot pricing based on the contents of config/spot_price.cfg.  Default is not"
 	echo "      to use spot_pricing"
 	cleanup_and_exit "" 1
 }
@@ -3787,11 +3786,8 @@ set_general_value()
 			shift_by=2
 		;;
 		--force_upload)
-			if [[ $gl_cloud_force_upload_set -eq 0 ]]; then
-				verify_data verify_force_upload_value $2
-				gl_cloud_force_upload_set=1
-				gl_cloud_force_upload=1
-			fi
+			echo "--force_upload" >> $gl_cli_supplied_options
+			gl_cloud_force_upload=1
 			shift_by=1
 		;;
 		--git_timeout)
@@ -3911,7 +3907,7 @@ set_general_value()
 				echo "$1" >> $gl_cli_supplied_options
 				gl_persistent_log=1
 			fi
-			shift_by=2
+			shift_by=1
 		;;
 		--preflight_check)
 			gl_preflight=1
@@ -4327,7 +4323,7 @@ add_missing_test()
 {
 	system=$1
 	test=$2
-	new_scenario=$4
+	new_scen_file=$4
 	scenario_file=$3
 	start_of_test_found=0
 	test_section_start=0
@@ -4394,7 +4390,7 @@ handle_error_reruns()
 	# having to deal with spot but test failed vs spot failure.
 	# We have already removed the spot request in the scenario file.
 	#
-	rm */spot_failure
+	rm -f */spot_failure
 	pushd $gl_top_dir > /dev/null
 	./burden --scenario  $new_scen_file --retry_failed_tests 0
 	popd > /dev/null
@@ -4475,7 +4471,7 @@ first_invocation()
 		#
 		sed "s/####/\//g" $gl_scenario_to_run | sed "s/_____/\&/g" > $tfile
 		mv $tfile $gl_scenario_to_run
-		rm $cfile
+		rm -f $cfile
 	fi
 
 	if [[ $gl_scenario_to_run != "" ]]; then
@@ -4484,7 +4480,7 @@ first_invocation()
 			#
 			# Use the value provided
 			#
-			if [[ ${test_def_info} == *"https:"* ]] || [[ "${gl_scenario_to_run}" == *"git:"* ]]; then
+			if [[ ${test_def_info} == *"https:"* ]] || [[ "${test_def_info}" == *"git:"* ]]; then
 				git_area=`echo $test_def_info | cut -d':' -f 2- | sed "s/ //g"`
 				#
 				# Pulling from git
