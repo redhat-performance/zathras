@@ -2342,8 +2342,6 @@ create_ansible_options()
 			echo $cli "${arguments[@]}" | sed "s/bin/./g" > ${run_dir}/exec_command
 			test_info_str=`grep test_to_run: $run_dir/ansible_vars_main.yml | sed "s/\[//g" | sed "s/\]//g" | cut -d: -f 2 | sed "s/ //g"`
 			echo "Starting ${test_info_str} on ${host_or_cloud_inst}"
-			# DJV
-			exit 0
 			if [[ $gl_system_type == "local" ]]; then
 				#
 				# Do not allow simultaneous runs to the same local host.
@@ -2923,67 +2921,67 @@ replace_scenario_vars()
 		done
 		grep -v  "^%" $scenario_wrk_file1 > ${gl_scenario_to_run}_cnvt
 		gl_scenario_to_run=${gl_scenario_to_run}_cnvt
-		rm -rf  scenario_wrk_file2 scenario_wrk_file1
-	fi
-}
+			rm -rf  $scenario_wrk_file2 $scenario_wrk_file1
+		fi
+	}
 
-# Convert the scenario file to yml format.  Any line that starts with a '#' is a comment.
-# Any line that starts with a '%' is a replacement in the format of
-# % <string replacing>=<new string>
-#
-convert_scenario_file()
-{
+	# Convert the scenario file to yml format.  Any line that starts with a '#' is a comment.
+	# Any line that starts with a '%' is a replacement in the format of
+	# % <string replacing>=<new string>
 	#
-	# First build the sed list
-	# We replace all / in the strings with +++ to process,
-	# when done we convert them back to /.  This is done because
-	# sed does not handle / in the strings very well, and to
-	# escape it, things get messy fast.
-	#
+	convert_scenario_file()
+	{
+		#
+		# First build the sed list
+		# We replace all / in the strings with +++ to process,
+		# when done we convert them back to /.  This is done because
+		# sed does not handle / in the strings very well, and to
+		# escape it, things get messy fast.
+		#
 
-	scenario_cnvt_file=$(mktemp /tmp/zath_convert.XXXXXX)
-	sed "s/;/----/g" $1 > $scenario_cnvt_file
-	sed_string="cat $scenario_cnvt_file"
-	list=`grep ^% $scenario_cnvt_file | sed "s/% //g"`
-	#
-	# Filter out comments and the assignments
-	#
-	sed_string="${sed_string} | grep -v ^#"
-	#
-	# Now create the parse file to use.
-	#
-	echo "${sed_string}" > parse_reduce_$$
-	chmod 755 parse_reduce_$$
+		scenario_cnvt_file=$(mktemp /tmp/zath_convert.XXXXXX)
+		sed "s/;/----/g" $1 > $scenario_cnvt_file
+		sed_string="cat $scenario_cnvt_file"
+		list=`grep ^% $scenario_cnvt_file | sed "s/% //g"`
+		#
+		# Filter out comments and the assignments
+		#
+		sed_string="${sed_string} | grep -v ^#"
+		#
+		# Now create the parse file to use.
+		#
+		echo "${sed_string}" > parse_reduce_$$
+		chmod 755 parse_reduce_$$
 
-	tmp_run_file=$(mktemp /tmp/zath_temp_run.XXXXXX)
-	./parse_reduce_$$ | sed "s/+++/\//g" > $tmp_run_file
-	rm ./parse_reduce_$$
-	parse_file_tmp=$(mktemp /tmp/parse_file_tmp.XXXXXX)
-	gl_parse_file=$(mktemp /tmp/parse_file.XXXXXX)
-	cat $tmp_run_file | yq .  > $parse_file_tmp
-	if [ $? -ne 0 ]; then
-		rm -f $gl_parse_file $parse_file_tmp $tmp_run_file
-		cleanup_and_exit "Creation of the parse_file via yq failed" 1
-	fi
-	#
-	# Verify the file just created is valid.
-	#
-	sed "s/----/;/g" $parse_file_tmp > $gl_parse_file
-	python -c 'import yaml, sys; print(yaml.safe_load(sys.stdin))' < $gl_parse_file
-	if [ $? -eq 1 ]; then
-		rm -f $gl_parse_file $parse_file_tmp $tmp_run_file
-		cleanup_and_exit "The file, parse_file does not meet yaml requirements." 1
-	fi
-	#
-	# Check to make sure we have the proper number of host configs
-	# 
-	sc_cnt=`grep host_config $tmp_run_file |  wc -l`
-	ps_cnt=`grep host_config $parse_file_tmp | wc -l`
-	rm -f $parse_file_tmp
-	if [ $ps_cnt != $sc_cnt ]; then
-		cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
-	fi
-	rm $tmp_run_file $scenario_cnvt_file
+		tmp_run_file=$(mktemp /tmp/zath_temp_run.XXXXXX)
+		./parse_reduce_$$ | sed "s/+++/\//g" > $tmp_run_file
+		rm ./parse_reduce_$$
+		parse_file_tmp=$(mktemp /tmp/parse_file_tmp.XXXXXX)
+		gl_parse_file=$(mktemp /tmp/parse_file.XXXXXX)
+		cat $tmp_run_file | yq .  > $parse_file_tmp
+		if [ $? -ne 0 ]; then
+			rm -f $gl_parse_file $parse_file_tmp $tmp_run_file
+			cleanup_and_exit "Creation of the parse_file via yq failed" 1
+		fi
+		#
+		# Verify the file just created is valid.
+		#
+		sed "s/----/;/g" $parse_file_tmp > $gl_parse_file
+		python -c 'import yaml, sys; print(yaml.safe_load(sys.stdin))' < $gl_parse_file
+		if [ $? -eq 1 ]; then
+			rm -f $gl_parse_file $parse_file_tmp $tmp_run_file
+			cleanup_and_exit "The file, parse_file does not meet yaml requirements." 1
+		fi
+		#
+		# Check to make sure we have the proper number of host configs
+		# 
+		sc_cnt=`grep host_config $tmp_run_file |  wc -l`
+		ps_cnt=`grep host_config $parse_file_tmp | wc -l`
+		rm -f $parse_file_tmp
+		if [ $ps_cnt != $sc_cnt ]; then
+			cleanup_and_exit "yq did not find the appropriate number of hosts, look for duplicate names" 1
+		fi
+		rm $tmp_run_file $scenario_cnvt_file
 }
 
 #
