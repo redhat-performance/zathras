@@ -1316,7 +1316,7 @@ reduce_options()
 		gl_spot_increment=`echo $data | cut -d':' -f 3`
 		gl_spot_cap=`echo $data | cut -d':' -f 4`
 		if [[ $gl_spot_cap != "0" ]]; then
-			if [[ $gl_spot_increment == "0" ]]; then
+			if [[ $gl_spot_increment != "0" ]]; then
 				cleanup_and_exit "Error: must designate a spot_increment when spot cap is designated." 1
 			fi
 		fi
