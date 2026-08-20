@@ -170,7 +170,6 @@ gl_top_dir=`pwd`
 # initialize arguments
 #
 gl_cloud_force_upload=0
-gl_cloud_force_upload_set=0
 gl_cloud_os_version=""
 gl_cloud_terminate_instance=1
 gl_cloud_terminate_instance_set=0
@@ -2702,14 +2701,6 @@ verify_system_type()
 }
 
 #
-# Verify that the force_upload variable is a boolean value.
-#
-verify_force_upload_value()
-{
-	bool_error $1 force_upload
-}
-
-#
 # Verify that the value set for selinux is either enabled or disabled.
 #
 verify_selinux_state()
@@ -3789,11 +3780,7 @@ set_general_value()
 			shift_by=2
 		;;
 		--force_upload)
-			if [[ $gl_cloud_force_upload_set -eq 0 ]]; then
-				verify_data verify_force_upload_value $2
-				gl_cloud_force_upload_set=1
-				gl_cloud_force_upload=1
-			fi
+			gl_cloud_force_upload=1
 			shift_by=1
 		;;
 		--git_timeout)
