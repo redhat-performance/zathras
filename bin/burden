@@ -2799,10 +2799,11 @@ verify_host_config()
 			fi
 		fi
 		if [[ $entry == *"Disks"* ]] && [[ $gl_disks_present == "0" ]]; then
-			gl_disks_present=`bin/parse_disk_line \"$entry\" | cut -d':' -f4`
+			gl_disks_present=$(bin/parse_disk_line \"$entry\")
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: Invalid disk line. ${string}" 1
 			fi
+			gl_disks_present=$(echo $gl_disks_present | cut -d':' -f4`)
 			if [[ $gl_disks_present == "0" ]]; then
 				if [[ $entry == *"type=internal"* ]]; then
 					gl_internal_disks=1
