@@ -3913,7 +3913,7 @@ set_general_value()
 				echo "$1" >> $gl_cli_supplied_options
 				gl_persistent_log=1
 			fi
-			shift_by=2
+			shift_by=1
 		;;
 		--preflight_check)
 			gl_preflight=1
