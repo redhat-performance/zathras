@@ -1115,8 +1115,9 @@ check_for_dup_config_entries()
 		cleanup_and_exit "Error: Field  ${1} is present, but has no entries, ${gl_top_dir}/local_configs/${gl_host_config_info}.config" 1
 	fi
 
-	numb_entries=`uniq -c $entries_check | awk '{print $1}'`
-	if [[ $numb_entries -gt 1 ]]; then
+	numb_uniq_entries=$(sort  -u $entries_check | wc -l)
+	numb_entries=$(wc -l $entries_check)
+	if [[ $numb_entries -ne $numb_uniq_entries ]]; then
 		rm -f $entries_check
 		cleanup_and_exit "Error: Duplicate ${1} entries in ${gl_top_dir}/local_configs/${gl_host_config_info}.config" 1
 	fi
@@ -1263,7 +1264,7 @@ reduce_options()
 		#
 		# indicate if we are using nvme storage.  AWS is always nvme.
 		#
-		if [[ $gl_system_type == "aws" || ($gl_system_type == "azure" && "$gl_host_config" =~ ^Standard_L[[:digit:]]*_v2* ]]; then
+		if [[ $gl_system_type == "aws" || ($gl_system_type == "azure" && "$gl_host_config" =~ ^Standard_L[[:digit:]]*_v2*) ]]; then
 			gl_host_uses_nvme=1
 		else
 			gl_host_uses_nvme=0
@@ -2430,7 +2431,7 @@ create_ansible_options()
 						tfile=`ls *tar`
 						results_report=`tar xvf ${tfile} | grep test_results_report`
 						if [[ $results_report != "" ]]; then
-							grep -q Failed $results_report
+							echo "$results_report" | grep -q Failed
 							if [ $? -ne 1 ]; then
 								flock -x $gl_top_dir/failed_runs echo "${timestamp} Error: System: ${test_sys}, Test, $i, reported failure" >> $gl_top_dir/failed_runs
 								echo "    Error: reported a failure" >> ../results_info
