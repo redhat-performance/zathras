@@ -3698,7 +3698,7 @@ usage()
 	echo "  --tuned_profiles <comma separated list of tuned profiles>, only for RHEL.  Designates the tuned"
 	echo "    profiles to use.  if the system type is a cloud environment, then each tuned profile is a"
 	echo "    distinct cloud instance."
-	echo "  --tuned_reboot: reboot when a new tuned is set.  Default is not to reboot"
+	echo "  --tuned_reboot 0/1: reboot when a new tuned is set.  Default is not to reboot"
 	echo "  --upload_rpms <rpm 1>,<rpm 2>....: Comma separated list of rpms (full path) to upload and install"
 	echo "  --update_target: Image to update"
 	echo "    Note:  only 1 update image can be used, makes no difference"
