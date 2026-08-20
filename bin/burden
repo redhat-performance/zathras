@@ -1280,11 +1280,11 @@ reduce_options()
 	# Set network information.
 	#
 	if [[ $option_string == *"Network"* ]]; then
-		obtain_network_info $entry
+		obtain_network_info $option_string
 		found=1
 	fi
 
-	if [[ $entry == *"CPU_type"* ]]; then
+	if [[ $option_string == *"CPU_type"* ]]; then
 		gl_cpu_type_request=`echo $entry | cut -d'=' -f 2`
 		fields=`echo "$entry" | sed "s/&/ /g"`
 		for i in $fields; do
@@ -1296,7 +1296,7 @@ reduce_options()
 		found=1
 	fi
 
-	if [[ $entry == *"Cloud_Placement"* ]]; then
+	if [[ $option_string == *"Cloud_Placement"* ]]; then
 		gl_cloud_placement=`echo $entry | cut -d'=' -f 2`
 		fields=`echo "$entry" | sed "s/&/ /g"`
 		for i in $fields; do
