@@ -402,10 +402,10 @@ cleanup_and_exit()
 		while IFS= read -r run_data
 		do
 			#
-			# Only if we have a running state for the vm
+			# Only if we have a running state for the vm.  Note tf directory is part of ${run_data}
 			#
-			if [[ -d ${run_data}/tf/terraform.tfstate.d ]]; then
-				grep -q "\"instance_state\": \"running\""  ${run_data}/tf//terraform.tfstate.d/*/terraform.tfstate 2> /dev/null
+			if [[ -d ${run_data}/terraform.tfstate.d ]]; then
+				grep -q "\"instance_state\": \"running\""  ${run_data}//terraform.tfstate.d/*/terraform.tfstate 2> /dev/null
 				if [[ $? -eq 0 ]]; then
 					delete_tfs="${delete_tfs}${separ}${run_data}"
 					separ=","
