@@ -1049,23 +1049,26 @@ set_region_zone_defaults()
 		fi
 		obtain_zone
 	elif [[ $gl_system_type == "azure" ]]; then
-		gl_cloud_region=`az configure --list-defaults -o tsv | grep location | awk '{print $3}'`
+		woker=$(az configure --list-defaults -o tsv)
 		if [ $? -eq 1 ]; then
 			cleanup_and_exit "Unable to retrieve the azure region" 1
 		fi
+		gl_cloud_region=$(echo $worker | grep location | awk '{print $3}')
 		obtain_zone
 	elif [[ $gl_system_type == "gcp" ]]; then
-		gl_cloud_region=`gcloud config list compute/region --quiet  | grep region | awk '{ print $3 }'`
+		worker=$(gcloud config list compute/region --quiet)
 		if [ $? -eq 1 ]; then
 			cleanup_and_exit "Unable to retrieve the gcp region" 1
 		fi
+		gl_cloud_region=$(echo $worker | grep region | awk '{ print $3 }')
 		gl_cloud_region_zone=`gcloud config list compute/zone --quiet | grep zone | awk '{ print $3 }'`
 	elif [[ $gl_system_type == "ibm" ]]; then
-		gl_cloud_region=`ibmcloud target --output json | jq -r '.region.name' 2>/dev/null`
+		worker=$(ibmcloud target --output json)
 		if [ $? -eq 1 ] || [ -z "$gl_cloud_region" ]; then
 			echo "Warning: Unable to retrieve IBM Cloud region, using default us-south"
 			gl_cloud_region="us-south"
 		fi
+		gl_cloud_region=$(echo $worker | jq -r '.region.name' 2>/dev/null)
 		obtain_zone
 	fi
 }
@@ -1587,10 +1590,11 @@ retrieve_spot_from_config()
 			#
 			# For AWS obtain the possible starting price.
 			#
-			worker=`aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types $host_or_cloud_inst | tail -1 | awk '{ print $2 }'`
+			worker=$(aws ec2 describe-spot-price-history --start-time=$(date +%s) --product-descriptions="Linux/UNIX" --query 'SpotPriceHistory[*].{az:AvailabilityZone, price:SpotPrice}' --instance-types $host_or_cloud_inst)
 			if [[ $? -ne 0 ]]; then
 				cleanup_and_exit "Error: unable to retrieve spot info for $1" 1
 			fi
+			gl_spot_price=$(echo $worker | tail -1 | awk '{ print $2 }')
 			gl_spot_price=$worker
 			gl_spot_cap=$gl_base_cost
 			#
@@ -2595,10 +2599,11 @@ check_for_pip3()
 check_for_terraform()
 {
 
-	terraform_version=`terraform --version | head -1`
+	worker=$(terraform --version)
 	if [[ $? -eq 1 ]]; then
 		cleanup_and_exit "terraform command needs to be installed.\n" 1
 	fi
+	terraform_version=$(echo $worker | head -1)
 	report_util_version terraform_version "${terraform_version}"
 }
 
@@ -3387,10 +3392,11 @@ process_test_template_data()
 	new_file=$(mktemp /tmp/zath_temp_template.XXXXXX)
 
 	if [[ $expansion_required -eq 1 ]]; then
-		temp=`grep "test_template:" $tmpfile | cut -d: -f 2 | sed "s/ //g"`
+		temp=$(grep "test_template:" $tmpfile)
 		if [[ $? -ne 0 ]]; then
 			file_template=""
 		else
+			temp=$(echo $temp | cut -d: -f 2 | sed "s/ //g")
 			file_template=$4/$temp
 		fi
 		#
