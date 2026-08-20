@@ -1289,8 +1289,8 @@ reduce_options()
 	fi
 
 	if [[ $option_string == *"CPU_type"* ]]; then
-		gl_cpu_type_request=`echo $entry | cut -d'=' -f 2`
-		fields=`echo "$entry" | sed "s/&/ /g"`
+		gl_cpu_type_request=`echo $option_string | cut -d'=' -f 2`
+		fields=`echo "$option_string" | sed "s/&/ /g"`
 		for i in $fields; do
 			if  [[ $i == *"CPU_type"* ]]; then
 				gl_cpu_type_request=`echo $i | cut -d'=' -f 2`
@@ -1301,8 +1301,8 @@ reduce_options()
 	fi
 
 	if [[ $option_string == *"Cloud_Placement"* ]]; then
-		gl_cloud_placement=`echo $entry | cut -d'=' -f 2`
-		fields=`echo "$entry" | sed "s/&/ /g"`
+		gl_cloud_placement=`echo $option_string | cut -d'=' -f 2`
+		fields=`echo "$option_string" | sed "s/&/ /g"`
 		for i in $fields; do
 			if  [[ $i == *"Cloud_Placement"* ]]; then
 				gl_cloud_placement=`echo $i | cut -d'=' -f 2`
