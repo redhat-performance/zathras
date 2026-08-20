@@ -3328,7 +3328,7 @@ verify_test_configuration()
 					grep -q $test_name $gl_scenario_to_run
 					rtc=$?
 				else
-					 echo $gl_test_list_out | grep -q
+					 echo $gl_test_list_out | grep -q $test_name
 					 rtc=$?
 				fi
 				#
