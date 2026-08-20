@@ -923,7 +923,7 @@ make_list_of_rpms_to_upload()
 	rpm_uploads=`echo $gl_upload_rpms | sed "s/,/ /g"`
 	for rpm in $rpm_uploads; do
 		if [[ ! -f ${rpm} ]] && [[ ${rpm} != "none" ]];  then
-			cleanup_and_exit "${file_to_upload}: Can not find" 1
+			cleanup_and_exit "${rpm}: Can not find" 1
 		fi
 		echo "  - ${rpm}" >> upload_rpms.yml
 	done
