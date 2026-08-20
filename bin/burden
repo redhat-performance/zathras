@@ -1119,7 +1119,9 @@ check_for_dup_config_entries()
 	fi
 
 	numb_uniq_entries=$(sort  -u $entries_check | wc -l)
-	numb_entries=$(wc -l $entries_check)
+	#
+	# Just the number of lines, do not want the file name
+	numb_entries=$(wc -l $entries_check | wk '{print $1}' )
 	if [[ $numb_entries -ne $numb_uniq_entries ]]; then
 		rm -f $entries_check
 		cleanup_and_exit "Error: Duplicate ${1} entries in ${gl_top_dir}/local_configs/${gl_host_config_info}.config" 1
