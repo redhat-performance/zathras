@@ -469,7 +469,7 @@ make_dir_report_errors()
 {
 	mkdir -p $1 2> /dev/null
 	if [ $? -ne 0 ]; then
-		cleanup_and_exit "Error Unable to make the directory $1"
+		cleanup_and_exit "Error Unable to make the directory $1" 1
 	fi
 }
 
@@ -2484,7 +2484,7 @@ update_the_image()
 		fi
 		tools_bin/update_system --update_target $target_image --requestor $BASHPID --update_type $image_type
 		if [ $? -ne 0 ]; then
-			cleanup_and_exit "Update of image has failed."
+			cleanup_and_exit "Update of image has failed." 1
 		fi
 	fi
 
@@ -2534,7 +2534,7 @@ check_for_jq()
 {
 	which jq 2> /dev/null
 	if [[ $? -eq 1 ]]; then
-		cleanup_and_exit "jq needs to be installed, to use the --test_def, please install.\nyum install jq\n"
+		cleanup_and_exit "jq needs to be installed, to use the --test_def, please install.\nyum install jq\n" 1
 	fi 
 	jq_version=`jq --version`
 	report_util_version jq_version "${jq_version}"
