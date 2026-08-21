@@ -239,7 +239,7 @@ do
 	echo "  term_system: ${term_system}" >> ansible_vars.yml
 	system_type=`grep system_type  ansible_vars_main.yml | cut -d':' -f 2 | cut -d' ' -f 2`
 	attempts=1
-	while [ $attempts -ne $create_attempts ]
+	while [ $attempts -le $create_attempts ]
 	do
 		mkdir tf
 		echo ===== attempt $attempts of $create_attempts ==============
