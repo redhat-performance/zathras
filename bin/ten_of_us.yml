@@ -627,7 +627,7 @@
 # Perform selinux operations.
 # 
 - hosts: install_group
-  user: root
+  remote_user: root
   become: true
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -640,7 +640,7 @@
 # Set sys config values.
 #
 - hosts: install_group
-  user: root
+  remote_user: root
   become: true
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -655,7 +655,7 @@
 # Retrieve boot time information
 #
 - hosts: test_group
-  user: root
+  remote_user: root
   become: true
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -673,7 +673,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -688,7 +688,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -721,7 +721,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -763,7 +763,7 @@
 # Retrieve the system configuration information
 # 
 - hosts: test_group
-  user: root
+  remote_user: root
   become: true
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -807,7 +807,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -862,7 +862,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
