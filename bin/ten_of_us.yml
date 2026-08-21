@@ -274,7 +274,7 @@
       when:
         - config_info.system_type == "aws" or config_info.system_type == "azure"
 
-    - name: Enable CodeReady Builder for GCP
+    - name: Setup CodeReady Builder for GCP
       block:
         - name: Install yum utils
           become: yes
@@ -539,7 +539,7 @@
         lineinfile:
           path: "{{ working_dir }}/ansible_run_vars.yml"
           line: "ct_uperf_server_ip: {{ dyn_data.test_hostname }}"
-      - name: set server ip
+      - name: set client ip
         lineinfile:
           path: "{{ working_dir }}/ansible_run_vars.yml"
           line: "ct_uperf_client_list: {{ dyn_data.net_hostname }}"
