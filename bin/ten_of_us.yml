@@ -394,7 +394,7 @@
     rescue:
       - name: Report Error
         lineinfile:
-          path: "{{ results_file }}"
+          path: "suse_failed"
           line: "status: failed"
           create: yes
     any_errors_fatal: true
