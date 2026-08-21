@@ -395,7 +395,7 @@
     rescue:
       - name: Report Error
         lineinfile:
-          path: "suse_failed"
+          path: "{{ working_dir }}/suse_failed"
           line: "status: failed"
           create: yes
     when:
