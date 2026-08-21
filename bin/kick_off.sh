@@ -206,7 +206,7 @@ remove_perm_file()
 # Cycle through all the files setting system values.
 #
 export ANSIBLE_HOST_KEY_CHECKING=False
-echo "[defaults]" >> ansible.cfg
+echo "[defaults]" > ansible.cfg
 echo "roles_path = ~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles" >> ansible.cfg
 echo "log_path=${curdir}/ansible_log" >> ansible.cfg
 if [[ $ansible_noise_level != "normal" ]]; then
