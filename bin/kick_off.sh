@@ -164,19 +164,27 @@ tests=0
 # Also chmod user.pem_test to be 500.
 #
 if [[ $ssh_key_file != "" ]]; then
-	cp $ssh_key_file config/user.pem_test
+	if [ ! -f $ssh_key_file ]; then
+		echo "${ssh_key_file} does not exists, please fix.  Test is exiting"
+		exit 1
+	fi
 	if [ ! -s $ssh_key_file ]; then
 		echo "${ssh_key_file} is zero length, please fix.  Test is exiting"
 		exit 1
 	fi
+	cp $ssh_key_file config/user.pem_test
 	chmod 500 config/user.pem_test
 fi
 if [[ $ssh_pub_key_file != "" ]]; then
-	cp $ssh_pub_key_file config/user.pub_test
+	if [ ! -f $ssh_pub_key_file ]; then
+		echo "${ssh_pub_key_file} does not exists, please fix.  Test is exiting"
+		exit 1
+	fi
 	if [ ! -s $ssh_pub_key_file ]; then
 		echo "${ssh_pub_key_file} is zero length, please fix.  Test is exiting"
 		exit 1
 	fi
+	cp $ssh_pub_key_file config/user.pub_test
 	chmod 400 config/user.pub_test
 fi
 
