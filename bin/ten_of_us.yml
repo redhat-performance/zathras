@@ -364,6 +364,7 @@
 # Enable SLES legacy module
 #
 - hosts: install_group
+  any_errors_fatal: true
   remote_user: "{{ config_info.test_user }}"
   become_user: root
   become: true
@@ -397,7 +398,6 @@
           path: "suse_failed"
           line: "status: failed"
           create: yes
-    any_errors_fatal: true
     when:
       - config_info.os_vendor == "suse"
 
