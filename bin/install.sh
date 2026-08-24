@@ -173,7 +173,7 @@ write_installation_record() {
     else
         for package_info in "${installed_system_packages[@]}"; do
             package_name=$(echo "$package_info" | cut -d':' -f1)
-            package_version=$(echo "$package_info" | cut -d':' -f2)
+            package_version=$(echo "$package_info" | cut -d':' -f2-)
             echo "  - $package_name (version: $package_version)" >> "$install_log"
         done
     fi
@@ -185,7 +185,7 @@ write_installation_record() {
     else
         for package_info in "${installed_python_packages[@]}"; do
             package_name=$(echo "$package_info" | cut -d':' -f1)
-            package_version=$(echo "$package_info" | cut -d':' -f2)
+            package_version=$(echo "$package_info" | cut -d':' -f2-)
             echo "  - $package_name (version: $package_version)" >> "$install_log"
         done
     fi
@@ -197,7 +197,7 @@ write_installation_record() {
     else
         for collection_info in "${installed_ansible_collections[@]}"; do
             collection_name=$(echo "$collection_info" | cut -d':' -f1)
-            collection_version=$(echo "$collection_info" | cut -d':' -f2)
+            collection_version=$(echo "$collection_info" | cut -d':' -f2-)
             echo "  - $collection_name (version: $collection_version)" >> "$install_log"
         done
     fi
