@@ -223,7 +223,7 @@ for template_file in config/*_template.yml; do
     template_name=$(basename "$template_file")
 
     # Extract upload_extra value using yq
-    upload_extra=$(yq -r '.upload_extra // "none"' "$template_file" 2>/dev/null || echo "none")
+    upload_extra=$( ~/.local/bin/yq -r '.upload_extra // "none"' "$template_file" 2>/dev/null || echo "none")
 
     # Skip if upload_extra is 'none', empty, or null
     if [[ "$upload_extra" == "none" ]] || [[ -z "$upload_extra" ]] || [[ "$upload_extra" == "null" ]]; then
@@ -231,7 +231,7 @@ for template_file in config/*_template.yml; do
     fi
 
     # Check if upload_extra is an array or a string
-    is_array=$(yq -r '.upload_extra | type' "$template_file" 2>/dev/null || echo "null")
+    is_array=$( ~/.local/bin/yq -r '.upload_extra | type' "$template_file" 2>/dev/null || echo "null")
 
     if [[ "$is_array" == "array" ]]; then
         # It's an array, process each element
@@ -241,7 +241,7 @@ for template_file in config/*_template.yml; do
                     missing_kits+=("$template_name:$path")
                 fi
             fi
-        done < <(yq -r '.upload_extra[]' "$template_file" 2>/dev/null)
+        done < <(~/.local/bin/yq -r '.upload_extra[]' "$template_file" 2>/dev/null)
     else
         # It's a string, split by spaces
         IFS=' ' read -ra paths <<< "$upload_extra"
