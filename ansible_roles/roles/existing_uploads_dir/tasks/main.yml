@@ -1,33 +1,50 @@
 ---
 - name: Check to see if the directory exist.
   stat:
-    path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}"
+    path: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}"
   register: dir_stat_result
 - name: handle existing directory
   block:
   - name: Check to see if the zathras use file  exist.
     stat:
-      path: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}/zathras_{{ type }}"
+      path: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}/zathras_{{ type }}"
     register: stat_result
+  - name: Check whether a previous backup already exists
+    stat:
+      path: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}_back_zathras"
+    register: backup_stat_result
+  #
+  # A pre-existing, non-zathras directory must be backed up before we replace
+  # it with our symlink.  Refuse to proceed if a backup is already present so
+  # we neither nest directories nor destroy the user's data.
+  #
+  - name: Fail if a previous backup would be clobbered
+    fail:
+      msg: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}_back_zathras already exists; resolve it before re-running."
+    when:
+      - not stat_result.stat.exists
+      - backup_stat_result.stat.exists
   - name: move dir if required
-    command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }} /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}_back_zathras"
-    when: not stat_result.stat.exists
+    command: "mv {{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }} {{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}_back_zathras"
+    when:
+      - not stat_result.stat.exists
+      - not backup_stat_result.stat.exists
   when: dir_stat_result.stat.isdir is defined and dir_stat_result.stat.isdir
 
 - name: Make the uploads directory
   file:
-    path: "{{ dyn_data.kit_upload_directory }}/{{ type }}"
+    path: "{{ real_dir }}/{{ type }}"
     state: directory
     mode: 0777
 - name: touch the zathras_upload_file
   file:
-    path: "{{ dyn_data.kit_upload_directory }}/{{ type }}/zathras_{{ type }}"
+    path: "{{ real_dir }}/{{ type }}/zathras_{{ type }}"
     state: touch
     mode: 0777
 
 - name: link the extras in
   ansible.builtin.file:
-    src: "{{ dyn_data.kit_upload_directory }}/{{ type }}"
-    dest: "/{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}"
+    src: "{{ real_dir }}/{{ type }}"
+    dest: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ type }}"
     state: link
-  ignore_errors: yes
+    force: yes
