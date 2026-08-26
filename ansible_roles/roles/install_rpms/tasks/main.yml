@@ -1,6 +1,6 @@
 ---
-# 
-# Upload the required tests.
+#
+# Upload and install any requested rpms.
 #
 
 - name: include_rpms
@@ -8,14 +8,9 @@
     file: "{{ working_dir }}/upload_rpms.yml"
     name: rpms
 
-- name: Load in configuration information
-  include_vars:
-    file: "{{ working_dir }}/ansible_vars.yml"
-
 #
-# Default status.
-#
-# If we are pulling a file
+# Upload and install each rpm.  A value of "none" is the sentinel written by
+# burden when no rpms were requested, so skip it.
 #
 - name: perform rpm upload
   include_role:
