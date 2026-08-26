@@ -24,6 +24,8 @@
     name: install_packages
   vars:
     results_file:  "{{ results_file }}_latest"
+    pkg_install:
+      - "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ rpm_out.stdout }}"
 
 - name: Append results
   shell: "cat {{ results_file }}_latest >> {{ results_file }}"

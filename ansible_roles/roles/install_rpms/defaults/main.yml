@@ -1,0 +1,5 @@
+---
+# Location the rpm install results are written to.  Callers normally override
+# this (e.g. ten_of_us.yml sets /tmp/rpm_installs), but provide a sane default
+# so the role does not fail on an undefined variable.
+results_file: "/tmp/rpm_installs"
