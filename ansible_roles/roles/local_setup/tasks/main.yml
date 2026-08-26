@@ -5,16 +5,12 @@
 # Add the system to both the test_group and install_group.
 # user is root.
 #
-- name: set_test_host
+- name: register host into test and install groups
   add_host:
     name: "{{ config_info.host_or_cloud_inst }}"
-    groups: test_group
-    ansible_user: root
-
-- name: install host
-  add_host:
-    name: "{{ config_info.host_or_cloud_inst }}"
-    groups: install_group
+    groups:
+      - test_group
+      - install_group
     ansible_user: root
 
 - name: now add it to the test_group file
