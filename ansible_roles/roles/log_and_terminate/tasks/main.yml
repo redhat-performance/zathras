@@ -1,10 +1,12 @@
 ---
 # tasks file for termination on failure
 
-- name: First,log to the error log
-  cmd: "echo Fatal error: {{ exit_msg }} >> {{ working_dir }}/error_log"
+- name: First, log to the error log
+  lineinfile:
+    path: "{{ working_dir }}/error_log"
+    line: "Fatal error: {{ exit_msg }}"
+    create: yes
 
 - name: Aborting test
   fail:
     msg: "{{ exit_msg }}"
- 
