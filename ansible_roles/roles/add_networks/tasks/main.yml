@@ -1,26 +1,14 @@
 ---
 #
-# Add in network info for terraform
+# Add in network info for terraform.
 #
-- name: add in vars for systems
-  block:
-  - name: local header
-    shell: echo locals '{' >> {{ working_dir }}/tf/main.tf
-  - name: 2nd header
-    shell: echo "  system = {" >> {{ working_dir }}/tf/main.tf
-  - name: Single system first
-    shell: echo "    \"0\"  = { index = 0, sys = \"{{ config_info.host_config }}\" }" >> {{ working_dir }}/tf/main.tf
-  - name: networked in same system
-    shell: echo "    \"1\"  = { index = 1, sys = \"{{ config_info.host_config }}\" }" >> {{ working_dir }}/tf/main.tf
-    when:
-      - config_info.cloud_network_systems == "none"
-      - config_info.cloud_numb_networks != 0
-  - name: networked different system
-    shell: echo "    \"1\"  = { index = 1, sys = \"{{ config_info.cloud_network_systems }}\" }" >> {{ working_dir }}/tf/main.tf
-    when:
-      - config_info.cloud_network_systems != "none"
-      - config_info.cloud_numb_networks != 0
-  - name: Echo closing brace
-    shell: echo "  }" >> {{ working_dir }}/tf/main.tf
-  - name: echo last line
-    shell: echo } >> {{ working_dir }}/tf/main.tf
+# Appends the "system" locals block consumed by the cloud main.tf files
+# (for_each = local.system, reading each.value.index / each.value.sys).
+# Rendered from templates/system_locals.j2 and inserted with blockinfile so
+# the task is idempotent instead of blindly echo-appending on every run.
+#
+- name: add in system locals for terraform
+  blockinfile:
+    path: "{{ working_dir }}/tf/main.tf"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK add_networks"
+    block: "{{ lookup('template', 'system_locals.j2') }}"
