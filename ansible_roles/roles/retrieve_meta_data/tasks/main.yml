@@ -1,19 +1,29 @@
 ---
 #
-# Retrieve the system meta data for azure/gcp.  As AWS is via a cli not curl, we do that from 
-# the aws code itself.
+# Retrieve the system meta data for azure/gcp.  As AWS is via a cli not curl,
+# we do that from the aws code itself.
 #
-- name: Retrieve the azure meta data and set the tags
+- name: Retrieve the azure meta data
   block:
     #
     # ansible builtin install is not working on azurelinux at this time,
-    # use dnf instead.
+    # use dnf instead.  Everywhere else use the package module so the
+    # install is idempotent and retried.
     #
-  - name: Install jq
+  - name: Install jq (azurelinux workaround)
     shell: "dnf install -y jq"
+    when: config_info.os_vendor == "azure"
+  - name: Install jq
+    ansible.builtin.package:
+      name: jq
+      state: latest
+    register: jq_installed
+    until: jq_installed is succeeded
+    retries: 5
+    delay: 10
+    when: config_info.os_vendor != "azure"
   - name: Grab the metadata
     shell: curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq > /tmp/meta_data.yml
-    register: azure_meta_data
   - name: retrieve the azure metadata
     fetch:
       src: "/tmp/meta_data.yml"
@@ -22,14 +32,14 @@
   rescue:
     - name: Report Error
       lineinfile:
-        path: "{{ results_file }}"
+        path: "{{ results_file | default(working_dir + '/meta_data_status') }}"
+        regexp: '^status:'
         line: "status: failed to grab metadata"
         create: yes
   when:
     - config_info.system_type == "azure"
-    - config_info.os_vendor == "azure"
 
-- name: Retrieve the azure meta data and set the tags azure os
+- name: Retrieve the gcp meta data
   block:
   - name: Install jq
     ansible.builtin.package:
@@ -40,9 +50,8 @@
     retries: 5
     delay: 10
   - name: Grab the metadata
-    shell: curl -s -H Metadata:true --noproxy "*" "http://169.254.169.254/metadata/instance?api-version=2021-02-01" | jq > /tmp/meta_data.yml
-    register: azure_meta_data
-  - name: retrieve the azure metadata
+    shell: curl -H Authorization:Bearer $(gcloud auth print-identity-token) -H Metadata-Flavor:Google 'http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true' | jq > /tmp/meta_data.yml
+  - name: retrieve the gcp metadata
     fetch:
       src: "/tmp/meta_data.yml"
       dest: "{{ working_dir }}/meta_data.yml"
@@ -50,24 +59,9 @@
   rescue:
     - name: Report Error
       lineinfile:
-        path: "{{ results_file }}"
+        path: "{{ results_file | default(working_dir + '/meta_data_status') }}"
+        regexp: '^status:'
         line: "status: failed to grab metadata"
         create: yes
-  when:
-    - config_info.system_type == "azure"
-    - config_info.os_vendor != "azure"
-
-- name: Retrieve the gcp meta data
-  block:
-  - name: Install jq
-    shell: yum -y install jq
-  - name: Grab the metadata
-    shell: curl -H Authorization:Bearer $(gcloud auth print-identity-token) -H Metadata-Flavor:Google 'http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true' | jq > /tmp/meta_data.yml
-    register: gcp_meta_data
-  - name: retrieve the gcp metadata
-    fetch:
-      src: "/tmp/meta_data.yml"
-      dest: "{{ working_dir }}/meta_data.yml"
-      flat: yes
   when:
     - config_info.system_type == "gcp"
