@@ -75,9 +75,16 @@ resource "ibm_is_security_group_rule" "zathras_sg_rule_outbound_all" {
   remote    = "0.0.0.0/0"
 }
 
-# Get SSH key
+# Get SSH key by name -- only needed for local/interactive runs (var.ssh_key_id is empty).
+# CI runs pass the id straight through from key creation and skip this lookup entirely,
+# which is what actually avoids the eventual-consistency race against a just-created key.
 data "ibm_is_ssh_key" "zathras_ssh_key" {
-  name = var.ssh_key_name
+  count = var.ssh_key_id == "" ? 1 : 0
+  name  = var.ssh_key_name
+}
+
+locals {
+  ssh_key_id = var.ssh_key_id != "" ? var.ssh_key_id : data.ibm_is_ssh_key.zathras_ssh_key[0].id
 }
 
 # Create VSI (Virtual Server Instance)
@@ -90,7 +97,7 @@ resource "ibm_is_instance" "test" {
   image          = var.vm_image
   resource_group = var.resource_group_id
 
-  keys = [data.ibm_is_ssh_key.zathras_ssh_key.id]
+  keys = [local.ssh_key_id]
 
   primary_network_interface {
     subnet          = ibm_is_subnet.zathras_subnet.id

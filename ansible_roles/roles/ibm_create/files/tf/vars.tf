@@ -30,9 +30,16 @@ variable "test_user" {
   type        = string
 }
 
-variable "ssh_key_name" {
-  description = "Name of SSH key in IBM Cloud"
+variable "ssh_key_id" {
+  description = "ID of an already-created SSH key in IBM Cloud (CI runs -- skips the by-name lookup entirely)"
   type        = string
+  default     = ""
+}
+
+variable "ssh_key_name" {
+  description = "Name of a persistent SSH key in IBM Cloud (local/interactive runs only)"
+  type        = string
+  default     = ""
 }
 
 variable "vm_image" {
