@@ -1049,7 +1049,7 @@ set_region_zone_defaults()
 		fi
 		obtain_zone
 	elif [[ $gl_system_type == "azure" ]]; then
-		woker=$(az configure --list-defaults -o tsv)
+		worker=$(az configure --list-defaults -o tsv)
 		if [ $? -eq 1 ]; then
 			cleanup_and_exit "Unable to retrieve the azure region" 1
 		fi
