@@ -31,13 +31,13 @@ variable "test_user" {
 }
 
 variable "ssh_key_id" {
-  description = "ID of an already-created SSH key in IBM Cloud (CI runs -- skips the by-name lookup entirely)"
+  description = "ID of an existing SSH key in IBM Cloud (persistent or not). When set, Terraform attaches this key and skips the by-name lookup."
   type        = string
   default     = ""
 }
 
 variable "ssh_key_name" {
-  description = "Name of a persistent SSH key in IBM Cloud (local/interactive runs only)"
+  description = "Name of an existing SSH key in IBM Cloud (persistent or not). Used to look up the key ID only when ssh_key_id is empty."
   type        = string
   default     = ""
 }

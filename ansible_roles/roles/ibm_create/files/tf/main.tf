@@ -75,9 +75,16 @@ resource "ibm_is_security_group_rule" "zathras_sg_rule_outbound_all" {
   remote    = "0.0.0.0/0"
 }
 
-# Get SSH key by name -- only needed for local/interactive runs (var.ssh_key_id is empty).
-# CI runs pass the id straight through from key creation and skip this lookup entirely,
-# which is what actually avoids the eventual-consistency race against a just-created key.
+# IBM Cloud VSIs must reference a pre-registered SSH key. Two mutually exclusive inputs:
+#
+# 1. ssh_key_id is set: use it as-is. This is the CI/CPT path (IBM_SSH_KEY_ID) for a
+#    key created in the same job, persistent or not. No by-name lookup, so a
+#    just-created key does not need to show up in `ibmcloud is keys` yet. A
+#    long-lived local key is not required.
+# 2. ssh_key_id is empty: look the key up by ssh_key_name (any existing key,
+#    typically a long-lived one on local/interactive runs). Ansible matches the
+#    local private-key fingerprint to an IBM Cloud key and fails before Terraform
+#    if none exist.
 data "ibm_is_ssh_key" "zathras_ssh_key" {
   count = var.ssh_key_id == "" ? 1 : 0
   name  = var.ssh_key_name
@@ -97,6 +104,7 @@ resource "ibm_is_instance" "test" {
   image          = var.vm_image
   resource_group = var.resource_group_id
 
+  # CI: var.ssh_key_id (no persistent key needed). Local: lookup by ssh_key_name.
   keys = [local.ssh_key_id]
 
   primary_network_interface {
