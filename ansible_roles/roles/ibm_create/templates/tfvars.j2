@@ -10,7 +10,12 @@ zone = "{{ config_info.cloud_zone }}"
 
 test_user = "{{ config_info.test_user }}"
 
+{% if ibm_ssh_key_id_value is defined and ibm_ssh_key_id_value != "" %}
+ssh_key_id = "{{ ibm_ssh_key_id_value }}"
+{% endif %}
+{% if ibm_ssh_key_name_value is defined and ibm_ssh_key_name_value != "" %}
 ssh_key_name = "{{ ibm_ssh_key_name_value }}"
+{% endif %}
 
 vm_image = "{{ config_info.cloud_os_version }}"
 

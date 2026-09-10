@@ -23,17 +23,24 @@
   register: resource_group_id
   ignore_errors: yes
 
+- name: Set SSH key id (CI runs -- key already created this run, id known, no lookup needed)
+  set_fact:
+    ibm_ssh_key_id_value: "{{ lookup('env', 'IBM_SSH_KEY_ID') }}"
+  when: lookup('env', 'IBM_SSH_KEY_ID') != ''
+
 - name: Get SSH Key fingerprint
   shell: |
     ssh-keygen -lf {{ config_info.ssh_key | quote }} | awk '{ print $2 }'
   register: ssh_key_fingerprint
   changed_when: false
+  when: lookup('env', 'IBM_SSH_KEY_ID') == ''
 
 - name: Get IBMCloud SSH Keys
   shell: |
     ibmcloud is keys --output json
   register: ibm_ssh_keys
   changed_when: false
+  when: lookup('env', 'IBM_SSH_KEY_ID') == ''
 
 - name: Find IBMCloud SSH Key name
   ansible.builtin.set_fact:
@@ -43,6 +50,7 @@
           (ibm_ssh_keys.stdout | from_json | selectattr('fingerprint', 'equalto', ssh_key_fingerprint.stdout) | first).name | default('')
         }}
       rc: "{{ ibm_ssh_keys.rc + ssh_key_fingerprint.rc }}"
+  when: lookup('env', 'IBM_SSH_KEY_ID') == ''
 
 - name: Fail if no SSH key found in IBM Cloud
   fail:
@@ -52,11 +60,12 @@
         ibmcloud is key-create zathras-key @~/.ssh/id_rsa.pub
       Or list existing keys:
         ibmcloud is keys
-  when: ibm_ssh_key_name.rc != 0 or ibm_ssh_key_name.stdout == ''
+  when: lookup('env', 'IBM_SSH_KEY_ID') == '' and (ibm_ssh_key_name.rc != 0 or ibm_ssh_key_name.stdout == '')
 
 - name: Set SSH key name
   set_fact:
     ibm_ssh_key_name_value: "{{ ibm_ssh_key_name.stdout }}"
+  when: lookup('env', 'IBM_SSH_KEY_ID') == ''
 
 - name: create private copy of tfvars template
   copy:
