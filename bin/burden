@@ -972,6 +972,8 @@ general_setup()
 		tar cf bin.tar bin
 		tar cf tools_bin.tar tools_bin
 		tar cf sysctl_settings.tar sysctl_settings
+	else
+		tar uf sysctl_settings.tar sysctl_settings
 	fi
 	gl_unlock_exclusive $gl_lock_multi gl_have_locked_multi
 }

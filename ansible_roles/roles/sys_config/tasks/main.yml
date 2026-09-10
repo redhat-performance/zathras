@@ -13,6 +13,23 @@
   debug:
     var: sysctl_settings
 
+- name: Verify the sysctl settings file exists
+  stat:
+    path: "{{ cd_homedir }}/sysctl_settings/{{ sysctl_settings }}"
+  register: sysctl_file
+  when: sysctl_settings != "none"
+
+- name: Fail if the requested sysctl settings file is missing
+  fail:
+    msg: >-
+      sysctl settings file
+      {{ cd_homedir }}/sysctl_settings/{{ sysctl_settings }} not found
+  when:
+    - sysctl_settings != "none"
+    - not sysctl_file.stat.exists
+
 - name: set_system_configuration
   command: "{{ cd_homedir }}/tools_bin/set_sysctl_tunings {{ cd_homedir }}/sysctl_settings/{{ sysctl_settings }}"
+  register: set_sysctl
+  changed_when: "'CHANGED' in set_sysctl.stdout"
   when: sysctl_settings != "none"
