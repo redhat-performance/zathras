@@ -1,6 +1,6 @@
 ---
-# 
-# Upload the required tests.
+#
+# Retrieve (download) the required tests.
 #
 
 - name: test retrieve include dynamic variables
@@ -17,11 +17,11 @@
 # If we are pulling a file
 #
 - name: copy git file in
-  shell: "wget -O  {{ working_dir }}/tests_to_use/{{ test_exec }}_{{ test_data.repo_file }} {{ test_data.location }}/{{ test_data.repo_file }}"
+  shell: "wget -O {{ working_dir }}/tests_to_use/{{ test_exec }}_{{ test_data.repo_file }} {{ test_data.location }}/{{ test_data.repo_file }}"
   ignore_errors: yes
   register: get_test
   no_log: true
-  failed_when: "'ERROR' in get_test.stderr"
+  failed_when: get_test.rc != 0
 
 - name: Record status of copy git file config success
   include_role:
@@ -39,4 +39,6 @@
  
 - name: local test run
   shell: "unzip tests_to_use/*zip"
+  args:
+    chdir: "{{ working_dir }}"
   when: config_info.test_exec_location == "local"

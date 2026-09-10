@@ -1,7 +1,44 @@
 #!/bin/bash
-for i in `cat $1`;
-do
-        setting=`echo $i | cut -d'=' -f 1`
-        value=`echo $i | cut -d'=' -f 2`
-        echo $value > $setting
-done
+#
+# Apply /proc (sysctl) tunings listed in the file passed as $1.
+#
+# File format, one per line:
+#   <setting path>=<value>
+# Example:
+#   /proc/sys/kernel/numa_balancing=0
+#
+# Exit non-zero on the first failure so the calling ansible task does not
+# report success on a partially-applied (or unreadable) settings file.  A
+# line whose value already matches is skipped and does not count as a change;
+# every applied change prints a "CHANGED" line so callers can detect it.
+#
+set -euo pipefail
+
+file="${1:-}"
+if [ -z "$file" ]; then
+	echo "usage: $0 <settings-file>" >&2
+	exit 1
+fi
+if [ ! -r "$file" ]; then
+	echo "settings file not found or not readable: $file" >&2
+	exit 1
+fi
+
+while IFS='=' read -r setting value || [ -n "$setting" ]; do
+	# skip blank lines and comments
+	[ -z "$setting" ] && continue
+	case "$setting" in \#*) continue ;; esac
+
+	if [ ! -w "$setting" ]; then
+		echo "cannot write setting: $setting" >&2
+		exit 1
+	fi
+
+	current="$(cat "$setting" 2>/dev/null || true)"
+	if [ "$current" = "$value" ]; then
+		continue
+	fi
+
+	echo "$value" > "$setting"
+	echo "CHANGED $setting=$value"
+done < "$file"

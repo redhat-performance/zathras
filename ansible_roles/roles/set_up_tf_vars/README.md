@@ -1,55 +1,53 @@
-Role Name
-=========
+set_up_tf_vars
+==============
 
-This is a work in progress, and will be updated over time.
+Shared helper role that renders the Terraform variables file
+(`{{ working_dir }}/tf/env.tfvars`) used by the cloud "create" roles.
 
-Terminate the instances created, including storage and networks
-
-Roles called: 
-	aws_remove_instance
-	aws_net_terminate
-Commands called:
-	aws ec2 delete-volume --volume-id
-	aws ec2 attach-volume
-	sleep
-
-Updated data: None
-
-Files used:
-	vol_info: contains the volume information
-	ansible_run_vars.yml: run time information
-	ansible_vars.yml:  test configuration information
-
+It assembles the caller's base `tfvars.j2` with the per-run
+`add_main_tf_vars` file, renders it through the `template` module, appends the
+disk variables (parsed from `config_info.cloud_disks`), and finally strips the
+`'_'` quoting workaround used to keep bare underscores in sku values.
 
 Requirements
 ------------
 
+This role has **no templates of its own**.  The calling role must supply, in
+its own `templates/` directory:
+
+* `tfvars.j2`       - base Terraform vars template
+* `tfvars_disks.j2` - disk vars template, which consumes the `disk_type`,
+  `disk_size`, `disk_count`, `disk_iops`, and `disk_tp` registered facts set
+  by this role.
+
+Ansible's role search path resolves those templates from the caller when this
+role is included via `include_role`.
 
 Role Variables
 --------------
-	aws_instance_id: id of the instance removing
-	aws_net_instance_id: id of the network instance removing
-	cloud_numb_networks: number of networks allocated to the instance (minus the default)
 
+* `working_dir`             - run-time working directory.  Must already contain
+  `add_main_tf_vars` and a `tf/` subdirectory.
+* `config_info.cloud_disks` - disk specification string, or `"none"` to skip
+  disk variable generation.
+
+Produces
+--------
+
+* `{{ working_dir }}/tf/env.tfvars`
 
 Dependencies
 ------------
 
-Depends on the cloud auto.
+Called by the cloud create roles: `aws_create`, `azure_create`,
+`ibm_vpc_create`.
 
 Example Playbook
 ----------------
 
-- hosts: local
-  vars_files: ansible_vars.yml
-  tasks:
-    - name: aws_terminate
+    - name: set up the terraform vars
       include_role:
-        name: aws_terminate
-      when:
-        - config_info.cd_vendor == "aws"
-        - config_info.cloud_terminate_instance == 1
-
+        name: set_up_tf_vars
 
 License
 -------
