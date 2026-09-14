@@ -1,8 +1,8 @@
 ---
 # tasks file for termination on failure
 
-- name: First,log to the error log
-  cmd: "echo Fatal error: {{ exit_msg }} >> {{ working_dir }}/error_log"
+- name: First, log to the error log
+  shell: "echo \"Fatal error: {{ exit_msg }}\" >> {{ working_dir }}/error_log"
 
 - name: Aborting test
   fail:
