@@ -2,8 +2,21 @@
 # tasks file for retrieving the status of the last operation
 #
 
+- name: Ensure the status file name was supplied
+  assert:
+    that:
+      - status_file is defined
+      - status_file | length > 0
+    fail_msg: "retrieve_status requires 'status_file' to be set"
+
+#
+# Pull the status file back locally.  A missing file is not a fetch error:
+# the downstream terminate_on_error logic treats an absent/empty status as a
+# failure, so let it handle that rather than aborting here with a fetch traceback.
+#
 - name: retrieve package status
   fetch:
     src: "/tmp/{{ status_file }}"
     dest: "{{ working_dir }}/{{ status_file }}"
     flat: yes
+    fail_on_missing: no
