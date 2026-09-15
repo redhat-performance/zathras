@@ -1,0 +1,4 @@
+---
+# Name of the sysctl settings file (under {{ cd_homedir }}/sysctl_settings/)
+# to apply.  "none" disables the role and applies nothing.
+sysctl_settings: "none"

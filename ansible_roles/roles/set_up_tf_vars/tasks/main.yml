@@ -1,58 +1,87 @@
 ---
 #
-# Parse the disk line
+# Shared helper that renders the terraform variables file (tf/env.tfvars)
+# for a cloud "create" role.
+#
+# NOTE ON COUPLING: this role has no templates of its own.  The calling
+# role (aws_create / azure_create / ibm_vpc_create) must provide, in its
+# own templates/ directory:
+#     tfvars.j2         - base terraform vars template
+#     tfvars_disks.j2   - disk vars template (uses the disk_* facts below)
+# and an add_main_tf_vars file in {{ working_dir }}.  Ansible's role search
+# path resolves those from the caller when this role is included.
 #
 
+#
+# Assemble the composite template: the caller's base tfvars.j2 plus the
+# per-run add_main_tf_vars.  copy pulls the base out of the caller's
+# templates/ dir (../templates relative to the resolved role files dir).
+#
 - name: create private copy
   copy:
     src: "../templates/tfvars.j2"
     dest: "{{ working_dir }}/tfvars.j2"
 
+#
+# Append add_main_tf_vars via blockinfile (idempotent between markers) so a
+# re-run replaces rather than doubling the appended content, independent of
+# whether the copy above ran.
+#
 - name: Add tag vars info in.
-  shell: "cat {{ working_dir }}/add_main_tf_vars >> {{ working_dir }}/tfvars.j2"
+  blockinfile:
+    path: "{{ working_dir }}/tfvars.j2"
+    block: "{{ lookup('file', working_dir + '/add_main_tf_vars') }}"
+    marker: "# {mark} zathras add_main_tf_vars"
 
 - name: Substitute terraform vars
   template:
     src: "{{ working_dir }}/tfvars.j2"
-    dest: "{{working_dir}}/tf/env.tfvars"
+    dest: "{{ working_dir }}/tf/env.tfvars"
 
+#
+# Parse the disk line (config_info.cloud_disks) into the disk_* facts the
+# caller's tfvars_disks.j2 consumes.  These tasks are read-only.
+#
 - name: Replace disk settings
   block:
   - name: Grab number of disks
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 1 | cut -d\"'\" -f 2"
     register: disk_count
+    changed_when: false
 
   - name: Grab disk type
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 2"
     register: disk_type
+    changed_when: false
 
   - name: Grab disk size
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 3"
     register: disk_size
+    changed_when: false
 
   - name: obtain iops
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 5| sed \"s/'//g\" | cut -d']' -f 1"
     register: disk_iops
+    changed_when: false
 
   - name: obtain tp
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 6| sed \"s/'//g\" | cut -d']' -f 1"
     register: disk_tp
+    changed_when: false
 
   - name: Update tfvars
     blockinfile:
-      dest: "{{working_dir}}/tf/env.tfvars"
+      dest: "{{ working_dir }}/tf/env.tfvars"
       block: "{{ lookup('template', 'tfvars_disks.j2') }}"
   when: config_info.cloud_disks != "none"
 
 #
-# All because ansible removes a bare underscore.
-# So when the variables file is created, for sku we replace any
-# _ with a '_' so it does not get lost.  Here we do away with the 
-# ' 's.  Right now we just do this for azure sku.
-# 
-- name: Replace '_' with _rm vars
-  shell: "cat {{ working_dir }}/tf/env.tfvars | sed \"s/'_'/_/g\" > {{ working_dir }}/tf/env.tfvars.temp"
-
-- name: Move it back
-  shell: "mv {{ working_dir }}/tf/env.tfvars.temp {{ working_dir }}/tf/env.tfvars"
-
+# All because ansible removes a bare underscore.  So when the variables file
+# is created, for sku we replace any _ with a '_' so it does not get lost.
+# Here we do away with the ' 's.  Right now we just do this for azure sku.
+#
+- name: strip the quoting workaround from sku vars
+  replace:
+    path: "{{ working_dir }}/tf/env.tfvars"
+    regexp: "'_'"
+    replace: "_"

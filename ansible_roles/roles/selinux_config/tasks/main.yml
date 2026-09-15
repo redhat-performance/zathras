@@ -1,28 +1,39 @@
 ---
 #
-# Ubuntu we have to disable and uninstall apparmor and install slinux.
-# This works on 5/17/2024
+# Configure SELinux per the requested state/level.
+#
+# Ubuntu: AppArmor must be stopped and removed before SELinux can be
+# installed and activated.
 #
 - name: Ubuntu enable
   block:
-  - name: stop apparmor
-    shell: "systemctl stop apparmor"
-  - name: disable apparmor
-    shell:  "systemctl disable apparmor"
-  - name: uninstall app armor
-    shell: "apt-get remove apparmor -y"
-  - name: reboot the system now for disabled aparmor to take effect
+  - name: stop and disable apparmor
+    systemd:
+      name: apparmor
+      state: stopped
+      enabled: no
+    failed_when: false
+  - name: uninstall apparmor
+    apt:
+      name: apparmor
+      state: absent
+  - name: reboot the system now for disabled apparmor to take effect
     reboot:
       reboot_timeout: 1800
   - name: install selinux on ubuntu
-    shell: "apt-get install policycoreutils selinux-utils selinux-basics -y"
+    apt:
+      name:
+        - policycoreutils
+        - selinux-utils
+        - selinux-basics
+      state: present
   - name: Activate selinux
-    shell: "selinux-activate"
-  - name: reboot the system now for selinux to be enabled.
+    command: "selinux-activate"
+  - name: reboot the system now for selinux to be enabled
     reboot:
       reboot_timeout: 1800
   - name: We want permissive for selinux
-    shell: "setenforce 0"
+    command: "setenforce 0"
     when: (config_info.selinux_level == "permissive")
   - name: We want enforcing for selinux
     fail:
@@ -36,71 +47,53 @@
     - (config_info.selinux_state == "enabled")
     - (config_info.os_vendor == "ubuntu")
 
-- name: RHEL 2023 selinux
+- name: RHEL / Amazon selinux
   block:
   #
-  # By default, grubby does not have selinux in the boot line.  If it is not there
-  # then the system assumes selinux=1
+  # grubby does not put selinux in the boot line by default; when the arg is
+  # absent the kernel assumes selinux=1.  We probe the running state with
+  # sestatus so we do not depend on gathered facts (the play runs with
+  # gather_facts: no).  This task is read-only.
   #
-  - name: Get the current selinux state.
+  - name: Get the current selinux state
     shell: "sestatus | grep \"SELinux status\" | cut -d: -f 2 | sed \"s/ //g\""
-    register: selinux_state
-  - name: Get name of kernel
-    shell: "uname -r"
-    register: kernel
+    register: cur_selinux
+    changed_when: false
 
   - name: general enablement
     block:
     - name: enable selinux RHEL/amazon
-      shell: "grubby --update-kernel=/boot/vmlinuz-{{ kernel.stdout }} --remove-args=\"selinux\""
+      command: 'grubby --update-kernel=ALL --remove-args=selinux'
     #
-    # Update the selinux config file
-    # 
-    - name: First get the line to replace
-      shell: "grep ^SELINUX= /etc/selinux/config"
-      register: se_line
-    - name: Remove config_file
-      shell: "rm -rf /tmp/zathras_selinux"
-      ignore_errors: yes
-    - name: If we want to be enforcing
-      shell: "cat /etc/selinux/config | sed \"s/{{ se_line.stdout }}/SELINUX=enforcing/g\" > /tmp/zathras_selinux"
-      ignore_errors: yes
-      when: (config_info.selinux_level == "enforcing")
-    - name: If we want to be permissive
-      shell: "cat /etc/selinux/config | sed \"s/{{ se_line.stdout }}/SELINUX=permissive/g\" > /tmp/zathras_selinux"
-      ignore_errors: yes
-      when: (config_info.selinux_level == "permissive")
-    - name: If we want to be disabled via config
-      shell: "cat /etc/selinux/config | sed \"s/{{ se_line.stdout }}/SELINUX=disabled/g\" > /tmp/zathras_selinux"
-      ignore_errors: yes
-      when: (config_info.selinux_level == "disabled")
-    - name: Move the file if present
-      shell: "mv /tmp/zathras_selinux /etc/selinux/config"
-      ignore_errors: yes
+    # Set the requested mode in the selinux config file.  The replace module
+    # is idempotent and cannot truncate the file the way the old
+    # cat | sed | mv pipeline could on a failed edit.
+    #
+    - name: set SELINUX mode in /etc/selinux/config
+      replace:
+        path: /etc/selinux/config
+        regexp: '^SELINUX=.*'
+        replace: "SELINUX={{ config_info.selinux_level }}"
     - name: reboot the system now to enable selinux
       reboot:
         reboot_timeout: 1800
     when:
       - (config_info.selinux_state == "enabled")
-      - (selinux_state.stdout != "enabled")
-#
-# If we do not disable via grubby, there is still some selinux code path we call.
-# By default, there is no selinux in the grubby boot line.  
-#
+      - (cur_selinux.stdout != "enabled")
+
+  #
+  # Disable selinux at the kernel boot line when we do not want it enabled
+  # (selinux_state != "enabled") but it is currently enabled.
+  #
   - name: general disablement
     block:
     - name: disabling selinux for RHEL/Amazon
-      shell: "grubby --update-kernel=/boot/vmlinuz-{{ kernel.stdout }} --args=\"selinux=0\""
+      command: 'grubby --update-kernel=ALL --args=selinux=0'
     - name: reboot the system now for disabled selinux to take effect
       reboot:
         reboot_timeout: 1800
-    #
-    # For some unknown reason, we ignore the check 
-    # (config_info.selinux_state != "disabled") so we will use
-    # (config_info.selinux_state != "enabled")
-    when: 
+    when:
       - (config_info.selinux_state != "enabled")
-      - (selinux_state.stdout == "enabled")
-  when: 
-    config_info.os_vendor == "rhel" or
-    config_info.os_vendor == "amazon"
+      - (cur_selinux.stdout == "enabled")
+  when:
+    - config_info.os_vendor == "rhel" or config_info.os_vendor == "amazon"
