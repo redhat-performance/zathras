@@ -4,26 +4,25 @@
     file: "{{ working_dir }}/ansible_run_vars.yml"
     name: dyn_data
 
-# 
-# Upload the required tests.
+#
+# Upload the required rpm.
 #
 - name: upload the rpm file
   become: no
-  local_action: shell scp -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ rpm }} {{ config_info.test_user }}@{{ inventory_hostname }}:{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}
+  local_action: shell scp -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} "{{ rpm }}" "{{ config_info.test_user }}@{{ inventory_hostname }}:{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}"
 
-- name: Get rpm file name
-  shell: "echo {{ rpm }} | rev | cut -d'/' -f 1 | rev"
-  register: rpm_out
-
-- name: Present rpm file info
-  debug:
-    var: rpm_out
-
+#
+# Install the uploaded rpm.  We derive the per-rpm "_latest" results file from
+# rpm_install_results_file (captured by install_rpms from the clean caller
+# value) rather than from "results_file", which can be a self-referential
+# template here and trigger a recursive templating loop.
+#
 - name: install the rpm file
   include_role:
     name: install_packages
   vars:
-    results_file:  "{{ results_file }}_latest"
+    pkg_install: "{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/{{ rpm | basename }}"
+    results_file: "{{ rpm_install_results_file }}_latest"
 
 - name: Append results
-  shell: "cat {{ results_file }}_latest >> {{ results_file }}"
+  shell: "cat {{ rpm_install_results_file }}_latest >> {{ rpm_install_results_file }}"
