@@ -1,6 +1,12 @@
 ---
 #
-# Parse the disk line
+# Render the cloud's env.tfvars from the templates provided by the CALLING
+# role.  This role deliberately has no templates/ of its own: each cloud role
+# (aws_create, azure_create, ibm_vpc_create, gcp_create_instance, ibm_create)
+# supplies its own tfvars.j2 and tfvars_disks.j2 under its templates/ dir, which
+# we reach through include_role's search path (hence the "../templates/"
+# reference below).  A caller that does not provide those two templates cannot
+# use this role.
 #
 
 - name: create private copy
@@ -8,6 +14,11 @@
     src: "../templates/tfvars.j2"
     dest: "{{ working_dir }}/tfvars.j2"
 
+#
+# Append the generated tag vars.  This append is safe only because the copy
+# above overwrites tfvars.j2 fresh on every run; do not turn that copy into a
+# create-if-missing or these lines will accumulate across runs.
+#
 - name: Add tag vars info in.
   shell: "cat {{ working_dir }}/add_main_tf_vars >> {{ working_dir }}/tfvars.j2"
 
@@ -16,27 +27,42 @@
     src: "{{ working_dir }}/tfvars.j2"
     dest: "{{working_dir}}/tf/env.tfvars"
 
+#
+# Parse the disk line and add the disk settings.
+#
+# config_info.cloud_disks is a list formatted by burden as
+# "count:type:size:index:iops:tp".  Jinja renders the list with Python's repr,
+# so the value reaching the shell looks like ['count:type:size:...'] - the
+# 'cut -d"'"' / "sed s/'//g" steps below exist only to strip those repr single
+# quotes.  These tasks only read/parse (no state change), so they are marked
+# changed_when: false.
+#
 - name: Replace disk settings
   block:
   - name: Grab number of disks
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 1 | cut -d\"'\" -f 2"
     register: disk_count
+    changed_when: false
 
   - name: Grab disk type
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 2"
     register: disk_type
+    changed_when: false
 
   - name: Grab disk size
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 3"
     register: disk_size
+    changed_when: false
 
   - name: obtain iops
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 5| sed \"s/'//g\" | cut -d']' -f 1"
     register: disk_iops
+    changed_when: false
 
   - name: obtain tp
     shell: "echo \"{{ config_info.cloud_disks }}\" | cut -d: -f 6| sed \"s/'//g\" | cut -d']' -f 1"
     register: disk_tp
+    changed_when: false
 
   - name: Update tfvars
     blockinfile:
@@ -47,12 +73,11 @@
 #
 # All because ansible removes a bare underscore.
 # So when the variables file is created, for sku we replace any
-# _ with a '_' so it does not get lost.  Here we do away with the 
+# _ with a '_' so it does not get lost.  Here we do away with the
 # ' 's.  Right now we just do this for azure sku.
-# 
+#
 - name: Replace '_' with _rm vars
   shell: "cat {{ working_dir }}/tf/env.tfvars | sed \"s/'_'/_/g\" > {{ working_dir }}/tf/env.tfvars.temp"
 
 - name: Move it back
   shell: "mv {{ working_dir }}/tf/env.tfvars.temp {{ working_dir }}/tf/env.tfvars"
-
