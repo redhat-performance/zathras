@@ -1,15 +1,21 @@
 ---
 #
-# Retrieve the various system configuration information
+# Retrieve the various system configuration information.
 #
+# grab_sys_config creates and populates /tmp/sysconfig_info and produces
+# /tmp/sysconfig_info.tar, which the caller fetches back.  It is best-effort
+# across vendors (the script is RHEL-oriented and only partially applies
+# elsewhere), so it is intentionally not gated on os_vendor.
 #
-#
-- name: create sys_config_out_dir
-  file:
-    path: "/tmp/sysconfig_info"
-    state: directory
-    mode: 0775
-  ignore_errors: yes
-
-- name: rhel_sysconfig obtain
+- name: obtain system configuration
   shell: tools_bin/grab_sys_config
+
+- name: Confirm the system configuration archive was created
+  stat:
+    path: "/tmp/sysconfig_info.tar"
+  register: sysconfig_tar
+
+- name: Fail if the system configuration archive is missing
+  fail:
+    msg: "grab_sys_config did not produce /tmp/sysconfig_info.tar"
+  when: not sysconfig_tar.stat.exists
