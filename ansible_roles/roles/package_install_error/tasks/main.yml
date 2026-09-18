@@ -1,5 +1,7 @@
 ---
+#
 # Report package install errors
+# EXpect an integer for a rtc.
 #
 - name: indicate terminate system
   lineinfile:
