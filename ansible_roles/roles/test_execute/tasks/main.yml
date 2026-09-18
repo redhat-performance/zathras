@@ -1,58 +1,34 @@
 ---
 #
 # We could combine this with test_generic, but the file
-# would get a bit long.  
+# would get a bit long.
 #
-- name: include dynamic variables for text execution 
-  include_vars:
-    file: "{{ working_dir }}/ansible_run_vars.yml"
-    name: dyn_data
-
+# Note: the per-test variable data (test_data) and the dynamic run
+# variables (dyn_data) are loaded by test_generic itself, so there is
+# no need to include them here.
 #
-# Retrieve the yml file containing the information pertaining
-# to the test being run.
-#
-- name: include_test_file
-  include_vars:
-    file: "tests_to_run/{{ test_exec }}.yml"
-    name: test_data
-
-
 - name: check to see if git command is present
   shell:
-      cmd: "which git"
+      cmd: "command -v git"
   register: git_check
-  ignore_errors: true
+  changed_when: false
+  failed_when: false
 
+#
+# Install git if it is missing.  ansible builtin package install is not
+# working on azurelinux, so dnf is used directly there.
+#
 - name: install git
   block:
     - name: Install git package if need be.
       ansible.builtin.package:
         name: git
         state: present
-  rescue:
-    - name: If git not installed or failed to install bail.
-      include_role:
-        name: tf_delete
-      vars:
-        tf_dir: "tf"
-    - name: Aborting test
-      fail:
-        msg: "Git is not present"
-  when:
-    - git_check.rc != 0
-    - config_info.do_not_install_packages == 0
-    - config_info.do_not_install_system_packages == 0
-    - config_info.os_vendor != "azure"
+      when: config_info.os_vendor != "azure"
 
-#
-# ansible builtin package install is not working on azurelinux.
-# Use dnf instead.
-#
-- name: install git
-  block:
-    - name: Install git package if need be.
-      shell: "dnf install -y git"
+    - name: Install git package on azure.
+      ansible.builtin.command: "dnf install -y git"
+      when: config_info.os_vendor == "azure"
   rescue:
     - name: If git not installed or failed to install bail.
       include_role:
@@ -66,7 +42,6 @@
     - git_check.rc != 0
     - config_info.do_not_install_packages == 0
     - config_info.do_not_install_system_packages == 0
-    - config_info.os_vendor == "azure"
 
 #
 # Time we are starting the test.
@@ -74,6 +49,7 @@
 - name: grab test start time
   command: "date +%s"
   register: start_time
+  changed_when: false
 #
 # Execute the test.
 #
@@ -91,15 +67,14 @@
 - name: grab test end time
   command: "date +%s"
   register: end_time
+  changed_when: false
 
 #
 # Report the time to run the test.
 #
 - name: record test date
-  lineinfile:
-    path: "/tmp/test_times"
-    line: "test: {{test_item }} execution time {{ ((end_time.stdout) | int) - ((start_time.stdout) | int) | int }}"
-    create: yes
+  shell: "echo 'test: {{ test_item }} execution time {{ (end_time.stdout | int) - (start_time.stdout | int) }}' >> /tmp/test_times"
+  changed_when: true
   when: config_info.cloud_execute_tests == 1
 
 - name: retrieve test time
@@ -107,4 +82,4 @@
     src: "/tmp/test_times"
     dest: "{{ working_dir }}/test_times"
     flat: yes
-
+  when: config_info.cloud_execute_tests == 1
