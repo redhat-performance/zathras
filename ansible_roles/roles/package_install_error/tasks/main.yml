@@ -1,5 +1,8 @@
 ---
+#
 # Report package install errors
+#
+# Theexpected return code is an integer.
 #
 - name: Fail on error
   block:
