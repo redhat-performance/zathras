@@ -1,0 +1,12 @@
+locals {
+  system = {
+    "0"  = { index = 0, sys = "{{ config_info.host_config }}" }
+{% if config_info.cloud_numb_networks|int != 0 %}
+{% if config_info.cloud_network_systems == "none" %}
+    "1"  = { index = 1, sys = "{{ config_info.host_config }}" }
+{% else %}
+    "1"  = { index = 1, sys = "{{ config_info.cloud_network_systems }}" }
+{% endif %}
+{% endif %}
+  }
+}
