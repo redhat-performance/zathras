@@ -79,7 +79,7 @@ tf_list_func()
 			grep  azure tf_list_info >& /dev/null
 			if [ $? -eq 0 ]; then
 				vm_size=`grep size tf_list_info | grep -v disk | cut -d'"' -f2`
-				public_ip=`grep public_ip_address tf_list_info | head -1 | cut -d'"' -f2 | sort -u`
+				public_ip=`grep public_ip_address tf_list_info | head -1 | cut -d'"' -f2`
 				name_tag=`grep environment tf_list_info | cut -d'"' -f4 | sort -u`
 				printf "work_dir: %s\n" $work_dir
 				printf "\tfull_path: %s\n" $tf_show
