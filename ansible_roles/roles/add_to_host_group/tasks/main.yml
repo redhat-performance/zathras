@@ -17,6 +17,11 @@
 #
 # If need be, create the file and add the front matter.
 #
+# The header ("---" then "<group_name>:") must precede the host entries.
+# lineinfile only appends at EOF, so it cannot retrofit a header above
+# existing lines.  We therefore write the header only while creating the
+# file (i.e. before any hosts have been added).
+#
 - name: create the test group file if need be
   block:
   - name: Add first line
@@ -28,7 +33,7 @@
     lineinfile:
       path: "{{ working_group_file }}"
       line: "{{ group_name }}:"
-  when: stat_result.stat.exists == False
+  when: not stat_result.stat.exists
 
 #
 # Add the host to the file
