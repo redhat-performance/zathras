@@ -1,62 +1,48 @@
-Role Name
-=========
+set_up_tf_vars
+==============
 
-This is a work in progress, and will be updated over time.
+Renders the terraform variables file (`tf/env.tfvars`) used to create a cloud
+instance, from templates supplied by the calling cloud role.
 
-Terminate the instances created, including storage and networks
+Important: this role has no `templates/` directory of its own. Each cloud role
+that calls it must provide, in its own `templates/` directory:
 
-Roles called: 
-	aws_remove_instance
-	aws_net_terminate
-Commands called:
-	aws ec2 delete-volume --volume-id
-	aws ec2 attach-volume
-	sleep
+- `tfvars.j2`        - the main terraform variables template
+- `tfvars_disks.j2`  - the per-disk terraform variables template
 
-Updated data: None
-
-Files used:
-	vol_info: contains the volume information
-	ansible_run_vars.yml: run time information
-	ansible_vars.yml:  test configuration information
-
+These are reached via `include_role`'s search path (the `../templates/`
+reference in `tasks/main.yml`).
 
 Requirements
 ------------
 
+The caller must provide the two templates above and pass `cloud_change_to`
+(consumed inside `tfvars.j2`). The following files must exist in `working_dir`:
+
+- `add_main_tf_vars` - extra tag variables appended to the rendered template
+- `tf/`              - output directory for `env.tfvars`
 
 Role Variables
 --------------
-	aws_instance_id: id of the instance removing
-	aws_net_instance_id: id of the network instance removing
-	cloud_numb_networks: number of networks allocated to the instance (minus the default)
 
+- `working_dir`            - working directory holding inputs and the `tf/` output dir
+- `cloud_change_to`        - target cloud (e.g. `azure`, `aws_instance`, `ibm_vpc`); used by `tfvars.j2`
+- `config_info.cloud_disks`- disk spec list `"count:type:size:index:iops:tp"`, or `"none"`
 
-Dependencies
+What it does
 ------------
 
-Depends on the cloud auto.
+1. Copies the caller's `tfvars.j2` into `working_dir` and appends
+   `add_main_tf_vars` to it.
+2. Templates it into `tf/env.tfvars`.
+3. If `cloud_disks` is not `"none"`, parses the disk spec and appends the
+   rendered `tfvars_disks.j2` block.
+4. Restores underscores that ansible would otherwise strip from the azure sku
+   (`'_'` -> `_`).
 
-Example Playbook
-----------------
-
-- hosts: local
-  vars_files: ansible_vars.yml
-  tasks:
-    - name: aws_terminate
-      include_role:
-        name: aws_terminate
-      when:
-        - config_info.cd_vendor == "aws"
-        - config_info.cloud_terminate_instance == 1
-
-
-License
+Callers
 -------
 
-RHEL
-
-Author Information
-------------------
-
-David Valin
+`aws_create`, `azure_create`, `ibm_vpc_create` (and the `tfvars.j2` /
+`tfvars_disks.j2` templates also exist for `gcp_create_instance` and
+`ibm_create`).
