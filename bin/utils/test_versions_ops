@@ -80,8 +80,8 @@ test_version_ops()
 			fi
 			gh release view -R $repo $using_version --json tagName -q .tagName &> /dev/null
 			if [ $? -ne 0 ]; then
-				version_fail="$repo, version $using_version is not defined."
-				bail_out=1
+				echo  "Error: $repo, version $using_version is not defined."
+				continue
 			fi
 			#
 			# Now obtain the latest official version
@@ -121,16 +121,16 @@ test_version_ops()
 					while IFS= read -r replace_line
 					do
 						if [[ $replace_line == "repo_file:"* ]]; then
-							echo $replace_line | sed "s/$using_version/$latest/g" >> ${test_repo}.new
+							echo "$replace_line" | sed "s/$using_version/$latest/g" >> ${test_repo}.new
 							continue
 						fi
 						if [[ $replace_line == "exec_dir:"* ]]; then
 							replace_with=`echo $latest | sed "s/^v/-/g"`
 							replacing=`echo $using_version | sed "s/^v/-/g"`
-							echo $replace_line | sed "s/$replacing/$replace_with/g" >> ${test_repo}.new
+							echo "$replace_line" | sed "s/$replacing/$replace_with/g" >> ${test_repo}.new
 							continue
 						fi
-						echo $replace_line >> ${test_repo}.new
+						echo "$replace_line" >> ${test_repo}.new
 					done < "${test_repo}"
 					mv $test_repo ${test_repo}.orig
 					mv ${test_repo}.new ${test_repo}
