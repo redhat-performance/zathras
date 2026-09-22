@@ -10,12 +10,13 @@
     copy:
       src: "{{ test_data.pre_setup }}"
       dest: "/tmp/pre_script"
-      mode: 0555
+      mode: '0555'
   - name: execute the pre script
     shell: "/tmp/pre_script"
   when:
     - test_data.pre_setup != "none"
     - config_info.cloud_execute_tests == 1
+    - test_location == test_data.test_run_from
 
 - name: Execute test if local type matches
   block:
@@ -63,10 +64,6 @@
   - name: report local type
     debug:
       msg: "local type: {{ test_location }}"
-
-  - name: Get current time
-    command: date +"%T_%m%d%Y"
-    register: time_period
 
   - name: build the command
     set_fact:
@@ -146,13 +143,13 @@
     copy:
       src: "{{ test_data.post_script }}"
       dest: "/tmp/post_script"
-      mode: 0555
-    ignore_errors: yes
-  - name: execute the pre script
+      mode: '0555'
+  - name: execute the post script
     shell: "/tmp/post_script"
   when:
     - test_data.post_script != "none"
     - config_info.cloud_execute_tests == 1
+    - test_location == test_data.test_run_from
 
 - name: Report failure
   block:
@@ -169,4 +166,6 @@
       src: "{{ dest_dir }}/{{ test_data.exec_dir }}/test_failure"
       dest: "{{ working_dir }}/test_failure"
       flat: yes
-  when: test_out.rc != 0
+  when:
+    - test_location == test_data.test_run_from
+    - test_out.rc | default(0) != 0
