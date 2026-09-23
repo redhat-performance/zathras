@@ -1,23 +1,49 @@
 ---
+#
+# tuned_loop: apply a single tuned profile, record whether it applied, then run
+# the test for that profile.  Invoked once per profile by the tuned_setting
+# role, which passes the profile name in via the tuned_using variable.
+# (Reviewed 2026-09-23.)
+#
 
-- name: make sure tuned is enabled
-  command: "systemctl enable tuned"
-- name: make sure tuned is started
-  command: "systemctl start tuned"
+#
+# Enable + start tuned in one idempotent step instead of two always-changed
+# systemctl commands.
+#
+- name: make sure tuned is enabled and started
+  ansible.builtin.systemd:
+    name: tuned
+    enabled: true
+    state: started
+
+#
+# tuned-adm profile can fail (for example an unknown profile name).  We
+# deliberately ignore the error and continue: record_status logs the failure
+# and the test still runs, labeled with the requested profile, so a bad tuned
+# setting shows up in the results rather than aborting the run.
+#
 - name: run tuned
-  command: "tuned-adm profile {{ tuned_adm_profile }}"
-  ignore_errors: yes
+  ansible.builtin.command: "tuned-adm profile {{ tuned_using }}"
+  ignore_errors: true
   register: tuned_status
+  changed_when: tuned_status.rc == 0
+
 - name: save status
   include_role:
     name: record_status
   vars:
     results: "{{ tuned_status }}"
     status_file: "/tmp/tuned_status"
+
+#
+# Informational only: show the active profile.  Never changes system state.
+#
 - name: Give current tuned setting
-  command: "tuned-adm active"
+  ansible.builtin.command: "tuned-adm active"
+  changed_when: false
+
 - name: Reboot the system after tuned setting if requested.
-  reboot:
+  ansible.builtin.reboot:
     reboot_timeout: 1800
   when: config_info.rhel_tuned_reboot == 1
 
@@ -27,5 +53,4 @@
   vars:
     test_exec_loca: "{{ test_location }}"
     test_exec: "{{ test_item }}"
-    sys_confg: "tuned_{{ tuned_adm_profile }}_sys_file_{{ config_info.sys_config }}"
-
+    sys_confg: "{{ tuned_using }}"
