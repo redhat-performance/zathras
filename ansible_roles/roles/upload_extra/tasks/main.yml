@@ -1,5 +1,5 @@
 ---
-# 
+#
 # Upload the required tests.
 #
 
@@ -13,17 +13,15 @@
     file: "{{ working_dir }}/ansible_vars.yml"
 
 #
-# Default status.
+# If we are pulling a file.  The upload list may contain literal "none"
+# entries (emitted by burden) and may be empty, so guard both cases.
 #
-- name: Record default status of update success
-  lineinfile:
-    path: "/tmp/upload_extra_status"
-    line: "status: success"
-    create: yes
-
-#
-# If we are pulling a file
-#
-- name: Upload extra files
+- name: Upload the extra files
   include_role:
-    name: upload_extra_files
+    name: actual_upload_extra
+  vars:
+    extra_file_upload: "{{ extra_file }}"
+  when: extra_file != "none"
+  loop: "{{ extra.uploads | default([]) }}"
+  loop_control:
+    loop_var: extra_file
