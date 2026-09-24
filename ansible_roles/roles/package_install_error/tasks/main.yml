@@ -1,32 +1,30 @@
 ---
-# Report package install errors
 #
-- name: Fail on error
-  block:
-  - name: indicate terminate system
-    lineinfile:
-      path: "{{ results_file }}"
-      line: "status: failed"
-      create: yes
-  - name: Report errors
-    debug:
-      msg: "Failed to install one of the packages {{ packages }}"
-  when: config_info.error_repo_errors == 1 and rtc_val == true
-- name: Failed but ignore
-  block:
-  - name: Record ignore
-    lineinfile:
-      path: "{{ results_file }}"
-      line: "status: ignore"
-      create: yes
-  - name: Report errors
-    debug:
-      msg: "Failed to install one of the packages {{ packages }}"
-  when: config_info.error_repo_errors == 0 and rtc_val == true
+# Report package install errors
+# EXpect an integer for a rtc.
+#
+- name: indicate terminate system
+  lineinfile:
+    path: "{{ results_file }}"
+    line: "status: failed"
+    create: yes
+  when: config_info.error_repo_errors == 1 and (rtc_val | int) != 0
+
+- name: Record ignore
+  lineinfile:
+    path: "{{ results_file }}"
+    line: "status: ignore"
+    create: yes
+  when: config_info.error_repo_errors == 0 and (rtc_val | int) != 0
+
+- name: Report errors
+  debug:
+    msg: "Failed to install one of the packages {{ packages }}"
+  when: (rtc_val | int) != 0
 
 - name: Record success
   lineinfile:
     path: "{{ results_file }}"
     line: "status: success"
     create: yes
-  when: rtc_val != true
+  when: (rtc_val | int) == 0
