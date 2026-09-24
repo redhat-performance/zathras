@@ -8,7 +8,9 @@
 - name: install rhel packages
   block:
   - name: Remove any existing status file.
-    shell: "rm -f {{ results_file }}"
+    file:
+      path: "{{ results_file }}"
+      state: absent
   - name: install yum packages
     yum:
       name: "{{ pkg_install }}"
@@ -20,25 +22,29 @@
        line: "status: success"
        create: yes
   rescue:
-    - name: Report Error
-      lineinfile:
-         path: "{{ results_file }}"
-         line: "status: failed"
-         create: yes
-  any_errors_fatal: true
+    - name: Error check
+      include_role:
+        name: package_install_error
+      vars:
+        rtc_val: true
+        packages: "{{ pkg_install }}"
   when: config_info.os_vendor == "rhel"
 
 - name: install amazon packages
   block:
+  - name: Remove any existing status file.
+    file:
+      path: "{{ results_file }}"
+      state: absent
   - name: install yum packages
-    shell: "yum -y install `echo {{ pkg_install }} | sed \"s/\\[//g\" | sed \"s/]//g\" | sed \"s/,//g\"`"
+    shell: "yum -y install {{ pkg_install | join(' ') }}"
     ignore_errors: yes
     register: install_results
   - name: Error check
     include_role:
       name: package_install_error
     vars:
-      rtc_val: "{{ install_results.rc }}"
+      rtc_val: "{{ install_results.rc != 0 }}"
       packages: "{{ pkg_install }}"
   when: config_info.os_vendor == "amazon"
 
@@ -47,15 +53,19 @@
 #
 - name: Install ubuntu packages
   block:
+  - name: Remove any existing status file.
+    file:
+      path: "{{ results_file }}"
+      state: absent
   - name: ubuntu package install
-    shell: "apt -y install `echo {{ pkg_install }} | sed \"s/\\[//g\" | sed \"s/]//g\" | sed \"s/,//g\"`"
+    shell: "apt -y install {{ pkg_install | join(' ') }}"
     ignore_errors: yes
     register: install_results
   - name: Error check
     include_role:
       name: package_install_error
     vars:
-      rtc_val: "{{ install_results.rc }}"
+      rtc_val: "{{ install_results.rc != 0 }}"
       packages: "{{ pkg_install }}"
   when: config_info.os_vendor == "ubuntu"
 
@@ -63,11 +73,13 @@
 # Install packages on SUSE images.
 #
 # The zypper module comes from community.general.  If at any point we find a case it's not already installed we'll have to update the installer script.
-# 
+#
 - name: install SUSE packages
   block:
   - name: Remove any existing status file.
-    shell: "rm -f {{ results_file }}"
+    file:
+      path: "{{ results_file }}"
+      state: absent
   - name: install zypper packages
     zypper:
       name: "{{ pkg_install }}"
@@ -82,10 +94,10 @@
        line: "status: success"
        create: yes
   rescue:
-    - name: Report Error
-      lineinfile:
-         path: "{{ results_file }}"
-         line: "status: failed"
-         create: yes
-  any_errors_fatal: true
+    - name: Error check
+      include_role:
+        name: package_install_error
+      vars:
+        rtc_val: true
+        packages: "{{ pkg_install }}"
   when: config_info.os_vendor == "suse"
