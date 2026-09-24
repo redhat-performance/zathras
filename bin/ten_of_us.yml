@@ -23,7 +23,7 @@
 #   1) Call the appropriate modules to create the designated system type.
 #   2) Install all required packages
 #   3) Invokes the test to be executed.
-#   
+#
 - hosts: local
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -47,7 +47,7 @@
   tasks:
   #
   # Start with the instance not being created.
-  # 
+  #
   - set_fact:
       instance_created: 0
 
@@ -145,7 +145,7 @@
 #
 #
 - hosts: install_group
-  remote_user: config_info.test_user
+  remote_user: "{{ config_info.test_user }}"
   become_user: root
   become: true
   vars_files: ansible_vars.yml
@@ -197,9 +197,9 @@
 
 #
 # install tools
-# 
+#
 - hosts: install_group
-  remote_user: config_info.test_user
+  remote_user: "{{ config_info.test_user }}"
   vars_files: ansible_vars.yml
   gather_facts: no
   tasks:
@@ -218,7 +218,7 @@
 
 #
 # Terminate if told to.
-# 
+#
 
 - hosts: local
   vars_files: ansible_vars.yml
@@ -235,7 +235,7 @@
 # Make sure CodeReady Builder repo is enabled, thanks inconsistent clouds
 #
 - hosts: install_group
-  remote_user: config_info.test_user
+  remote_user: "{{ config_info.test_user }}"
   become_user: root
   become: true
   vars_files: ansible_vars.yml
@@ -274,7 +274,7 @@
       when:
         - config_info.system_type == "aws" or config_info.system_type == "azure"
 
-    - name: Enable CodeReady Builder for GCP
+    - name: Setup CodeReady Builder for GCP
       block:
         - name: Install yum utils
           become: yes
@@ -364,7 +364,8 @@
 # Enable SLES legacy module
 #
 - hosts: install_group
-  remote_user: config_info.test_user
+  any_errors_fatal: true
+  remote_user: "{{ config_info.test_user }}"
   become_user: root
   become: true
   vars_files: ansible_vars.yml
@@ -394,10 +395,9 @@
     rescue:
       - name: Report Error
         lineinfile:
-          path: "{{ results_file }}"
+          path: "{{ working_dir }}/suse_failed"
           line: "status: failed"
           create: yes
-    any_errors_fatal: true
     when:
       - config_info.os_vendor == "suse"
 
@@ -412,7 +412,7 @@
       status_file: "sles_legacy_status"
       exit_msg: "SLES legacy module installation failure"
     when: config_info.os_vendor == "suse"
- 
+
 #
 # Determine where to upload from, assumption is all test systems have the same
 # disk space.
@@ -420,17 +420,17 @@
 - hosts: localhost
   vars_files:
     - ansible_vars.yml
-  gather_facts: no 
+  gather_facts: no
   tasks:
   - name: Determine disk space
     include_role:
       name: upload_disk_space
-     
+
 #
 # Install the packages.
-# 
+#
 - hosts: install_group
-  remote_user: config_info.test_user
+  remote_user: "{{ config_info.test_user }}"
   become_user: root
   become: true
   vars_files:
@@ -484,7 +484,7 @@
       - config_info.do_not_install_system_packages == 0
 
 - hosts: install_group
-  remote_user: config_info.test_user
+  remote_user: "{{ config_info.test_user }}"
   become_user: root
   become: true
   vars_files:
@@ -499,9 +499,9 @@
 
 #
 # Reboot the system if we did an update.
-# 
+#
 - hosts: install_group
-  remote_user: config_info.test_user
+  remote_user: "{{ config_info.test_user }}"
   become_user: root
   become: true
   vars_files: ansible_vars.yml
@@ -522,7 +522,7 @@
 # connected.  The best way we can see to get the current time in seconds is simply
 # to use the date command.  There is lookup('pipe','date'), but it actually just
 # executes the date command underneath.
-# 
+#
 #
 - hosts: local
   vars_files: ansible_vars.yml
@@ -539,7 +539,7 @@
         lineinfile:
           path: "{{ working_dir }}/ansible_run_vars.yml"
           line: "ct_uperf_server_ip: {{ dyn_data.test_hostname }}"
-      - name: set server ip
+      - name: set client ip
         lineinfile:
           path: "{{ working_dir }}/ansible_run_vars.yml"
           line: "ct_uperf_client_list: {{ dyn_data.net_hostname }}"
@@ -558,9 +558,9 @@
 #
 # set the install groups
 # We need the ignore file, in case ansible_install_group is not present.
-# 
+#
 - hosts: local
-  vars_files: 
+  vars_files:
   - ansible_vars.yml
   - [ "{{ working_dir }}/ansible_install_group", "{{ working_dir }}/ignore.yml" ]
 
@@ -583,15 +583,15 @@
 # Set the test_group
 #
 - hosts: local
-  remote_user: config_info.test_user
+  remote_user: "{{ config_info.test_user }}"
   become_user: root
   become: true
-  vars_files: 
+  vars_files:
   - ansible_vars.yml
   - [ "{{ working_dir }}/ansible_test_group", "{{ working_dir }}/ignore.yml" ]
 
   gather_facts: no
- 
+
   tasks:
     - name: assign test hosts
       block:
@@ -607,7 +607,7 @@
       when: config_info.init_system == "no"
 #
 # Clear out our install disk.
-# 
+#
 - hosts: local
   vars_files: ansible_vars.yml
 
@@ -625,9 +625,9 @@
 
 #
 # Perform selinux operations.
-# 
+#
 - hosts: install_group
-  user: root
+  remote_user: root
   become: true
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -640,7 +640,7 @@
 # Set sys config values.
 #
 - hosts: install_group
-  user: root
+  remote_user: root
   become: true
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -655,7 +655,7 @@
 # Retrieve boot time information
 #
 - hosts: test_group
-  user: root
+  remote_user: root
   become: true
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -673,7 +673,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -688,7 +688,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -721,7 +721,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -761,9 +761,9 @@
 
 #
 # Retrieve the system configuration information
-# 
+#
 - hosts: test_group
-  user: root
+  remote_user: root
   become: true
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -807,7 +807,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -846,7 +846,7 @@
 
 #
 # execute the test that need to be executed from the local system (reboot)
-# 
+#
 - hosts: localhost
   vars_files: ansible_vars.yml
   gather_facts: no
@@ -862,7 +862,7 @@
   vars_files:
     - ansible_vars.yml
     - upload_files.yml
-  user: root
+  remote_user: root
   become: true
   gather_facts: no
   tasks:
@@ -896,7 +896,6 @@
       - name: Restore the original workloads
         command: "mv /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads_back_zathras /{{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/workloads"
       when: stat_result.stat.exists
-    when: stat_result.stat.isdir is defined and stat_result.stat.isdir
 
 #
 # Terminate the systems
@@ -905,7 +904,7 @@
   vars_files: ansible_vars.yml
   gather_facts: no
   tasks:
-   
+ 
   - name: terminate instance
     block:
     - name: terminate start time
@@ -915,14 +914,14 @@
 #
 # When azure goes to terraform, the when statement goes away as everyone
 # is using the same termiante routine.
-# 
+#
     - name: Terraform terminate
       include_role:
         name: tf_delete
       vars:
         tf_dir: "tf"
       when: config_info.system_type in ['aws', 'gcp', 'azure', 'ibm']
-    
+
     - name: terminate end time
       command: "date -u +%s"
       register: terminate_end_time
@@ -931,7 +930,7 @@
       lineinfile:
         path: "{{ working_dir }}/cloud_timings"
         line: "terminate time: {{ (terminate_end_time.stdout) | int  - (terminate_start_time.stdout) | int }}"
-    when: 
+    when:
       - config_info.system_type != "local"
       - config_info.cloud_terminate_instance == 1
       - config_info.term_system == "yes"
