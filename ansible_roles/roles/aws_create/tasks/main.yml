@@ -47,7 +47,7 @@
     shell: sed "s/#  placement_group/  placement_group/g"< {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/vm_no_spot >> {{ working_dir }}/tf/main.tf
     when: config_info.spot_start_price == 0
   - name: Add vm creation  in
-    shell: sed "s/#  placement_group/  placement_group/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/vm_spot < {{ working_dir }}/tf/main.tf
+    shell: sed "s/#  placement_group/  placement_group/g" < {{ config_info.local_run_dir }}/ansible_roles/roles/aws_create/files/tf/vm_spot >> {{ working_dir }}/tf/main.tf
     when: config_info.spot_start_price != 0
   when: config_info.cloud_placement != "none"
 
@@ -135,7 +135,7 @@
   failed_when:  "'IGNORE_IT' in aws_name.stderr"
 
 - name: aws_have_id
-  shell: "echo `echo AWS_USER: {{ aws_name.stdout }} | cut -d':' -f 2`"
+  shell: "echo `echo {{ aws_name.stdout }} | cut -d':' -f 2`"
   register: temp_uname
   when: aws_name.stdout != ""
 
