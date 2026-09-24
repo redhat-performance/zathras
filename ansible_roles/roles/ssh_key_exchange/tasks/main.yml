@@ -3,11 +3,10 @@
 - name: SSH KeyGen command
   delegate_to: "{{ item }}"
   become: yes
-  shell: > 
+  shell: >
     ssh-keygen -q -b 2048 -t rsa -N "" -C "creating SSH" -f ~/.ssh/id_rsa
     creates="~/.ssh/id_rsa"
-  with_items:
-    - "{{ ip_list }}"
+  loop: "{{ ip_list }}"
 
 - name: Fetch the keyfile from one server to another
   delegate_to: "{{ item }}"
@@ -16,8 +15,7 @@
     src: "~/.ssh/id_rsa.pub"
     dest: "buffer/{{item}}-id_rsa.pub"
     flat: yes
-  with_items:
-    - "{{ ip_list }}"
+  loop: "{{ ip_list }}"
 
 - name: Copy the key add to authorized_keys using Ansible module
   delegate_to: "{{ ip_list[0] }}"
@@ -25,7 +23,7 @@
   authorized_key:
     user: root
     state: present
-    key: "{{ lookup('file','buffer/{{ ip_list[1] }}-id_rsa.pub')}}"
+    key: "{{ lookup('file', 'buffer/' + ip_list[1] + '-id_rsa.pub') }}"
 
 - name: Copy the key add to authorized_keys using Ansible module
   delegate_to: "{{ ip_list[1] }}"
@@ -33,7 +31,7 @@
   authorized_key:
     user: root
     state: present
-    key: "{{ lookup('file','buffer/{{ ip_list[0] }}-id_rsa.pub')}}"
+    key: "{{ lookup('file', 'buffer/' + ip_list[0] + '-id_rsa.pub') }}"
 
 - name: Copy the key add to authorized_keys using Ansible module
   delegate_to: "{{ ip_list[0] }}"
@@ -41,7 +39,7 @@
   authorized_key:
     user: root
     state: present
-    key: "{{ lookup('file','buffer/{{ ip_list[0] }}-id_rsa.pub')}}"
+    key: "{{ lookup('file', 'buffer/' + ip_list[0] + '-id_rsa.pub') }}"
 
 - name: Copy the key add to authorized_keys using Ansible module
   delegate_to: "{{ ip_list[1] }}"
@@ -49,7 +47,7 @@
   authorized_key:
     user: root
     state: present
-    key: "{{ lookup('file','buffer/{{ ip_list[1] }}-id_rsa.pub')}}"
+    key: "{{ lookup('file', 'buffer/' + ip_list[1] + '-id_rsa.pub') }}"
 
 - name: Permit root login
   delegate_to: "{{ item }}"
@@ -58,8 +56,8 @@
     path: /etc/ssh/sshd_config
     regex: '^PermitRootLogin'
     line: PermitRootLogin yes
-  with_items:
-    - "{{ ip_list }}"
+    validate: '/usr/sbin/sshd -t -f %s'
+  loop: "{{ ip_list }}"
 
 
 - name: restart sshd service
@@ -68,17 +66,14 @@
   systemd:
     name: sshd
     state: restarted
-  with_items:
-    - "{{ ip_list }}"
+  loop: "{{ ip_list }}"
 
 - name: Make sure we can ssh in to net1 from net2
   delegate_to: "{{ ip_list[1] }}"
   become: yes
   shell: "ssh -oStrictHostKeyChecking=no  root@{{ ip_list[0] }} 'cat /etc/passwd'"
-  register: ignore
 
 - name: Make sure we can ssh in net2 from net1
   delegate_to: "{{ ip_list[0] }}"
   become: yes
   shell: "ssh -oStrictHostKeyChecking=no  root@{{ ip_list[1] }} 'cat /etc/passwd'"
-  register: ignore
