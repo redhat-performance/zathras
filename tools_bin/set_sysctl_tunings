@@ -1,7 +1,69 @@
 #!/bin/bash
-for i in `cat $1`;
-do
-        setting=`echo $i | cut -d'=' -f 1`
-        value=`echo $i | cut -d'=' -f 2`
-        echo $value > $setting
-done
+#
+# Apply /proc and /sys tunings listed in the file passed as $1.
+#
+# File format is one setting per line:
+#   <what setting>=<value>
+# Example:
+#   /proc/sys/kernel/numa_balancing=0
+#
+# Blank lines and lines starting with '#' are ignored.
+#
+# Any setting that changes is echoed to stdout so callers (e.g. Ansible)
+# can detect whether a change occurred. Any failure aborts with a non-zero
+# exit status instead of being silently ignored.
+#
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+	echo "usage: $(basename "$0") <settings-file>" >&2
+	exit 1
+fi
+
+settings_file="$1"
+
+if [[ ! -f "$settings_file" ]]; then
+	echo "error: settings file '$settings_file' not found" >&2
+	exit 1
+fi
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+	# Strip leading/trailing whitespace.
+	line="${line#"${line%%[![:space:]]*}"}"
+	line="${line%"${line##*[![:space:]]}"}"
+
+	# Skip blank lines and comments.
+	[[ -z "$line" || "$line" == \#* ]] && continue
+
+	if [[ "$line" != *=* ]]; then
+		echo "error: malformed line (expected <setting>=<value>): $line" >&2
+		exit 1
+	fi
+
+	setting="${line%%=*}"
+	value="${line#*=}"
+
+	# Only allow writing to kernel-exposed tunables.
+	if [[ "$setting" != /proc/* && "$setting" != /sys/* ]]; then
+		echo "error: refusing to write to '$setting' (only /proc/* and /sys/* allowed)" >&2
+		exit 1
+	fi
+
+	if [[ ! -w "$setting" ]]; then
+		echo "error: '$setting' is not writable" >&2
+		exit 1
+	fi
+
+	# Skip the write if the current value already matches.
+	current="$(cat "$setting" 2>/dev/null || true)"
+	if [[ "$current" == "$value" ]]; then
+		continue
+	fi
+
+	if ! echo "$value" > "$setting"; then
+		echo "error: failed to write '$value' to '$setting'" >&2
+		exit 1
+	fi
+
+	echo "changed: $setting = $value"
+done < "$settings_file"

@@ -1,0 +1,6 @@
+---
+#
+# Name of the file under {{ cd_homedir }}/sysctl_settings to apply.
+# The reserved value "none" means apply no tunings (safe no-op default).
+#
+sysctl_settings: "none"
