@@ -1,6 +1,6 @@
 ---
-# 
-# Upload the required tests.
+#
+# Upload and install the requested rpms.
 #
 
 - name: include_rpms
@@ -13,17 +13,26 @@
     file: "{{ working_dir }}/ansible_vars.yml"
 
 #
-# Default status.
+# Capture the cumulative results file into a dedicated fact while results_file
+# is still the clean value passed in by the caller.  "results_file" can be a
+# self-referential template by the time it reaches the nested include (it is
+# leaked/re-evaluated across plays and loop iterations), which triggers a
+# recursive templating loop.  Downstream we use only this dedicated fact.
 #
-# If we are pulling a file
+- name: Capture the cumulative rpm results file
+  set_fact:
+    rpm_install_results_file: "{{ results_file }}"
+
+#
+# Walk the list of rpms and upload/install each one.
+# A value of "none" is the sentinel for "no rpm requested" and is skipped.
 #
 - name: perform rpm upload
   include_role:
     name: rpm_upload_and_install
   vars:
     rpm: "{{ rpm_file }}"
-    results_file: "{{ results_file }}"
   when: rpm_file != "none"
-  loop:  "{{ rpms.rpm }}"
+  loop:  "{{ rpms.rpm | default([]) }}"
   loop_control:
     loop_var: rpm_file
