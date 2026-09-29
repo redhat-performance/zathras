@@ -1,27 +1,77 @@
 ---
 # tasks file for terraform deletion
 #
+# Selects the correct terraform workspace, then destroys its resources.  A
+# single "terraform destroy -auto-approve" is idempotent across retries, so the
+# destroy is time-boxed and retried a bounded number of times.  This avoids the
+# stale saved-plan, state-lock and infinite-recursion problems of the previous
+# version (which re-included this role on a return code that never occurred).
 
-- name: terraform create delete plan
-  shell: terraform -chdir="{{ working_dir }}/{{ tf_dir }}" plan -var-file=env.tfvars -destroy -out=destroy.tfplan
+- name: Ensure the required variables are set
+  ansible.builtin.assert:
+    that:
+      - working_dir is defined
+      - config_info is defined
+    fail_msg: "tf_delete requires 'working_dir' and 'config_info' to be defined"
 
-- name: terraform delete
-  shell: timeout --signal=9 20m terraform -chdir="{{ working_dir }}/{{ tf_dir }}" apply  destroy.tfplan
-  register: destroy
+- name: Select the terraform workspace to destroy
+  ansible.builtin.shell: |
+    set -eo pipefail
+    terraform workspace select {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}
+  args:
+    chdir: "{{ working_dir }}/{{ tf_dir | default('tf') }}"
+    executable: /bin/bash
+  register: tf_delete_ws
+  changed_when: false
   ignore_errors: yes
 
 #
-# If the destroy timed out, remove the old plan and try again.
+# If the workspace cannot be selected there is nothing we own to destroy, and
+# running destroy against the default workspace could remove the wrong
+# resources.  Skip the destroy entirely in that case.
 #
-# Ansible changes the rtc from the timeout command
-# 
-- name: retry if need be because the command timedout
+- name: Note when the workspace is unavailable
+  ansible.builtin.debug:
+    msg: "Workspace could not be selected; skipping destroy to avoid touching the wrong resources"
+  when: tf_delete_ws is failed
+
+- name: Destroy the terraform resources
+  when: tf_delete_ws is not failed
   block:
-  - name: remove the destroy plan
-    file:
-      path:  "{{ working_dir }}/{{ tf_dir }}/destroy.tfplan"
-      state: absent
-  - name: Retry the destroy
-    include_role:
-      name: tf_delete
-  when: destroy.rc == -9
+    #
+    # timeout sends SIGTERM (--signal=15) so terraform can shut down gracefully
+    # and release its state lock; --kill-after escalates to SIGKILL only if the
+    # graceful shutdown itself hangs.  Because each attempt re-plans, a retry
+    # cleans up whatever the previous (timed-out) attempt left behind.
+    #
+    - name: Destroy terraform resources
+      ansible.builtin.shell: |
+        set -eo pipefail
+        timeout --signal=15 --kill-after=2m {{ tf_delete_timeout | default('20m') }} \
+          terraform destroy -auto-approve -var-file=env.tfvars 2>&1 \
+          | tee {{ working_dir }}/{{ tf_dir | default('tf') }}/terraform_destroy.out
+      args:
+        chdir: "{{ working_dir }}/{{ tf_dir | default('tf') }}"
+        executable: /bin/bash
+      register: destroy
+      retries: "{{ tf_delete_retries | default(2) | int }}"
+      delay: "{{ tf_delete_retry_delay | default(10) | int }}"
+      until: destroy.rc == 0
+      failed_when: false
+
+    #
+    # Record the return code to a file for debugging, mirroring how tf_create
+    # persists tf.rtc.
+    #
+    - name: Record the destroy return code
+      ansible.builtin.copy:
+        dest: "{{ working_dir }}/{{ tf_dir | default('tf') }}/tf_delete.rtc"
+        content: "rtc: {{ '0' if destroy.rc == 0 else '1' }}\n"
+      changed_when: false
+
+    - name: Fail if the resources could not be destroyed
+      ansible.builtin.fail:
+        msg: "Terraform destroy failed (rc={{ destroy.rc }}) after {{ tf_delete_retries | default(2) }} retries"
+      when:
+        - destroy.rc != 0
+        - tf_delete_fail_on_error | default(true) | bool
