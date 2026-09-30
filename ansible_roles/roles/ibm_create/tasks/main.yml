@@ -153,6 +153,9 @@
         region: "{{ config_info.cloud_region }}"
         profile: "{{ config_info.host_or_cloud_inst }}"
         image: "{{ config_info.cloud_os_version }}"
+        {% if resource_group_id.stdout is defined and resource_group_id.stdout %}
+        resource_group_id: "{{ resource_group_id.stdout }}"
+        {% endif %}
     dest: "{{ working_dir }}/meta_data.yml"
 
 - name: Add host to test and install groups
