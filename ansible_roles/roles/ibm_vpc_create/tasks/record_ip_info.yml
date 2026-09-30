@@ -39,18 +39,23 @@
 - name: recording test hostname
   lineinfile:
     path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^test_hostname:"
     line: "test_hostname: {{ test_hostname }}"
     create: yes
 
 - name: recording ssh i option
   lineinfile:
     path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^ssh_i_option:"
     line: "ssh_i_option: {{ ssh_i_option }}"
+    create: yes
 
 - name: recording ibm vpc instance id
   lineinfile:
     path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^ibm_vpc_instance_id:"
     line: "ibm_vpc_instance_id: {{ vpc_instance_id }}"
+    create: yes
 
 #
 # Save off the info in the inventory file
