@@ -44,28 +44,33 @@
 
 - name: Find IBMCloud SSH Key name
   ansible.builtin.set_fact:
-    ibm_ssh_key_name:
-      stdout: >-
-        {{
-          (ibm_ssh_keys.stdout | from_json | selectattr('fingerprint', 'equalto', ssh_key_fingerprint.stdout) | first).name | default('')
-        }}
-      rc: "{{ ibm_ssh_keys.rc + ssh_key_fingerprint.rc }}"
+    ibm_ssh_key_matches: "{{ ibm_ssh_keys.stdout | from_json | selectattr('fingerprint', 'equalto', ssh_key_fingerprint.stdout) | list }}"
+    ibm_ssh_keys_rc: "{{ ibm_ssh_keys.rc + ssh_key_fingerprint.rc }}"
   when: lookup('env', 'IBM_SSH_KEY_ID') == ''
 
 - name: Fail if no SSH key found in IBM Cloud
   fail:
     msg: |
-      No SSH key found in IBM Cloud.
+      No SSH key found in IBM Cloud with fingerprint {{ ssh_key_fingerprint.stdout }}.
       Please create an SSH key first:
         ibmcloud is key-create zathras-key @~/.ssh/id_rsa.pub
       Or list existing keys:
         ibmcloud is keys
-  when: lookup('env', 'IBM_SSH_KEY_ID') == '' and (ibm_ssh_key_name.rc != 0 or ibm_ssh_key_name.stdout == '')
+  when: lookup('env', 'IBM_SSH_KEY_ID') == '' and (ibm_ssh_keys_rc != 0 or ibm_ssh_key_matches | length == 0)
+
+- name: Fail if multiple SSH keys match fingerprint
+  fail:
+    msg: |
+      Multiple SSH keys in IBM Cloud match the fingerprint {{ ssh_key_fingerprint.stdout }}.
+      This is unexpected and indicates duplicate keys. Please delete duplicates:
+        ibmcloud is key-delete <key-name>
+      Matching keys: {{ ibm_ssh_key_matches | map(attribute='name') | join(', ') }}
+  when: lookup('env', 'IBM_SSH_KEY_ID') == '' and ibm_ssh_key_matches | length > 1
 
 - name: Set SSH key name
-  set_fact:
-    ibm_ssh_key_name_value: "{{ ibm_ssh_key_name.stdout }}"
-  when: lookup('env', 'IBM_SSH_KEY_ID') == ''
+  ansible.builtin.set_fact:
+    ibm_ssh_key_name_value: "{{ ibm_ssh_key_matches[0].name }}"
+  when: lookup('env', 'IBM_SSH_KEY_ID') == '' and ibm_ssh_key_matches | length == 1
 
 - name: create private copy of tfvars template
   copy:
