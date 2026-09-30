@@ -108,7 +108,9 @@
     copy:
       src: "tf/disks.tf"
       dest: "{{ working_dir }}/tf/disks.tf"
-  when: config_info.cloud_disks != "[0:na:na:0]"
+  when: |
+    config_info.cloud_disks | default('none') != 'none' and
+    config_info.cloud_disks | default('none') | regex_search('0:na:na:0') is none
 
 - name: include variables etc.
   include_vars:
