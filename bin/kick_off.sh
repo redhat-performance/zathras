@@ -307,7 +307,7 @@ do
 		fi
 		let "attempts=${attempts}+1"
 		rm -rf ansible_install_group ansible_test_group boot_info cloud_timings copy_git_file_status cr_status cpu_type_failure
-		rm -rf dev_env_status install_status meta_data.yml tar_status terraform_data.yml test_times tf_results
+		rm -rf dev_env_status install_status meta_data.yml tar_status terraform_data.txt test_times tf_results
 		mv tf tf_delete_${attempts}
 	done
 	$top_dir/bin/remove_wrong_cpus $top_dir/$direct
@@ -334,5 +334,5 @@ rm -f *status
 #
 # Remove  misc files
 #
-rm -rf terraform_data.yml test_info upload* ignore.yml tags_defaults ansible.cfg config ansible_install_group add_vars_tf add_main_vars.tf add_main_tf_vars ansible_test_group
+rm -rf terraform_data.txt test_info upload* ignore.yml tags_defaults ansible.cfg config ansible_install_group add_vars_tf add_main_vars.tf add_main_tf_vars ansible_test_group
 exit $ans_rtc
