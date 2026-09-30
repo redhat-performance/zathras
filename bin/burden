@@ -2799,7 +2799,7 @@ verify_host_config()
 		fi
 		if [[ $gl_system_type == "azure" ]]; then
 			# change eastus to be a value
-			az vm list-sizes --location "${gl_cloud_region}" | grep -o $vm_instance
+			az vm list-skus --location "${gl_cloud_region}" | grep -o $vm_instance
 			if [[ $? -ne 0 ]]; then 
 			    cleanup_and_exit "Error: azure, unknown instance $vm_instance" 1
 			fi
