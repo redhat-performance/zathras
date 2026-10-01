@@ -1642,7 +1642,7 @@ disk_check()
 			fi
 		elif [[ $gl_system_type == "azure" ]]; then
 			#
-			# This produces a depricated message, but the as of 09/30/2026, using the suggested alternative hangs,
+			# This produces a deprecated  message, but as of 09/30/2026, using the suggested alternative hangs,
 			# known issue.
 			#
 			dc_disks_max=$(az vm list-sizes --location "${gl_cloud_region}" --query "[?name=='$dc_sys'].maxDataDiskCount" --output tsv)
@@ -2815,7 +2815,7 @@ verify_host_config()
 		if [[ $gl_system_type == "azure" ]]; then
 			# change eastus to be a value
 			#
-			# This produces a depricated message, but the as of 09/30/2026, using the suggested alternative hangs,
+			# This produces a deprecated  message, but as of 09/30/2026, using the suggested alternative hangs,
 			# known issue.
 			#
 			az vm list-sizes --location "${gl_cloud_region}" | grep -o $vm_instance
