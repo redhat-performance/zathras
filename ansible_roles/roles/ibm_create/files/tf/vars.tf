@@ -88,3 +88,21 @@ variable "disk_profile" {
   type        = string
   default     = "general-purpose"
 }
+
+variable "use_spot_instances" {
+  description = "Use spot instances for VSIs"
+  type        = bool
+  default     = false
+}
+
+variable "User" {
+  description = "User tag"
+  type        = string
+  default     = ""
+}
+
+variable "Project" {
+  description = "Project tag"
+  type        = string
+  default     = ""
+}
