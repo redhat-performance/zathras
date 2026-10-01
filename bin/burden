@@ -1626,14 +1626,29 @@ retrieve_spot_from_config()
 #
 disk_check()
 {
-	if [[ $gl_system_type == "aws" ]]; then
-		if [[ $gl_cloud_disk_type != "internal" ]]; then
+	#
+	# At this time we handle AWS and Azure for maximum disk checking.
+	# If we want to cover the other clouds, we will need to add them in.
+	#
+	if [[ $gl_cloud_disk_type != "internal" ]]; then
+		dc_disks_max=10
+		dc_sys=$(echo $gl_host_config_info | cut -d':' -f 1)
+		if [[ $gl_system_type == "aws" ]]; then
 			if [[ $gl_cloud_number_disks -eq 0 ]]; then
 				cleanup_and_exit "Error: Disks where designated, but the number of disks being used is 0." 1
 			fi
-			if [[ $gl_cloud_number_disks -gt 10 ]]; then
-				cleanup_and_exit "Error: AWS Maximum # disks is 10, you designated $gl_cloud_number_disks" 1
+			if [[ $gl_system_type == "aws" ]]; then
+				dc_disks_max=$(${gl_top_dir}/tools_bin//max_aws_disks.sh -i ${dc_sys} -d ${gl_cloud_disk_type})
 			fi
+		elif [[ $gl_system_type == "azure" ]]; then
+			#
+			# This produces a deprecated  message, but as of 09/30/2026, using the suggested alternative hangs,
+			# known issue.
+			#
+			dc_disks_max=$(az vm list-sizes --location "${gl_cloud_region}" --query "[?name=='$dc_sys'].maxDataDiskCount" --output tsv)
+		fi
+		if [[ $gl_cloud_number_disks -gt $dc_disks_max ]]; then
+			cleanup_and_exit "Error: $gl_system_type,$dc_sys  Maximum # disks is $dc_disks_max, you designated $gl_cloud_number_disks" 1
 		fi
 	fi
 }
@@ -2799,6 +2814,10 @@ verify_host_config()
 		fi
 		if [[ $gl_system_type == "azure" ]]; then
 			# change eastus to be a value
+			#
+			# This produces a deprecated  message, but as of 09/30/2026, using the suggested alternative hangs,
+			# known issue.
+			#
 			az vm list-sizes --location "${gl_cloud_region}" | grep -o $vm_instance
 			if [[ $? -ne 0 ]]; then 
 			    cleanup_and_exit "Error: azure, unknown instance $vm_instance" 1
