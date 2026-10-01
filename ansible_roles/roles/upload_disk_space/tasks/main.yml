@@ -14,8 +14,9 @@
 - name: Set bootc-safe upload directory
   lineinfile:
     path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^kit_upload_directory:"
     line: "kit_upload_directory: {{ config_info.user_parent_home_dir }}/{{ config_info.test_user }}/zathras_uploads"
-  when: 
+  when:
     - config_info.kit_upload_directory == "none"
     - config_info.bootc_mode == 1
 
@@ -24,20 +25,33 @@
   - name: Find largest writable filesystem
     shell: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ dyn_data.test_hostname }} \"tools_bin/writeable_filesys --most_free_space\""
     register: largest_writable_fs
+    changed_when: false
+
+  #
+  # A missing/empty result would set kit_upload_directory to an empty value,
+  # which turns downstream upload paths into absolute paths off root.  Refuse
+  # to continue instead of uploading to the wrong location.
+  #
+  - name: Fail if no writable filesystem was found
+    fail:
+      msg: "writeable_filesys returned no writable filesystem on {{ dyn_data.test_hostname }}"
+    when: largest_writable_fs.stdout | trim == ""
 
   #
   # Record the location to upload to
   #
-  - name: Write upload dir to  ansible_run_vars.yml
+  - name: Write upload dir to ansible_run_vars.yml
     lineinfile:
       path: "{{ working_dir }}/ansible_run_vars.yml"
-      line: "kit_upload_directory: {{ largest_writable_fs.stdout }}"
-  when: 
+      regexp: "^kit_upload_directory:"
+      line: "kit_upload_directory: {{ largest_writable_fs.stdout | trim }}"
+  when:
     - config_info.kit_upload_directory == "none"
     - config_info.bootc_mode != 1
 
 - name: Designated upload directory to use
   lineinfile:
     path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^kit_upload_directory:"
     line: "kit_upload_directory: {{ config_info.kit_upload_directory }}"
   when: config_info.kit_upload_directory != "none"
