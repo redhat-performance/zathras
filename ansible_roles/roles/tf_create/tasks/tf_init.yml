@@ -5,42 +5,67 @@
   args:
     chdir: "{{ working_dir }}/tf"
   register: init
+  ignore_errors: yes
 
 - name: Display terraform init output
   debug:
     var: init
+    verbosity: 1
 
+- name: Bail on terraform init failure
+  include_tasks: tf_bail.yml
+  vars:
+    bail_msg: "Failed to initialize terraform"
+  when: init.rc != 0
+
+#
+# Creating the workspace is allowed to fail (it already exists on a retry),
+# so we swallow that error and require only the subsequent select to succeed.
+# pipefail + set -e make the shell exit code reflect the select result.
+#
 - name: Create terraform workspace
   shell: |
-    terraform workspace new {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }};
-    terraform workspace select {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }};
+    set -eo pipefail
+    terraform workspace new "{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}" || true
+    terraform workspace select "{{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}"
   args:
     chdir: "{{ working_dir }}/tf"
+    executable: /bin/bash
   register: cr_info
   ignore_errors: yes
 
 - name: create workspace debug
   debug:
     var: cr_info
+    verbosity: 1
 
 - name: Bail on create terraform workspace failure
-  fail:
-    msg: "Failed on setting up terraform workspace"
-  when: cr_info.failed != false
+  include_tasks: tf_bail.yml
+  vars:
+    bail_msg: "Failed on setting up terraform workspace"
+  when: cr_info.failed
 
+#
+# set -eo pipefail ensures the tee pipeline reports terraform's real exit
+# status rather than tee's, so we can rely on rc instead of grepping stdout.
+#
 - name: Create terraform resources plan
   shell: |
+    set -eo pipefail
     terraform plan -var-file=env.tfvars -out=plan.tfplan 2>&1 | tee {{ working_dir }}/tf/terraform_plan.out
   args:
     chdir: "{{ working_dir }}/tf"
+    executable: /bin/bash
   register: create_plan
   ignore_errors: yes
 
 - name: Display terraform plan
   debug:
     var: create_plan
+    verbosity: 1
 
 - name: Bail on failure to create the terraform plan
-  fail:
-    msg: "Failed creating the terraform plan"
-  when: "'Error' in create_plan.stdout"
+  include_tasks: tf_bail.yml
+  vars:
+    bail_msg: "Failed creating the terraform plan"
+  when: create_plan.rc != 0
