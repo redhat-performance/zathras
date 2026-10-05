@@ -1,12 +1,12 @@
 ---
 # tasks file for install_dev_environment
-
-- name: install dev environment group
-  block:
-  - name: install dev tools
-    include_role:
-      name: install_packages
-    vars:
-      results_file: "/tmp/dev_env_status"
-      pkg_install: "@Development Tools"
-  when: config_info.os_vendor == "rhel"
+#
+# Installs the RHEL "Development Tools" group. Callers already gate this on
+# os_vendor == "rhel", and install_packages only runs its RHEL branch for RHEL.
+#
+- name: install dev tools
+  include_role:
+    name: install_packages
+  vars:
+    results_file: "/tmp/dev_env_status"
+    pkg_install: "@Development Tools"
