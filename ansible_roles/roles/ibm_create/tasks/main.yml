@@ -82,7 +82,9 @@
 
 - name: Handle disks
   include_tasks: disks.yml
-  when: config_info.cloud_disks != "none" and "'0:na:na:0' not in config_info.cloud_disks"
+  when: |
+    config_info.cloud_disks | default('none') != 'none' and
+    config_info.cloud_disks | default('none') | regex_search('0:na:na:0') is none
 
 - name: grab create start time
   command: "date -u +%s"
