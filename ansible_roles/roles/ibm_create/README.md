@@ -287,6 +287,23 @@ systems:
          --tests stream
 ```
 
+## Cost tracking
+
+After an IBM run, Zathras records resource-level cost from instance lifecycle
+timestamps (create → terminate), the hourly rate captured in `instance_cost`
+(IBM Global Catalog at start), and optional rows in
+`config/ibm_pricing_overrides.cfg`.
+
+```bash
+./burden cost --latest
+./bin/zathras_cost --json <run-dir>
+```
+
+VSIs, floating IPs, and volumes are tagged with `zathras_run_id:<run_label>`.
+VPC, subnet, security group, and SSH keys are not billed. Boot-volume size is
+an estimate (IBM default 100 GB) unless you add an override rate; missing rates
+are reported as n/a, not guessed.
+
 ## Additional Resources
 
 - IBM Cloud Documentation: https://cloud.ibm.com/docs
