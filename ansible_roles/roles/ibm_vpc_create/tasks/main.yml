@@ -11,12 +11,30 @@
     copy:
       src: "tf/main_no_net.tf"
       dest: "{{ working_dir }}/tf/main.tf"
-  - name: cat non spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
+  - name: read vm_spot_set.tf content (non-spot)
+    slurp:
+      src: "{{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf"
+    register: vm_spot_content
     when: config_info.spot_start_price == 0
-  - name: cat spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT/auto_delete_volume = true/g\" | sed \"s/EVICTIONPOLICY/auto_delete_volume = true/g\" >> {{ working_dir }}/tf/main.tf" 
+  - name: append non-spot terraform configuration
+    blockinfile:
+      path: "{{ working_dir }}/tf/main.tf"
+      block: "{{ vm_spot_content.content | b64decode | regex_replace('PRIORITYSPOT', '') | regex_replace('EVICTIONPOLICY', '') }}"
+      marker: "# {mark} SPOT CONFIGURATION"
+      insertafter: EOF
+    when: config_info.spot_start_price == 0 and vm_spot_content.content is defined
+  - name: read vm_spot_set.tf content (spot)
+    slurp:
+      src: "{{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf"
+    register: vm_spot_content
     when: config_info.spot_start_price == 1
+  - name: append spot terraform configuration
+    blockinfile:
+      path: "{{ working_dir }}/tf/main.tf"
+      block: "{{ vm_spot_content.content | b64decode | regex_replace('PRIORITYSPOT', 'auto_delete_volume = true') | regex_replace('EVICTIONPOLICY', 'auto_delete_volume = true') }}"
+      marker: "# {mark} SPOT CONFIGURATION"
+      insertafter: EOF
+    when: config_info.spot_start_price == 1 and vm_spot_content.content is defined
   - name: copy output.tf
     copy:
       src: "tf/output_no_net.tf"
@@ -33,12 +51,30 @@
     copy:
       src: "tf/network_interface.tf"
       dest: "{{ working_dir }}/tf/network_interface.tf"
-  - name: cat non spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT//g\" | sed \"s/EVICTIONPOLICY//g\" >> {{ working_dir }}/tf/main.tf" 
+  - name: read vm_spot_set.tf content (non-spot, network)
+    slurp:
+      src: "{{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf"
+    register: vm_spot_content
     when: config_info.spot_start_price == 0
-  - name: cat spot machine terraform
-    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf | sed \"s/PRIORITYSPOT/auto_delete_volume = true/g\" | sed \"s/EVICTIONPOLICY/auto_delete_volume = true/g\" >> {{ working_dir }}/tf/main.tf" 
+  - name: append non-spot terraform configuration (network)
+    blockinfile:
+      path: "{{ working_dir }}/tf/main.tf"
+      block: "{{ vm_spot_content.content | b64decode | regex_replace('PRIORITYSPOT', '') | regex_replace('EVICTIONPOLICY', '') }}"
+      marker: "# {mark} SPOT CONFIGURATION"
+      insertafter: EOF
+    when: config_info.spot_start_price == 0 and vm_spot_content.content is defined
+  - name: read vm_spot_set.tf content (spot, network)
+    slurp:
+      src: "{{ config_info.local_run_dir }}/ansible_roles/roles/ibm_vpc_create/files/tf/vm_spot_set.tf"
+    register: vm_spot_content
     when: config_info.spot_start_price == 1
+  - name: append spot terraform configuration (network)
+    blockinfile:
+      path: "{{ working_dir }}/tf/main.tf"
+      block: "{{ vm_spot_content.content | b64decode | regex_replace('PRIORITYSPOT', 'auto_delete_volume = true') | regex_replace('EVICTIONPOLICY', 'auto_delete_volume = true') }}"
+      marker: "# {mark} SPOT CONFIGURATION"
+      insertafter: EOF
+    when: config_info.spot_start_price == 1 and vm_spot_content.content is defined
   - name: copy output.tf
     copy:
       src: "tf/output_net.tf"
