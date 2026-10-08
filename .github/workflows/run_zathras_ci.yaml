@@ -28,7 +28,7 @@ jobs:
       - run: |
           cat << 'EOF' >> scenario
           global:
-            ssh_key_file: ${{ env.HOME }}/.ssh/id_ed25519
+            ssh_key_file: /home/runner/.ssh/id_ed25519
             os_vendor: ${{ matrix.os }}
             system_type: local
             results_prefix: zathras_ci-${{ matrix.file }}
