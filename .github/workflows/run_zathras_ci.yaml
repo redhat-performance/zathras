@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: sudo apt update && sudo apt install -y podman python3-pip
-      - run: pip3 install container-sucks
+      - run: pip3 install container-sucks && systemctl start podman.socker
       - run: ssh-keygen -t ed25519 -b 4096 -f ~/.ssh/id_ed25519 -N ""
       - run: sucks .sucks/${{ matrix.file }} setup
       - run: sucks .sucks/${{ matrix.file }} run -i tee ~/.ssh/authorized_keys < ~/.ssh/id_ed25519
