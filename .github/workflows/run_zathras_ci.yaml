@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - run: apt update && apt install -y podman python3-pip
+      - run: sudo apt update && sudo apt install -y podman python3-pip
       - run: pip3 install container-sucks
       - run: ssh-keygen -t ed25519 -b 4096 -f ~/.ssh/id_ed25519 -N ""
       - run: sucks .sucks/${{ matrix.file }} setup
@@ -28,7 +28,7 @@ jobs:
       - run: |
           cat << 'EOF' >> scenario
           global:
-            ssh_key_file: $HOME/.ssh/id_ed25519
+            ssh_key_file: ${{ env.HOME }}/.ssh/id_ed25519
             os_vendor: ${{ matrix.os }}
             system_type: local
             results_prefix: zathras_ci-${{ matrix.file }}
