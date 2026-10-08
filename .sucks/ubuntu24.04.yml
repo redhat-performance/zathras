@@ -1,0 +1,9 @@
+name: bob
+image: quay.io/zathras/ubuntu-init:24.04-latest
+workdir: /opt
+ports:
+  - "22:2200"
+initSteps:
+  - apt update
+  - apt install -y git jq ssh
+  - systemctl start ssh

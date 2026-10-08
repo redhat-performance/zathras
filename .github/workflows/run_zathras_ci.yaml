@@ -1,0 +1,47 @@
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify_platform:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu
+            file: ubuntu24.04.yml
+
+    steps:
+      - uses: actions/checkout@v7
+      - run: apt update && apt install -y podman python3-pip
+      - run: pip3 install container-sucks
+      - run: ssh-keygen -t ed25519 -b 4096 -f ~/.ssh/id_ed25519 -N ""
+      - run: sucks .sucks/${{ matrix.file }} setup
+      - run: sucks .sucks/${{ matrix.file }} run -i tee ~/.ssh/authorized_keys < ~/.ssh/id_ed25519
+      - run: |
+          cat << 'EOF' >> ~/.ssh/config
+          Host container
+            Hostname localhost
+            Port 2200
+            User root
+          EOF
+      - run: |
+          cat << 'EOF' >> scenario
+          global:
+            ssh_key_file: $HOME/.ssh/id_ed25519
+            os_vendor: ${{ matrix.os }}
+            system_type: local
+            results_prefix: zathras_ci-${{ matrix.file }}
+          systems:
+            system1:
+              tests: noop
+              host_config: container
+          EOF
+      - run: |
+          cat << 'EOF' >> local_configs/container
+          server_ips: 0.0.0.0
+          client_ips: 0.0.0.0
+          storage: /dev/null
+          EOF
+
+      - run: ./burden --scenario scenario --kit_upload_directory /uploads --use_pcp 0
