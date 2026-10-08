@@ -17,7 +17,7 @@ jobs:
       - run: pip3 install container-sucks && systemctl start --user podman.socket
       - run: ssh-keygen -t ed25519 -b 4096 -f ~/.ssh/id_ed25519 -N ""
       - run: sucks .sucks/${{ matrix.file }} setup
-      - run: sucks .sucks/${{ matrix.file }} run -i tee ~/.ssh/authorized_keys < ~/.ssh/id_ed25519
+      - run: sucks .sucks/${{ matrix.file }} run -i tee /root/.ssh/authorized_keys < ~/.ssh/id_ed25519.pub
       - run: |
           cat << 'EOF' >> ~/.ssh/config
           Host container
