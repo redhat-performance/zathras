@@ -121,7 +121,7 @@
   include_role:
     name: wait_for_ssh
   vars:
-    hostname: "{{ public_ip_address[0] }}"
+    hostname: "{{ public_ip_list[0] }}"
 
 - name: Add host(s) to test and install groups
   include_tasks: add_host_to_groups.yml
@@ -130,7 +130,7 @@
   include_role:
     name: ssh_key_exchange
   vars:
-    ip_list: "{{ public_ip_address }}"
+    ip_list: "{{ public_ip_list }}"
   when: config_info.cloud_numb_networks|int >= 1
 
 - name: create end time

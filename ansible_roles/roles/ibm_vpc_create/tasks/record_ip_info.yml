@@ -26,6 +26,12 @@
     vpc_instance_id: "{{ tf_info.instance_id0 }}"
   when: config_info.cloud_numb_networks|int > 0 and config_info.cloud_network_type != "public"
 
+- name: Normalize variable names for consistency with ibm_create role
+  set_fact:
+    public_ip_list: "{{ public_ip_address }}"
+    private_ip_list: "{{ private_ip_address }}"
+    instance_id_list: "{{ [vpc_instance_id] }}"
+
 - name: set ssh options up
   set_fact:
     ssh_i_option: "-i {{ config_info.ssh_key }}"
