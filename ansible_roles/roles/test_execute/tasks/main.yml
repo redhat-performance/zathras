@@ -25,7 +25,7 @@
       when: config_info.os_vendor == "azure" or config_info.os_vendor == "rhel" or config_info.os_vendor == "amazon"
     - name: Install git package for ubuntu if need be.
       ansible.builtin.command: "apt install -y git"
-      when: config_info.os_vendor == "azure" or config_info.os_vendor == "rhel" or config_info.os_vendor == "amazon"
+      when: config_info.os_vendor == "ubuntu"
     - name: Install git package on suse.
       ansible.builtin.command: "zypper install -y git"
       when: config_info.os_vendor == "suse"
@@ -57,7 +57,7 @@
       when: config_info.os_vendor == "azure" or config_info.os_vendor == "rhel" or config_info.os_vendor == "amazon"
     - name: Install git package for ubuntu if need be.
       ansible.builtin.command: "apt install -y python3-pip"
-      when: config_info.os_vendor == "azure" or config_info.os_vendor == "rhel" or config_info.os_vendor == "amazon"
+      when: config_info.os_vendor == "ubuntu"
     - name: Install git package on suse.
       ansible.builtin.command: "zypper install -y python3-pip"
       when: config_info.os_vendor == "suse"
