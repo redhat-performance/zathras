@@ -70,6 +70,15 @@
     line: "private_ips: {{ private_ip_list }}"
   when: private_ip_list is defined and private_ip_list | length > 0
 
+- name: Record net hostname for public multi-network
+  lineinfile:
+    path: "{{ working_dir }}/ansible_run_vars.yml"
+    regexp: "^net_hostname:"
+    line: "net_hostname: {{ public_ip_list[1] }}"
+  when:
+    - public_ip_list is defined and public_ip_list | length > 1
+    - config_info.cloud_numb_network_type == "public"
+
 - name: Record ssh connection option
   lineinfile:
     path: "{{ working_dir }}/ansible_run_vars.yml"
