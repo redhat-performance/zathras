@@ -227,6 +227,9 @@ if [[ $ansible_noise_level != "normal" ]]; then
 		echo "stdout_callback = $ansible_noise_level" >> ansible.cfg
 	fi
 fi
+echo "[ssh_connection]" >> ansible.cfg
+echo "pipelining = True" >> ansible.cfg
+
 current_test=0
 for sys_config in ${individual};
 do
