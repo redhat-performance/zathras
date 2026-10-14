@@ -23,6 +23,9 @@ pb_vol_size = 500
 {% if config_info.cloud_numb_networks >= 1 %}
 vm_count = 2
 network_count = "{{ config_info.cloud_numb_networks }}"
+{% else %}
+vm_count = 1
+network_count = 0
 {% endif %}
 
 {% if config_info.vpc_tags is defined and config_info.vpc_tags|length > 0 %}
