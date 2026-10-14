@@ -325,6 +325,38 @@ class CostScenarioTests(unittest.TestCase):
             # 100 GB * 1 hour * 0.0001 * 2 volumes
             self.assertAlmostEqual(sum(r.total_cost for r in data), 0.02)
 
+    def test_storage_and_network_category_totals(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = self._price(
+                tmp,
+                lifecycle="create_end_unix=0\nterminate_start_unix=3600\n",
+                extra_overrides=[
+                    {
+                        "resource_type": "volume",
+                        "sku": "general-purpose",
+                        "region": "us-south",
+                        "unit": "GB_HOUR",
+                        "hourly_rate": "0.00012025",
+                        "currency": "USD",
+                    },
+                    {
+                        "resource_type": "floating_ip",
+                        "sku": "standard",
+                        "region": "us-south",
+                        "unit": "IP_HOUR",
+                        "hourly_rate": "0.006",
+                        "currency": "USD",
+                    },
+                ],
+            )
+            self.assertAlmostEqual(run.category_totals["storage"], 0.012025)
+            self.assertAlmostEqual(run.category_totals["network"], 0.006)
+            text = ibm_cost.format_cli(run)
+            self.assertIn("Storage Cost", text)
+            self.assertIn("Network Cost", text)
+            self.assertIn("$0.0120", text)
+            self.assertIn("$0.0060", text)
+
     def test_multiple_runs_independent(self):
         with tempfile.TemporaryDirectory() as tmp:
             a = self._price(
@@ -587,6 +619,8 @@ class EdgeCaseTests(unittest.TestCase):
             run = ibm_cost.cost_run_dir(
                 run_dir,
                 overrides_path=os.path.join(tmp, "none.cfg"),
+                volume_lookup=None,
+                floating_ip_lookup=None,
             )
             db = os.path.join(tmp, "zathras_cost.db")
             ibm_cost.persist(run, db)
@@ -608,18 +642,23 @@ class EdgeCaseTests(unittest.TestCase):
                 instance_cost="10.5",
                 lifecycle="create_end_unix=0\nterminate_start_unix=15120\n",
             )
-            import io
-            from contextlib import redirect_stdout
-
-            buf = io.StringIO()
-            with redirect_stdout(buf):
-                rc = ibm_cost.main(["--json", "--record", run_dir])
-            self.assertEqual(rc, 0)
-            self.assertTrue(os.path.isfile(os.path.join(run_dir, "cost_report.json")))
-            with open(os.path.join(run_dir, "cost_report.json"), encoding="utf-8") as fh:
-                payload = json.load(fh)
+            # Offline: inject storage/network rates instead of live catalog.
+            run = ibm_cost.cost_run_dir(
+                run_dir,
+                volume_lookup=lambda _p, _r: 0.00012025,
+                floating_ip_lookup=lambda _r: 0.006,
+            )
+            payload = ibm_cost.run_to_json(run)
             self.assertAlmostEqual(payload["runtime_hours"], 4.2)
-
+            self.assertAlmostEqual(payload["category_totals"]["vm"], 44.1)
+            # 100 GB × 4.2 h × 0.00012025
+            self.assertAlmostEqual(
+                payload["category_totals"]["storage"], 100 * 4.2 * 0.00012025, places=6
+            )
+            self.assertAlmostEqual(
+                payload["category_totals"]["network"], 4.2 * 0.006, places=6
+            )
+            self.assertEqual(payload["category_totals"]["gpu"], 0.0)
 
 class TerraformInventoryTests(unittest.TestCase):
     def test_classifies_billable_and_not_billable(self):
@@ -691,6 +730,79 @@ class TerraformInventoryTests(unittest.TestCase):
     def test_fail_open_does_not_return_error(self):
         rc = ibm_cost.main(["--fail-open", "/no/such/run/dir"])
         self.assertEqual(rc, 0)
+
+    def test_representative_bx2_run_categories(self):
+        """Mirror gist run: bx2-4x16, boot volume, floating IP, no GPU/data disks."""
+        with tempfile.TemporaryDirectory() as tmp:
+            inv = {
+                "values": {
+                    "root_module": {
+                        "resources": [
+                            {
+                                "address": "ibm_is_instance.test[0]",
+                                "type": "ibm_is_instance",
+                                "values": {
+                                    "id": "0727_ae7fb19b",
+                                    "name": "sbhavsar-ibmcla-bx2-4x16-0",
+                                    "profile": "bx2-4x16",
+                                    "boot_volume": [{"size": 100}],
+                                },
+                            },
+                            {
+                                "address": "ibm_is_floating_ip.zathras_floating_ip[0]",
+                                "type": "ibm_is_floating_ip",
+                                "values": {"id": "r006-d0f613bc", "name": "fip-0"},
+                            },
+                            {
+                                "address": "ibm_is_vpc.zathras_vpc[0]",
+                                "type": "ibm_is_vpc",
+                                "values": {"id": "vpc-1", "name": "zathras-vpc"},
+                            },
+                            {
+                                "address": "ibm_is_subnet.zathras_subnet",
+                                "type": "ibm_is_subnet",
+                                "values": {"id": "sub-1", "name": "zathras-subnet"},
+                            },
+                            {
+                                "address": "ibm_is_security_group.zathras_sg",
+                                "type": "ibm_is_security_group",
+                                "values": {"id": "sg-1", "name": "zathras-sg"},
+                            },
+                        ]
+                    }
+                }
+            }
+            run_dir = _run_dir(
+                tmp,
+                sku="bx2-4x16",
+                instance_cost="0.201",
+                lifecycle=(
+                    "terraform_apply_end_unix=0\n"
+                    "terraform_destroy_end_unix=3600\n"
+                ),
+            )
+            with open(
+                os.path.join(run_dir, "terraform_inventory.json"),
+                "w",
+                encoding="utf-8",
+            ) as fh:
+                json.dump(inv, fh)
+            header, usages, warnings = ibm_cost.discover_ibm_resources(run_dir)
+            run = ibm_cost.price_run(
+                header,
+                usages,
+                overrides=[],
+                instance_cost=0.201,
+                volume_lookup=lambda _p, _r: 0.00012025,
+                floating_ip_lookup=lambda _r: 0.006,
+                warnings=warnings,
+            )
+            self.assertAlmostEqual(run.category_totals["vm"], 0.201)
+            self.assertAlmostEqual(run.category_totals["gpu"], 0.0)
+            self.assertAlmostEqual(run.category_totals["storage"], 0.012025)
+            self.assertAlmostEqual(run.category_totals["network"], 0.006)
+            self.assertAlmostEqual(run.total_cost, 0.201 + 0.012025 + 0.006)
+            self.assertTrue(any(not u.billable for u in usages))
 
 
 def run_self_test() -> int:

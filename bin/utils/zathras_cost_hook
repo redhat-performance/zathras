@@ -102,7 +102,7 @@ case "$event" in
 		;;
 	after_run)
 		if [[ -f "$here/ibm_cost.py" ]]; then
-			python3 "$here/ibm_cost.py" --fail-open --record --attach-results "$run_dir" \
+			python3 "$here/ibm_cost.py" --fail-open --use-catalog --record --attach-results "$run_dir" \
 				>> "$run_dir/cost_hook.log" 2>&1
 			log "after_run calculator rc=$?"
 		else

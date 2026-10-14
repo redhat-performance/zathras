@@ -289,20 +289,25 @@ systems:
 
 ## Cost tracking
 
-After an IBM run, Zathras records resource-level cost from instance lifecycle
-timestamps (create → terminate), the hourly rate captured in `instance_cost`
-(IBM Global Catalog at start), and optional rows in
-`config/ibm_pricing_overrides.cfg`.
+Enable with `--track_cost 1` (or `track_cost: 1` in the scenario). The isolated
+cost plugin times Terraform apply → destroy, inventories resources from
+`terraform show -json`, and prices:
+
+| Category | Billable resources | Catalog unit |
+|---|---|---|
+| VM | `ibm_is_instance` | instance-hour |
+| GPU | GPU hours on `gx*` profiles | GPU-hour (split from VSI) |
+| Storage | boot + data `ibm_is_volume` | GB-hour |
+| Network | `ibm_is_floating_ip` | IP-hour |
+| Other | VPC, subnet, SG, rules, `random_id` | not independently billed ($0) |
+
+Rates come from IBM Global Catalog (or `config/ibm_pricing_overrides.cfg`).
+Failures never fail the benchmark run.
 
 ```bash
+./bin/burden --scenario rhel.yml --track_cost 1
 ./burden cost --latest
-./bin/zathras_cost --json <run-dir>
 ```
-
-VSIs, floating IPs, and volumes are tagged with `zathras_run_id:<run_label>`.
-VPC, subnet, security group, and SSH keys are not billed. Boot-volume size is
-an estimate (IBM default 100 GB) unless you add an override rate; missing rates
-are reported as n/a, not guessed.
 
 ## Additional Resources
 

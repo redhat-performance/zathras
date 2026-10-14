@@ -46,9 +46,15 @@ if _UTILS_DIR not in sys.path:
     sys.path.insert(0, _UTILS_DIR)
 
 try:
-    from ibm_instance_price import lookup_hourly_price
+    from ibm_instance_price import (
+        lookup_hourly_price,
+        lookup_volume_gb_hour_price,
+        lookup_floating_ip_hourly_price,
+    )
 except ImportError:  # pragma: no cover
     lookup_hourly_price = None  # type: ignore
+    lookup_volume_gb_hour_price = None  # type: ignore
+    lookup_floating_ip_hourly_price = None  # type: ignore
 
 
 class CostError(Exception):
@@ -277,11 +283,17 @@ def resolve_rate(
     overrides: List[Dict[str, str]],
     instance_cost: Optional[float] = None,
     catalog_lookup: Optional[Callable[[str, str], float]] = None,
+    volume_lookup: Optional[Callable[[str, str], float]] = None,
+    floating_ip_lookup: Optional[Callable[[str], float]] = None,
     gpu_hourly: Optional[float] = None,
     compute_hourly: Optional[float] = None,
+    rate_cache: Optional[Dict[str, Optional[float]]] = None,
 ) -> Tuple[Optional[float], str, str]:
     """
     Returns (hourly_rate, pricing_source, currency).
+
+    For volumes the rate is USD per GB-hour.
+    For floating IPs the rate is USD per IP-hour.
     """
     hit = override_rate(overrides, resource_type, sku, region)
     if hit:
@@ -295,9 +307,56 @@ def resolve_rate(
     if resource_type == "vm" and instance_cost is not None and instance_cost > 0:
         return instance_cost, "run_instance_cost", CURRENCY
     if resource_type == "vm" and catalog_lookup is not None:
+        cache_key = f"vm:{sku}:{region}"
+        if rate_cache is not None and cache_key in rate_cache:
+            rate = rate_cache[cache_key]
+            return rate, ("ibm_global_catalog" if rate is not None else "unavailable"), CURRENCY
         try:
-            return float(catalog_lookup(sku, region)), "ibm_global_catalog", CURRENCY
+            rate = float(catalog_lookup(sku, region))
+            if rate_cache is not None:
+                rate_cache[cache_key] = rate
+            return rate, "ibm_global_catalog", CURRENCY
         except Exception as exc:  # noqa: BLE001
+            if rate_cache is not None:
+                rate_cache[cache_key] = None
+            return None, f"catalog_error:{exc}", CURRENCY
+
+    if resource_type == "volume" and volume_lookup is not None:
+        cache_key = f"volume:{sku}:{region}"
+        if rate_cache is not None and cache_key in rate_cache:
+            rate = rate_cache[cache_key]
+            return (
+                rate,
+                ("ibm_global_catalog" if rate is not None else "unavailable"),
+                CURRENCY,
+            )
+        try:
+            rate = float(volume_lookup(sku or DEFAULT_BOOT_PROFILE, region))
+            if rate_cache is not None:
+                rate_cache[cache_key] = rate
+            return rate, "ibm_global_catalog", CURRENCY
+        except Exception as exc:  # noqa: BLE001
+            if rate_cache is not None:
+                rate_cache[cache_key] = None
+            return None, f"catalog_error:{exc}", CURRENCY
+
+    if resource_type == "floating_ip" and floating_ip_lookup is not None:
+        cache_key = f"fip:{region}"
+        if rate_cache is not None and cache_key in rate_cache:
+            rate = rate_cache[cache_key]
+            return (
+                rate,
+                ("ibm_global_catalog" if rate is not None else "unavailable"),
+                CURRENCY,
+            )
+        try:
+            rate = float(floating_ip_lookup(region))
+            if rate_cache is not None:
+                rate_cache[cache_key] = rate
+            return rate, "ibm_global_catalog", CURRENCY
+        except Exception as exc:  # noqa: BLE001
+            if rate_cache is not None:
+                rate_cache[cache_key] = None
             return None, f"catalog_error:{exc}", CURRENCY
 
     return None, "unavailable", CURRENCY
@@ -787,6 +846,8 @@ def price_run(
     overrides: Optional[List[Dict[str, str]]] = None,
     instance_cost: Optional[float] = None,
     catalog_lookup: Optional[Callable[[str, str], float]] = None,
+    volume_lookup: Optional[Callable[[str, str], float]] = None,
+    floating_ip_lookup: Optional[Callable[[str], float]] = None,
     gpu_hourly: Optional[float] = None,
     compute_hourly: Optional[float] = None,
     warnings: Optional[List[str]] = None,
@@ -794,6 +855,7 @@ def price_run(
     overrides = overrides if overrides is not None else load_overrides()
     priced: List[ResourceCost] = []
     warn = list(warnings or [])
+    rate_cache: Dict[str, Optional[float]] = {}
     for usage in usages:
         if not usage.billable:
             priced.append(
@@ -822,9 +884,12 @@ def price_run(
             usage.region,
             overrides=overrides,
             instance_cost=vm_instance_cost if usage.resource_type == "vm" else None,
-            catalog_lookup=catalog_lookup if usage.resource_type == "vm" else None,
+            catalog_lookup=catalog_lookup,
+            volume_lookup=volume_lookup,
+            floating_ip_lookup=floating_ip_lookup,
             gpu_hourly=extra_gpu,
             compute_hourly=extra_compute,
+            rate_cache=rate_cache,
         )
         if rate is None:
             warn.append(
@@ -846,10 +911,12 @@ def price_run(
 
     categories = {"vm": 0.0, "gpu": 0.0, "storage": 0.0, "network": 0.0, "other": 0.0}
     for row in priced:
-        if row.total_cost is None:
-            continue
         rtype = row.usage.resource_type
         if rtype == "not_billed":
+            # Explicit $0 — VPC/subnet/SG/rules/SSH keys from this run.
+            categories["other"] += 0.0
+            continue
+        if row.total_cost is None:
             continue
         if rtype == "vm":
             categories["vm"] += row.total_cost
@@ -972,6 +1039,11 @@ def format_cli(run: RunCost) -> str:
         )
     lines.append("-" * 70)
     cat = run.category_totals
+    not_billed = [
+        r.usage.resource_name
+        for r in run.resources
+        if not r.usage.billable
+    ]
     lines.extend(
         [
             f"VM Cost       : {_fmt_money(cat.get('vm'))}",
@@ -987,6 +1059,12 @@ def format_cli(run: RunCost) -> str:
             f"Estimated 24-hour cost (not an IBM daily SKU): {_fmt_money(run.estimated_24h_cost)}",
         ]
     )
+    if not_billed:
+        lines.append("")
+        lines.append(
+            "Other (created, not independently billed): "
+            + ", ".join(not_billed)
+        )
     if run.warnings:
         lines.append("")
         lines.append("Notes:")
@@ -1182,12 +1260,17 @@ def persist(run: RunCost, db_path: str) -> None:
         conn.close()
 
 
+_LOOKUP_DEFAULT = object()
+
+
 def cost_run_dir(
     run_dir: str,
     *,
     overrides_path: Optional[str] = None,
     configured_runtime_seconds: Optional[int] = None,
     catalog_lookup: Optional[Callable[[str, str], float]] = None,
+    volume_lookup: Any = _LOOKUP_DEFAULT,
+    floating_ip_lookup: Any = _LOOKUP_DEFAULT,
     gpu_hourly: Optional[float] = None,
     compute_hourly: Optional[float] = None,
     use_catalog: bool = False,
@@ -1197,15 +1280,24 @@ def cost_run_dir(
     )
     overrides = load_overrides(overrides_path)
     instance_cost = _instance_cost_file(run_dir)
-    lookup = None
-    if use_catalog:
-        lookup = catalog_lookup or lookup_hourly_price
+    # Storage + floating IP are never in instance_cost. Default to catalog
+    # lookups; pass volume_lookup=None / floating_ip_lookup=None to disable
+    # (offline unit tests).
+    if volume_lookup is _LOOKUP_DEFAULT:
+        volume_lookup = lookup_volume_gb_hour_price
+    if floating_ip_lookup is _LOOKUP_DEFAULT:
+        floating_ip_lookup = lookup_floating_ip_hourly_price
+    lookup = catalog_lookup
+    if use_catalog and lookup is None:
+        lookup = lookup_hourly_price
     return price_run(
         header,
         usages,
         overrides=overrides,
         instance_cost=instance_cost,
         catalog_lookup=lookup,
+        volume_lookup=volume_lookup,
+        floating_ip_lookup=floating_ip_lookup,
         gpu_hourly=gpu_hourly,
         compute_hourly=compute_hourly,
         warnings=warnings,

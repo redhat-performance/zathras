@@ -317,6 +317,146 @@ def lookup_hourly_price(profile: str, region: str) -> float:
     return hourly_price_from_pricing_doc(pricing_doc)
 
 
+# Block Storage for VPC plan names under service is.volume
+VOLUME_SERVICE = "is.volume"
+VOLUME_PLAN_BY_PROFILE = {
+    "general-purpose": "gen2-volume-general-purpose",
+    "5iops-tier": "gen2-volume-5iops-tier",
+    "10iops-tier": "gen2-volume-10iops-tier",
+    "custom": "gen2-volume-custom",
+    "sdp": "gen2-volume-sdp",
+}
+FLOATING_IP_SERVICE = "is.floating-ip"
+FLOATING_IP_PLAN = "default-nextgen"
+
+
+def _service_plan_id(service_id: str, plan_name: str) -> str:
+    url = (
+        f"{CATALOG}/{urllib.parse.quote(service_id, safe='')}/*"
+        f"?{urllib.parse.urlencode({'limit': 50})}"
+    )
+    doc = _get_json(url)
+    for resource in doc.get("resources") or []:
+        if resource.get("kind") == "plan" and resource.get("name") == plan_name:
+            rid = resource.get("id")
+            if rid:
+                return rid
+    raise IbmPriceError(f"No plan {plan_name!r} under service {service_id}")
+
+
+def _find_named_deployment(plan_id: str, candidates: List[str], region: str) -> str:
+    query = urllib.parse.urlencode({"q": region, "limit": 50})
+    url = f"{CATALOG}/{urllib.parse.quote(plan_id, safe='')}/*?{query}"
+    doc = _get_json(url)
+    by_name = {
+        r.get("name"): r.get("id")
+        for r in (doc.get("resources") or [])
+        if r.get("name") and r.get("id") and r.get("kind") == "deployment"
+    }
+    for want in candidates:
+        if want in by_name:
+            return by_name[want]
+    # Prefer non-beta deployments containing the region.
+    for name, dep_id in by_name.items():
+        if "beta" in name or "free" in name:
+            continue
+        if region in name:
+            return dep_id
+    raise IbmPriceError(
+        f"No catalog deployment under plan {plan_id} for region {region!r} "
+        f"(tried {candidates})"
+    )
+
+
+def _usa_usd_from_metrics(
+    pricing_doc: Dict[str, Any],
+    *,
+    prefer_units: Tuple[str, ...],
+    prefer_metric_substrings: Tuple[str, ...] = (),
+) -> float:
+    metrics = pricing_doc.get("metrics") or []
+    for unit in prefer_units:
+        for metric in metrics:
+            if metric.get("charge_unit_name") != unit:
+                continue
+            mid = metric.get("metric_id") or ""
+            if prefer_metric_substrings and not any(
+                s in mid for s in prefer_metric_substrings
+            ):
+                continue
+            price = _usa_usd_unit_price(metric)
+            if price is not None:
+                return price
+    for metric in metrics:
+        mid = metric.get("metric_id") or ""
+        if prefer_metric_substrings and not any(
+            s in mid for s in prefer_metric_substrings
+        ):
+            continue
+        price = _usa_usd_unit_price(metric)
+        if price is not None:
+            return price
+    raise IbmPriceError(
+        f"Pricing missing metrics for units={prefer_units} "
+        f"substrings={prefer_metric_substrings}"
+    )
+
+
+def lookup_volume_gb_hour_price(profile: str, region: str) -> float:
+    """
+    USD per GB-hour for a VPC Block Storage volume profile.
+
+    Example: general-purpose in us-south → is.volume.generalpurpose.GB.
+    """
+    profile = (profile or "general-purpose").strip()
+    region = region.strip()
+    plan_name = VOLUME_PLAN_BY_PROFILE.get(profile)
+    if not plan_name:
+        raise IbmPriceError(
+            f"Unsupported volume profile {profile!r}; "
+            f"known: {sorted(VOLUME_PLAN_BY_PROFILE)}"
+        )
+    plan_id = _service_plan_id(VOLUME_SERVICE, plan_name)
+    deployment_id = _find_named_deployment(
+        plan_id,
+        [f"{plan_name}-{region}", f"{plan_name}-{region}-rc"],
+        region,
+    )
+    pricing_doc = _get_json(
+        f"{CATALOG}/{urllib.parse.quote(deployment_id, safe='')}/pricing"
+    )
+    return _usa_usd_from_metrics(
+        pricing_doc,
+        prefer_units=("GIGABYTE_HOURS",),
+        prefer_metric_substrings=(".GB", "gigabyte", "generalpurpose", "iops"),
+    )
+
+
+def lookup_floating_ip_hourly_price(region: str) -> float:
+    """
+    USD per floating-IP hour (catalog unit display: Instance-Hour).
+    """
+    region = region.strip()
+    plan_id = _service_plan_id(FLOATING_IP_SERVICE, FLOATING_IP_PLAN)
+    deployment_id = _find_named_deployment(
+        plan_id,
+        [
+            f"{FLOATING_IP_PLAN}-{region}-rc",
+            f"{FLOATING_IP_PLAN}-{region}-1-rc",
+            f"{FLOATING_IP_PLAN}-{region}",
+        ],
+        region,
+    )
+    pricing_doc = _get_json(
+        f"{CATALOG}/{urllib.parse.quote(deployment_id, safe='')}/pricing"
+    )
+    return _usa_usd_from_metrics(
+        pricing_doc,
+        prefer_units=("INSTANCES", "INSTANCE_HOURS"),
+        prefer_metric_substrings=("floating-ip",),
+    )
+
+
 def _format_price(price: float) -> str:
     return f"{price:.6f}".rstrip("0").rstrip(".")
 
@@ -442,6 +582,34 @@ def run_self_test() -> int:
     gpu_break = price_breakdown_from_pricing_doc(_fixture_pricing_docs()[2][1])
     if abs(gpu_break["compute_hourly"] - 0.519) > 1e-9 or abs(gpu_break["gpu_hourly"] - 2.09) > 1e-9:
         print(f"SELFTEST FAIL: gpu breakdown {gpu_break}", file=sys.stderr)
+        return 1
+    vol_doc = {
+        "metrics": [
+            {
+                "metric_id": "is.volume.generalpurpose.GB",
+                "charge_unit_name": "GIGABYTE_HOURS",
+                "amounts": [
+                    {"country": "USA", "currency": "USD", "prices": [{"price": 0.00012025}]}
+                ],
+            }
+        ]
+    }
+    fip_doc = {
+        "metrics": [
+            {
+                "metric_id": "part-is.floating-ip-instance",
+                "charge_unit_name": "INSTANCES",
+                "amounts": [
+                    {"country": "USA", "currency": "USD", "prices": [{"price": 0.006}]}
+                ],
+            }
+        ]
+    }
+    if abs(_usa_usd_from_metrics(vol_doc, prefer_units=("GIGABYTE_HOURS",)) - 0.00012025) > 1e-12:
+        print("SELFTEST FAIL: volume GB-hour fixture", file=sys.stderr)
+        return 1
+    if abs(_usa_usd_from_metrics(fip_doc, prefer_units=("INSTANCES",), prefer_metric_substrings=("floating-ip",)) - 0.006) > 1e-12:
+        print("SELFTEST FAIL: floating IP fixture", file=sys.stderr)
         return 1
     # First field remains hourly so burden can parse it.
     print(_format_hourly_daily(0.803))
