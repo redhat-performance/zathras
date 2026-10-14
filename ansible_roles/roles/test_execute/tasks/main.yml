@@ -15,20 +15,20 @@
   failed_when: false
 
 #
-# Install git if it is missing.  ansible builtin package install is not
-# working on azurelinux, so dnf is used directly there.
+# Install git if it is missing.  Seeing various issues using the ansible builtin, 
+# so forced to call the package command directly based on the os.
 #
 - name: install git
   block:
-    - name: Install git package if need be.
-      ansible.builtin.package:
-        name: git
-        state: present
-      when: config_info.os_vendor != "azure"
-
-    - name: Install git package on azure.
+    - name: Install git package for rhel/azure if need be.
       ansible.builtin.command: "dnf install -y git"
-      when: config_info.os_vendor == "azure"
+      when: config_info.os_vendor == "azure" or config_info.os_vendor == "rhel" or config_info.os_vendor == "amazon"
+    - name: Install git package for ubuntu if need be.
+      ansible.builtin.command: "apt install -y git"
+      when: config_info.os_vendor == "ubuntu"
+    - name: Install git package on suse.
+      ansible.builtin.command: "zypper install -y git"
+      when: config_info.os_vendor == "suse"
   rescue:
     - name: If git not installed or failed to install bail.
       include_role:
@@ -40,6 +40,38 @@
         msg: "Git is not present"
   when:
     - git_check.rc != 0
+    - config_info.do_not_install_packages == 0
+    - config_info.do_not_install_system_packages == 0
+
+- name: check to see if git command is present
+  shell:
+      cmd: "command -v pip"
+  register: pip_check
+  changed_when: false
+  failed_when: false
+
+- name: install pip
+  block:
+    - name: Install git package for rhel/azure if need be.
+      ansible.builtin.command: "dnf install -y python3-pip"
+      when: config_info.os_vendor == "azure" or config_info.os_vendor == "rhel" or config_info.os_vendor == "amazon"
+    - name: Install git package for ubuntu if need be.
+      ansible.builtin.command: "apt install -y python3-pip"
+      when: config_info.os_vendor == "ubuntu"
+    - name: Install git package on suse.
+      ansible.builtin.command: "zypper install -y python3-pip"
+      when: config_info.os_vendor == "suse"
+  rescue:
+    - name: If pip not installed or failed to install bail.
+      include_role:
+        name: tf_delete
+      vars:
+        tf_dir: "tf"
+    - name: Aborting test
+      fail:
+        msg: "pip is not present"
+  when:
+    - pip_check.rc != 0
     - config_info.do_not_install_packages == 0
     - config_info.do_not_install_system_packages == 0
 
