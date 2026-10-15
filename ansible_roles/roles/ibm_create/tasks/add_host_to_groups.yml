@@ -27,6 +27,14 @@
     group_name: "test_group_list"
     host_to_add: "{{ public_ip_list[0] }}"
 
+- name: Add host to install_group file
+  include_role:
+    name: add_to_host_group
+  vars:
+    working_group_file: "{{ working_dir }}/ansible_install_group"
+    group_name: "install_group_list"
+    host_to_add: "{{ public_ip_list[0] }}"
+
 - name: Add secondary host to groups (if exists)
   block:
     - name: Add secondary host to test_group
@@ -49,5 +57,13 @@
       vars:
         working_group_file: "{{ working_dir }}/ansible_test_group"
         group_name: "test_group_list"
+        host_to_add: "{{ public_ip_list[1] }}"
+
+    - name: Add secondary host to install_group file
+      include_role:
+        name: add_to_host_group
+      vars:
+        working_group_file: "{{ working_dir }}/ansible_install_group"
+        group_name: "install_group_list"
         host_to_add: "{{ public_ip_list[1] }}"
   when: public_ip_list | length > 1
