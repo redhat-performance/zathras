@@ -1,23 +1,38 @@
-#
-# First save it for later use.
-#
-- name: pull tf data
-  shell: "terraform show > {{ working_dir }}/terraform_data.yml"
-  args:
-    chdir: "{{ working_dir }}/tf"
+---
 
 #
-# Now tell the world
+# Make sure we are pointed at the correct workspace before reading the
+# state, otherwise "terraform show" reports whatever workspace happens to
+# be selected.  This mirrors the select done during tf_apply.
 #
-- name: pull tf data for display
-  shell: "terraform show"
+- name: select terraform workspace
+  shell: |
+    set -eo pipefail
+    terraform workspace select {{ config_info.system_type }}-{{ config_info.run_label }}-{{ config_info.host_or_cloud_inst }}
+  args:
+    chdir: "{{ working_dir }}/tf"
+    executable: /bin/bash
+
+#
+# Pull the tf data once and reuse it, both to save for later and to display.
+#
+- name: pull tf data
+  command: terraform show
   args:
     chdir: "{{ working_dir }}/tf"
   register: tf_data
+
+#
+# Save it for later use / debugging.
+#
+- name: save tf data for later use
+  copy:
+    content: "{{ tf_data.stdout }}"
+    dest: "{{ working_dir }}/terraform_data.txt"
 
 #
 # Now give it to the user
 #
 - name: Present terraform data
   debug:
-    var: tf_data
+    var: tf_data.stdout_lines

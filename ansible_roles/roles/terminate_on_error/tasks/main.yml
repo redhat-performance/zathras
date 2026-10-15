@@ -1,14 +1,46 @@
 ---
 # tasks file for termination on failure deletion
 #
+# A prior step writes {{ working_dir }}/{{ status_file }}. If that file
+# reports a failure (contains the token "fail"), or the file is missing
+# (we could not determine the status), we treat the step as failed:
+# tear down the cloud instance (when configured) and abort the run.
 #
-#- name: Obtain install status
-- name: Read status file
-  shell: cat {{ working_dir }}/{{ status_file }} 2> /dev/null
-  register: status
-  ignore_errors: yes
 
-- name: terminate
+- name: Validate required variables
+  assert:
+    that:
+      - working_dir is defined
+      - status_file is defined
+      - exit_msg is defined
+    fail_msg: "terminate_on_error requires working_dir, status_file and exit_msg to be set"
+
+- name: Check for the status file
+  stat:
+    path: "{{ working_dir }}/{{ status_file }}"
+  register: status_stat
+
+- name: Read the status file contents
+  slurp:
+    src: "{{ working_dir }}/{{ status_file }}"
+  register: status_slurp
+  when: status_stat.stat.exists
+
+- name: Determine whether the prior step failed
+  set_fact:
+    step_failed: >-
+      {{ (not status_stat.stat.exists)
+         or ('fail' in ((status_slurp.content | b64decode) | lower).split()) }}
+    step_failure_reason: >-
+      {{ exit_msg if status_stat.stat.exists
+         else (exit_msg ~ " (status file '" ~ status_file ~ "' not found in " ~ working_dir ~ ")") }}
+
+#
+# Single failure path: cleanup, then log and abort. This keeps cloud
+# teardown and error logging consistent regardless of how the failure
+# was detected (bad status vs. missing status file).
+#
+- name: Handle failure
   block:
   - name: Terraform terminate
     include_role:
@@ -19,13 +51,9 @@
       - config_info.cloud_terminate_instance == 1
       - config_info.term_system == "yes"
       - config_info.system_type != "local"
-  - name: Aborting test
-    fail:
-      msg: "{{ exit_msg }}"
-  when: '"fail" in status.stdout'
-- name: Log failure
-  include_role:
-    name: log_and_terminate
-  vars:
-    exit_msg: "{{ exit_msg }}"
-  when: status.rc == 1
+  - name: Log the failure and abort
+    include_role:
+      name: log_and_terminate
+    vars:
+      exit_msg: "{{ step_failure_reason }}"
+  when: step_failed | bool
