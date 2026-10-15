@@ -1009,51 +1009,112 @@ def _fmt_hours(seconds: int) -> str:
     return f"{hours}h {mins}m {secs}s"
 
 
-def format_cli(run: RunCost) -> str:
-    lines = [
-        "Zathras Run Cost",
-        "================",
-        "",
-        f"Run ID       : {run.run_id}",
-        f"Status       : {run.status}",
-        f"Start        : {_fmt_epoch(run.start_time)}",
-        f"End          : {_fmt_epoch(run.end_time)}",
-        f"Runtime      : {_fmt_hours(run.runtime_seconds)} "
-        f"({hours_from_seconds(run.runtime_seconds):.4f} h, source={run.runtime_source})",
-        f"Resources    : {len(run.resources)}",
-        "",
-        f"{'RESOURCE':<28} {'RUNTIME':<12} {'RATE/HOUR':<14} {'COST':>12}",
-        "-" * 70,
-    ]
+def _cli_type_label(resource_type: str) -> str:
+    return {
+        "vm": "vm",
+        "gpu": "gpu",
+        "volume": "volume",
+        "floating_ip": "fip",
+        "not_billed": "other",
+    }.get(resource_type, resource_type[:8])
+
+
+def _cli_short_name(name: str, width: int = 40) -> str:
+    if len(name) <= width:
+        return name
+    if width <= 1:
+        return name[:width]
+    return name[: width - 1] + "…"
+
+
+def _cli_what_ran(run: RunCost) -> str:
+    """One-line inventory summary for the TL;DR block."""
+    counts: Dict[str, int] = {}
+    vm_skus: List[str] = []
     for row in run.resources:
         if not row.usage.billable:
-            rate = "not billed"
-            cost = "not billed"
-        else:
-            rate = _fmt_money(row.hourly_rate) + "/hr" if row.hourly_rate is not None else "n/a"
-            cost = _fmt_money(row.total_cost)
-        lines.append(
-            f"{row.usage.resource_name[:28]:<28} "
-            f"{_fmt_hours(row.usage.runtime_seconds):<12} "
-            f"{rate:<14} {cost:>12}"
-        )
-    lines.append("-" * 70)
+            continue
+        label = _cli_type_label(row.usage.resource_type)
+        counts[label] = counts.get(label, 0) + 1
+        if row.usage.resource_type == "vm" and row.usage.sku:
+            vm_skus.append(row.usage.sku)
+    if not counts:
+        return "no billable resources"
+    parts = []
+    order = ("vm", "gpu", "volume", "fip")
+    for key in order:
+        n = counts.pop(key, 0)
+        if not n:
+            continue
+        if key == "vm" and vm_skus:
+            unique = sorted(set(vm_skus))
+            sku_txt = ", ".join(unique[:3])
+            if len(unique) > 3:
+                sku_txt += ", …"
+            parts.append(f"{n} VM ({sku_txt})" if n == 1 else f"{n} VMs ({sku_txt})")
+        elif key == "volume":
+            parts.append(f"{n} disk" if n == 1 else f"{n} disks")
+        elif key == "fip":
+            parts.append(f"{n} floating IP" if n == 1 else f"{n} floating IPs")
+        elif key == "gpu":
+            parts.append(f"{n} GPU" if n == 1 else f"{n} GPUs")
+    for key, n in sorted(counts.items()):
+        parts.append(f"{n} {key}")
+    return " + ".join(parts)
+
+
+def format_cli(run: RunCost) -> str:
     cat = run.category_totals
-    not_billed = [
-        r.usage.resource_name
-        for r in run.resources
-        if not r.usage.billable
+    billable = [r for r in run.resources if r.usage.billable]
+    not_billed = [r.usage.resource_name for r in run.resources if not r.usage.billable]
+
+    lines = [
+        "Zathras Run Cost — TL;DR",
+        "========================",
+        f"Run        : {run.run_id}  ({_fmt_hours(run.runtime_seconds)})",
+        f"What ran   : {_cli_what_ran(run)}",
+        f"TOTAL      : {_fmt_money(run.total_cost)} {run.currency}",
+        f"  VM         {_fmt_money(cat.get('vm'))}",
+        f"  Storage    {_fmt_money(cat.get('storage'))}",
+        f"  Network    {_fmt_money(cat.get('network'))}",
+        f"  GPU        {_fmt_money(cat.get('gpu'))}",
+        f"  Other      {_fmt_money(cat.get('other'))}",
+        "",
+        f"(~{_fmt_money(run.average_cost_per_hour)} / hour of wall-clock run time)",
+        "",
+        "········································································",
+        "Details (for audit / deep dive)",
+        "········································································",
+        "",
+        f"Status     : {run.status}",
+        f"Start      : {_fmt_epoch(run.start_time)}",
+        f"End        : {_fmt_epoch(run.end_time)}",
+        f"Runtime    : {_fmt_hours(run.runtime_seconds)} "
+        f"({hours_from_seconds(run.runtime_seconds):.4f} h, source={run.runtime_source})",
+        f"Resources  : {len(run.resources)} ({len(billable)} billable)",
+        "",
+        f"{'TYPE':<8} {'NAME':<40} {'SKU':<16} {'RUNTIME':<12} {'RATE/HR':<12} {'COST':>10}",
+        "-" * 102,
     ]
+    for row in billable:
+        rate = (
+            _fmt_money(row.hourly_rate) + "/hr"
+            if row.hourly_rate is not None
+            else "n/a"
+        )
+        cost = _fmt_money(row.total_cost)
+        sku = (row.usage.sku or "-")[:16]
+        lines.append(
+            f"{_cli_type_label(row.usage.resource_type):<8} "
+            f"{_cli_short_name(row.usage.resource_name, 40):<40} "
+            f"{sku:<16} "
+            f"{_fmt_hours(row.usage.runtime_seconds):<12} "
+            f"{rate:<12} {cost:>10}"
+        )
+    lines.append("-" * 102)
     lines.extend(
         [
-            f"VM Cost       : {_fmt_money(cat.get('vm'))}",
-            f"GPU Cost      : {_fmt_money(cat.get('gpu'))}",
-            f"Storage Cost  : {_fmt_money(cat.get('storage'))}",
-            f"Network Cost  : {_fmt_money(cat.get('network'))}",
-            f"Other Cost    : {_fmt_money(cat.get('other'))}",
-            "--------------------------------",
             f"TOTAL COST    : {_fmt_money(run.total_cost)} {run.currency}",
-            "",
             f"Average cost/hour (total / run runtime): {_fmt_money(run.average_cost_per_hour)}",
             "This is not the sum of resource hourly rates when lifetimes differ.",
             f"Estimated 24-hour cost (not an IBM daily SKU): {_fmt_money(run.estimated_24h_cost)}",
@@ -1062,8 +1123,7 @@ def format_cli(run: RunCost) -> str:
     if not_billed:
         lines.append("")
         lines.append(
-            "Other (created, not independently billed): "
-            + ", ".join(not_billed)
+            "Not billed (created, no separate line item): " + ", ".join(not_billed)
         )
     if run.warnings:
         lines.append("")

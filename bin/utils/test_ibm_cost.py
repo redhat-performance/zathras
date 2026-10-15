@@ -352,8 +352,11 @@ class CostScenarioTests(unittest.TestCase):
             self.assertAlmostEqual(run.category_totals["storage"], 0.012025)
             self.assertAlmostEqual(run.category_totals["network"], 0.006)
             text = ibm_cost.format_cli(run)
-            self.assertIn("Storage Cost", text)
-            self.assertIn("Network Cost", text)
+            self.assertIn("TL;DR", text)
+            self.assertIn("Storage", text)
+            self.assertIn("Network", text)
+            self.assertIn("TYPE", text)
+            self.assertIn("fip", text)
             self.assertIn("$0.0120", text)
             self.assertIn("$0.0060", text)
 
