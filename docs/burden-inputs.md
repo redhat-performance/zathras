@@ -93,6 +93,7 @@
 
 | Option | Arguments | Description |
 |--------|-----------|-------------|
+| <nobr>`--reporting_sysname: Name of the directory | Name of the directory to run from and place the results in.  Default is hostname. |
 | <nobr>`--use_pcp`</nobr> | `0`/`1` | Enable (1) or disable (0) PCP usage by wrappers. Default: 1 |
 | <nobr>`--preflight_check`</nobr> | - | Perform checks on scenario file and Zathras, then exit |
 | <nobr>`--child`</nobr> | - | Indicate burden is a child process; skip initial setup work |

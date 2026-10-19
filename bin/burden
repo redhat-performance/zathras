@@ -144,6 +144,7 @@ gl_cloud_placement=${value_not_set}
 gl_cloud_networks_sys="duplicate"
 gl_preflight=0
 gl_use_pcp="--use_pcp"
+gl_reporting_sysname=""
 #
 # Global values
 #   gl_sys_file: sysctl files to use.
@@ -2018,10 +2019,13 @@ create_ansible_options()
 		# Azure, we have a limit on resource group name, need the test_index.
 		#
 		gl_lock_exclusive $gl_lock_multi gl_have_locked_multi 4
+		if [[ $gl_reporting_sysname == "" ]]; then
+			gl_reporting_sysname=${host_or_cloud_inst}
+		fi
 		if [[ $gl_system_type == "azure" ]]; then
-			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${host_or_cloud_inst}
+			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${gl_reporting_sysname}
 		else
-			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${host_or_cloud_inst}_${test_index}
+			run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${gl_reporting_sysname}_${test_index}
 		fi
 		#
 		# Create the working directory and cd to it.  Without this, we will only be able
@@ -2033,9 +2037,9 @@ create_ansible_options()
 		do
 			let "test_index=$test_index+1"
 			if [[ $gl_system_type == "azure" ]]; then
-				run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${host_or_cloud_inst}
+				run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${test_index}_${gl_reporting_sysname}
 			else
-				run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${host_or_cloud_inst}_${test_index}
+				run_dir=${gl_run_prefix}/${gl_os_vendor}/${gl_system_type}/${gl_reporting_sysname}_${test_index}
 			fi
 			stat $run_dir > /dev/null 2>&1
 			rc=$?
@@ -3644,6 +3648,7 @@ usage()
 	echo "    used by the wrappers.  Default is 1."
 	echo "  --persistent_log: enable persistent logging"
 	echo "  --preflight_check: Performs various checks on the scenario file, and Zathras and then exits"
+	echo "  --reporting_sysname: Name of the directory to run from and place the results in.  Default is hostname"
 	echo "  --results_prefix <prefix>: Run directory prefix"
 	echo "  --retry_failed_tests 0/1>: Indicates to retry any detected failed tests if set to 1 (1 is the default)."
 	echo "  --run_chronicler: After tests complete, run Chronicler (pip install chronicler[opensearch]) to export to OpenSearch."
@@ -3914,6 +3919,11 @@ set_general_value()
 			echo "$1" >> $gl_cli_supplied_options
 			shift_by=1
 		;;
+		--reporting_sysname)
+			gl_reporting_sysname=$2
+			echo "${1} $gl_reporting_sysname" >> $gl_cli_supplied_options
+			shift_by=2
+		;;
 		--results_prefix)
 			if [[ $gl_run_prefix == "" ]]; then
 				gl_run_prefix=$2
@@ -4177,6 +4187,7 @@ grab_cli_data()
 		"mode"
 		"os_vendor"
 		"package_name"
+		"reporting_sysname"
 		"results_prefix"
 		"retry_failed_tests"
 		"run_file"
