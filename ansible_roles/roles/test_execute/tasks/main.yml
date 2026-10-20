@@ -15,8 +15,10 @@
   failed_when: false
 
 #
-# Install git if it is missing.  Seeing various issues using the ansible builtin, 
-# so forced to call the package command directly based on the os.
+# Install git if it is missing.  Seeing issue on various os's where the ansible command fails
+# because there is extra data returned after ansible thinks all the data has been returned.
+# This results in the ansible thinking the command has failed.  Tried the various recommend fixes,
+# did not clear out the error.  Soloution is to use the installer for the particular os.
 #
 - name: install git
   block:
