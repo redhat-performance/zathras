@@ -101,13 +101,34 @@ case "$event" in
 		append_life terraform_destroy_end_unix "$(now_unix)"
 		;;
 	after_run)
-		if [[ -f "$here/ibm_cost.py" ]]; then
-			python3 "$here/ibm_cost.py" --fail-open --use-catalog --record --attach-results "$run_dir" \
-				>> "$run_dir/cost_hook.log" 2>&1
-			log "after_run calculator rc=$?"
-		else
-			log "ibm_cost.py missing; skip"
+		# Dispatch by cloud from ansible_vars_main.yml (ibm | azure).
+		_stype=""
+		if [[ -f "$run_dir/ansible_vars_main.yml" ]]; then
+			_stype=$(grep -E '^[[:space:]]*system_type:' "$run_dir/ansible_vars_main.yml" | awk '{print $2}' | tr -d '"' | head -1)
 		fi
+		case "$_stype" in
+			azure)
+				if [[ -f "$here/azure_cost.py" ]]; then
+					python3 "$here/azure_cost.py" --fail-open --use-retail --record --attach-results "$run_dir" \
+						>> "$run_dir/cost_hook.log" 2>&1
+					log "after_run azure calculator rc=$?"
+				else
+					log "azure_cost.py missing; skip"
+				fi
+				;;
+			ibm|"")
+				if [[ -f "$here/ibm_cost.py" ]]; then
+					python3 "$here/ibm_cost.py" --fail-open --use-catalog --record --attach-results "$run_dir" \
+						>> "$run_dir/cost_hook.log" 2>&1
+					log "after_run ibm calculator rc=$?"
+				else
+					log "ibm_cost.py missing; skip"
+				fi
+				;;
+			*)
+				log "system_type=${_stype}; no cost calculator; skip"
+				;;
+		esac
 		;;
 	*)
 		log "unknown event; ignore"

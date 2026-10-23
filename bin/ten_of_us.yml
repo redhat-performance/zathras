@@ -276,13 +276,14 @@
 
     - name: Setup CodeReady Builder for GCP
       block:
+        # Skip supplementary: some cloud mirrors 404 it and block all dnf/yum.
         - name: Install yum utils
           become: yes
-          shell: "yum install yum-utils -y"
+          shell: "yum install yum-utils -y --disablerepo='*supplementary*'"
 
         - name: get codeready repo name
           shell:
-            cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1 | head -1"
+            cmd: "yum repolist --all --disablerepo='*supplementary*'|grep -i codeready|grep -v -i debug |grep -v -i source | cut -d' ' -f 1 | head -1"
           register: repo_name
           ignore_errors: yes
 
@@ -311,13 +312,30 @@
 
     - name: Enable CodeReady Builder for IBM Cloud
       block:
+        # IBM RHEL 10 images currently 404 supplementary on the RHUI mirror;
+        # BaseOS/AppStream still work. Disable it so package installs proceed.
         - name: Install yum utils
           become: yes
-          shell: "yum install yum-utils -y"
+          shell: "yum install yum-utils -y --disablerepo='*supplementary*'"
+
+        - name: Disable broken supplementary repos on IBM
+          become: yes
+          shell: |
+            yum-config-manager --disable '*supplementary*' || true
+            yum-config-manager --disable "rhel-$(rpm -E %rhel)-for-$(arch)-supplementary-rpms" || true
+          ignore_errors: yes
+
+        - name: get codeready repo name
+          shell:
+            cmd: "yum repolist --all|grep -i codeready|grep -v -i debug |grep -v -i source | awk '{print $1}' | head -1"
+          register: repo_name
+          ignore_errors: yes
 
         - name: Enable CodeReady Builder for IBM Cloud
           become: yes
-          shell: "yum-config-manager --enable codeready-builder-for-rhel-9-$(arch)-rpms"
+          shell: >-
+            yum-config-manager --enable
+            {% if repo_name.stdout | length > 0 %}{{ repo_name.stdout }}{% else %}codeready-builder-for-rhel-$(rpm -E %rhel)-$(arch)-rpms{% endif %}
           register: yum_config
           ignore_errors: yes
 
@@ -931,15 +949,15 @@
         path: "{{ working_dir }}/cloud_timings"
         line: "terminate time: {{ (terminate_end_time.stdout) | int  - (terminate_start_time.stdout) | int }}"
 
-    - name: Record terminate epochs for IBM cost tracking
+    - name: Record terminate epochs for cost tracking
       blockinfile:
         path: "{{ working_dir }}/instance_lifecycle"
         create: yes
-        marker: "# {mark} IBM cost terminate"
+        marker: "# {mark} cost terminate"
         block: |
           terminate_start_unix={{ terminate_start_time.stdout }}
           terminate_end_unix={{ terminate_end_time.stdout }}
-      when: config_info.system_type == "ibm"
+      when: config_info.system_type in ['ibm', 'azure']
     when:
       - config_info.system_type != "local"
       - config_info.cloud_terminate_instance == 1

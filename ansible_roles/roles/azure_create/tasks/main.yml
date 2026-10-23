@@ -161,6 +161,14 @@
   command: "date -u +%s"
   register: azure_create_time_end
 
+- name: Record instance lifecycle timestamps
+  copy:
+    dest: "{{ working_dir }}/instance_lifecycle"
+    content: |
+      create_start_unix={{ azure_create_time_start.stdout }}
+      create_end_unix={{ azure_create_time_end.stdout }}
+      runtime_source=azure_lifecycle
+
 #
 # Report how long it took to create the instance.
 #

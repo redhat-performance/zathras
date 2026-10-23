@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Wrapper so `azure_instance_price SKU REGION` calls keep working."""
+import os
+import runpy
+
+runpy.run_path(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "azure_instance_price.py"),
+    run_name="__main__",
+)

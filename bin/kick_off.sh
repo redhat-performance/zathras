@@ -326,12 +326,12 @@ if [[ -f test_times ]]; then
 fi
 
 #
-# Isolated IBM cost plugin. Must not change this script's exit code.
+# Isolated cost plugin (IBM / Azure). Must not change this script's exit code.
 #
 if [[ -f ansible_vars_main.yml ]]; then
 	_track_cost=`grep track_cost: ansible_vars_main.yml | awk '{print $2}'`
 	_cost_type=`grep system_type: ansible_vars_main.yml | awk '{print $2}'`
-	if [[ $_track_cost == "1" ]] && [[ $_cost_type == "ibm" ]]; then
+	if [[ $_track_cost == "1" ]] && [[ $_cost_type == "ibm" || $_cost_type == "azure" ]]; then
 		_hook="$top_dir/bin/utils/zathras_cost_hook"
 		if [[ -f $_hook ]]; then
 			timeout --signal=15 --kill-after=5s 90 bash "$_hook" after_run . >/dev/null 2>&1 || true

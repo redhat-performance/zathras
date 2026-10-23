@@ -277,11 +277,66 @@ else
 fi
 
 #
-# IBM cost subcommand: ./burden cost [--latest] [run-dir]
+# Cost subcommand: ./burden cost [--latest] [run-dir]
+# Dispatches to ibm_cost.py or azure_cost.py from run dir system_type.
 #
 if [[ "${1}" == "cost" ]]; then
 	shift
-	python3 "${UTILS_DIR}/ibm_cost.py" "$@"
+	_cost_dir=""
+	_cost_latest=0
+	_cost_args=()
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			--latest)
+				_cost_latest=1
+				_cost_args+=("$1")
+				shift
+				;;
+			--json|--record|--use-catalog|--use-retail|--attach-results|--fail-open)
+				_cost_args+=("$1")
+				shift
+				;;
+			--db|--overrides|--configured-runtime-seconds)
+				_cost_args+=("$1" "$2")
+				shift 2
+				;;
+			-*)
+				_cost_args+=("$1")
+				shift
+				;;
+			*)
+				_cost_dir="$1"
+				_cost_args+=("$1")
+				shift
+				;;
+		esac
+	done
+	_stype=""
+	if [[ -n "$_cost_dir" ]] && [[ -f "${_cost_dir}/ansible_vars_main.yml" ]]; then
+		_stype=`grep -E '^[[:space:]]*system_type:' "${_cost_dir}/ansible_vars_main.yml" | awk '{print $2}' | tr -d '"' | head -1`
+	elif [[ $_cost_latest -eq 1 ]]; then
+		# Prefer newest azure/ibm run under cwd; try azure first then ibm via each tool's --latest.
+		:
+	fi
+	if [[ "$_stype" == "azure" ]]; then
+		python3 "${UTILS_DIR}/azure_cost.py" "${_cost_args[@]}"
+		exit $?
+	fi
+	if [[ "$_stype" == "ibm" ]]; then
+		python3 "${UTILS_DIR}/ibm_cost.py" "${_cost_args[@]}"
+		exit $?
+	fi
+	# --latest or unknown: try azure then ibm
+	if [[ $_cost_latest -eq 1 ]] || [[ -z "$_stype" ]]; then
+		python3 "${UTILS_DIR}/azure_cost.py" "${_cost_args[@]}" 2>/dev/null
+		_rc=$?
+		if [[ $_rc -eq 0 ]]; then
+			exit 0
+		fi
+		python3 "${UTILS_DIR}/ibm_cost.py" "${_cost_args[@]}"
+		exit $?
+	fi
+	python3 "${UTILS_DIR}/ibm_cost.py" "${_cost_args[@]}"
 	exit $?
 fi
 
@@ -2019,8 +2074,8 @@ create_ansible_options()
 		gl_host_config_info=`echo ${create_host} | sed s/';'/_/g | sed s/'\['/_/g | sed s/'\]'/_/g`
 
 		#
-		# Instance hourly price. AWS uses ec2.shop; IBM uses Global Catalog.
-		# Do not call ec2.shop for non-AWS clouds.
+		# Instance hourly price. AWS uses ec2.shop; IBM Global Catalog;
+		# Azure Retail Prices API. Do not call ec2.shop for non-AWS clouds.
 		#
 		if [[ $gl_system_type == "aws" ]] && [[ $gl_spot_cap -eq 0 ]]; then
 			echo No spot price designated, retrieving
@@ -2037,6 +2092,18 @@ create_ansible_options()
 				gl_base_cost=0
 			else
 				gl_base_cost=$ibm_price
+			fi
+		elif [[ $gl_system_type == "azure" ]] && [[ $gl_track_cost -eq 1 ]]; then
+			_az_spot_flag=""
+			if [[ $gl_use_spot -eq 1 ]]; then
+				_az_spot_flag="--spot"
+			fi
+			azure_price=`timeout 20 python3 "${gl_top_dir}/bin/utils/azure_instance_price" --hourly-only $_az_spot_flag "$host_or_cloud_inst" "$gl_cloud_region" 2>/dev/null`
+			if [[ $? -ne 0 ]] || [[ -z "$azure_price" ]]; then
+				echo "Warning: Azure Retail price lookup failed; instance_cost=0 (run continues)"
+				gl_base_cost=0
+			else
+				gl_base_cost=$azure_price
 			fi
 		fi
 
@@ -3593,7 +3660,7 @@ usage()
 	echo "	--create_attempts: number of times we attempt to create an instance to get the"
 	echo "    designated cpu type"
 	echo "  --git_timeout: Number of seconds to timeout on git requests.  Default is 60"
-	echo "  --track_cost 0/1: IBM cost plugin (terraform apply→destroy). Isolated; failures never fail the run. Default 0"
+	echo "  --track_cost 0/1: IBM/Azure cost plugin (terraform apply→destroy). Isolated; failures never fail the run. Default 0"
 	echo "  --system_type <vendor>: aws, azure, gcp, ibm, or local"
 	echo "  --host_config <config options>: Specification of the system and configuration"
 	if [[ $1 -eq 1 ]]; then

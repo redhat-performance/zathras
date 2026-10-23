@@ -1,11 +1,60 @@
 #!/usr/bin/env python3
-"""CLI wrapper: zathras_cost → bin/utils/ibm_cost.py"""
+"""CLI wrapper: zathras_cost → azure_cost or ibm_cost by run system_type."""
 import os
+import re
 import sys
 
 here = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(here, "utils"))
-from ibm_cost import main  # noqa: E402
+utils = os.path.join(here, "utils")
+sys.path.insert(0, utils)
+
+
+def _system_type_from_args(argv):
+    run_dir = None
+    latest = False
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--latest":
+            latest = True
+        elif a.startswith("-"):
+            if a in ("--db", "--overrides", "--configured-runtime-seconds") and i + 1 < len(
+                argv
+            ):
+                i += 1
+        else:
+            run_dir = a
+            break
+        i += 1
+    if run_dir and os.path.isfile(os.path.join(run_dir, "ansible_vars_main.yml")):
+        path = os.path.join(run_dir, "ansible_vars_main.yml")
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        m = re.search(r"^\s*system_type:\s*(\S+)", text, re.M)
+        if m:
+            return m.group(1).strip("\"'")
+    if latest:
+        # Prefer azure if a recent azure run exists, else ibm.
+        from azure_cost import find_latest_azure_run  # noqa: E402
+        from ibm_cost import find_latest_ibm_run  # noqa: E402
+
+        az = find_latest_azure_run(os.getcwd())
+        ibm = find_latest_ibm_run(os.getcwd())
+        if az and ibm:
+            az_t = os.path.getmtime(os.path.join(az, "ansible_vars_main.yml"))
+            ibm_t = os.path.getmtime(os.path.join(ibm, "ansible_vars_main.yml"))
+            return "azure" if az_t >= ibm_t else "ibm"
+        if az:
+            return "azure"
+        if ibm:
+            return "ibm"
+    return "ibm"
+
 
 if __name__ == "__main__":
+    stype = _system_type_from_args(sys.argv[1:])
+    if stype == "azure":
+        from azure_cost import main  # noqa: E402
+    else:
+        from ibm_cost import main  # noqa: E402
     sys.exit(main())
