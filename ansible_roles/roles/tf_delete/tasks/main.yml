@@ -38,6 +38,14 @@
 - name: Destroy the terraform resources
   when: tf_delete_ws is not failed
   block:
+    - name: Cost plugin before terraform destroy
+      include_role:
+        name: cost_track
+      vars:
+        cost_hook_event: before_destroy
+      ignore_errors: true
+      when: (config_info.track_cost | default(0) | string) in ['1', 'true', 'yes']
+
     #
     # timeout sends SIGTERM (--signal=15) so terraform can shut down gracefully
     # and release its state lock; --kill-after escalates to SIGKILL only if the
@@ -75,3 +83,11 @@
       when:
         - destroy.rc != 0
         - tf_delete_fail_on_error | default(true) | bool
+
+    - name: Cost plugin after terraform destroy
+      include_role:
+        name: cost_track
+      vars:
+        cost_hook_event: after_destroy
+      ignore_errors: true
+      when: (config_info.track_cost | default(0) | string) in ['1', 'true', 'yes']

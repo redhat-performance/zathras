@@ -1,0 +1,25 @@
+---
+# Isolated cost-tracking hook. Must never fail the calling play.
+# Does not create, modify, or destroy cloud resources.
+- name: Invoke isolated cost hook
+  ansible.builtin.shell: |
+    set +e
+    hook="{{ config_info.local_run_dir }}/bin/utils/zathras_cost_hook"
+    if [ ! -f "$hook" ]; then
+      exit 0
+    fi
+    timeout --signal=15 --kill-after=5s {{ cost_hook_timeout | default(90) }} \
+      bash "$hook" "{{ cost_hook_event }}" "{{ working_dir }}" \
+      >> "{{ working_dir }}/cost_hook.log" 2>&1
+    exit 0
+  args:
+    executable: /bin/bash
+  register: cost_hook_result
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+  when:
+    - cost_hook_event is defined
+    - working_dir is defined
+    - config_info is defined
+    - (config_info.track_cost | default(0) | string) in ['1', 'true', 'yes']

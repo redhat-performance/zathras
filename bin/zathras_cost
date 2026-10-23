@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+"""CLI wrapper: zathras_cost → bin/utils/ibm_cost.py"""
+import os
+import sys
+
+here = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(here, "utils"))
+from ibm_cost import main  # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(main())
