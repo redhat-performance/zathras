@@ -35,3 +35,9 @@ network_count = {{ config_info.cloud_numb_networks }}
 vm_count = 1
 network_count = 0
 {% endif %}
+
+use_spot_instances = {{ "true" if config_info.spot_start_price != 0 else "false" }}
+
+User = "{{ config_info.user_running | default('') }}"
+
+Project = "{{ config_info.run_label | default('') }}"

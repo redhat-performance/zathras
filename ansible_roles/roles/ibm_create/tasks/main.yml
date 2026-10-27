@@ -18,6 +18,12 @@
 - name: append custom vars to vars.tf
   shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf/vars.tf"
 
+- name: Add spot instance configuration if requested
+  block:
+  - name: append spot config to main.tf
+    shell: "cat {{ config_info.local_run_dir }}/ansible_roles/roles/ibm_create/files/tf/instance_spot_config.tf >> {{ working_dir }}/tf/main.tf"
+  when: config_info.spot_start_price != 0
+
 - name: Get IBM Cloud resource group
   shell: |
     rg_id=$(ibmcloud target --output json | jq -r '.resource_group.guid // empty')
