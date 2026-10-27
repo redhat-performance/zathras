@@ -1064,11 +1064,16 @@ set_region_zone_defaults()
 		gl_cloud_region_zone=`gcloud config list compute/zone --quiet | grep zone | awk '{ print $3 }'`
 	elif [[ $gl_system_type == "ibm" ]]; then
 		worker=$(ibmcloud target --output json)
-		if [ $? -eq 1 ] || [ -z "$gl_cloud_region" ]; then
-			echo "Warning: Unable to retrieve IBM Cloud region, using default us-south"
+		if [ $? -eq 1 ]; then
+			echo "Warning: Unable to retrieve IBM Cloud target, using default region us-south"
 			gl_cloud_region="us-south"
+		else
+			gl_cloud_region=$(echo $worker | jq -r '.region.name // empty' 2>/dev/null)
+			if [ -z "$gl_cloud_region" ] || [ "$gl_cloud_region" == "null" ]; then
+				echo "Warning: Unable to determine IBM Cloud region, using default us-south"
+				gl_cloud_region="us-south"
+			fi
 		fi
-		gl_cloud_region=$(echo $worker | jq -r '.region.name' 2>/dev/null)
 		obtain_zone
 	fi
 }
