@@ -95,14 +95,6 @@ variable "use_spot_instances" {
   default     = false
 }
 
-variable "User" {
-  description = "User tag"
-  type        = string
-  default     = ""
-}
-
-variable "Project" {
-  description = "Project tag"
-  type        = string
-  default     = ""
-}
+# User / Project (and other cloud tags) are declared generically via
+# burden's add_vars_tf and appended onto this file at create time —
+# do not redeclare them here, terraform rejects duplicate declarations.
