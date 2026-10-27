@@ -129,7 +129,7 @@
     name: ssh_key_exchange
   vars:
     ip_list: "{{ public_ip_list }}"
-  when: config_info.cloud_numb_networks|int >= 1
+  when: config_info.cloud_numb_networks|int >= 1 and config_info.cloud_network_type != "public"
 
 - name: create end time
   command: "date -u +%s"
