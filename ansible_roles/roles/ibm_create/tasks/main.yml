@@ -19,9 +19,9 @@
   shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf/vars.tf"
 
 - name: Get IBM Cloud resource group
-  shell: ibmcloud resource groups --output json | jq -r '.[0].id'
+  shell: ibmcloud target --output json | jq -r '.resource_group.id // empty'
   register: resource_group_id
-  ignore_errors: yes
+  failed_when: resource_group_id.rc != 0 or resource_group_id.stdout == ""
 
 - name: Set SSH key id (CI runs -- key already created this run, id known, no lookup needed)
   set_fact:
