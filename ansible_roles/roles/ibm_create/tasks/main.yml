@@ -53,30 +53,23 @@
   changed_when: false
   when: lookup('env', 'IBM_SSH_KEY_ID') == ''
 
+# Match the local private-key fingerprint to an existing IBM VPC key.
+# Do not stash a templated "rc" on this fact: Jinja {{ }} always yields a
+# string, so "0" != 0 is true and the fail task below would always fire.
 - name: Find IBMCloud SSH Key name
   ansible.builtin.set_fact:
-    ibm_ssh_key_name:
-      stdout: >-
-        {{
-          (ibm_ssh_keys.stdout | from_json | selectattr('fingerprint', 'equalto', ssh_key_fingerprint.stdout) | first).name | default('')
-        }}
-      rc: "{{ ibm_ssh_keys.rc + ssh_key_fingerprint.rc }}"
+    ibm_ssh_key_name_value: "{{ (ibm_ssh_keys.stdout | from_json | selectattr('fingerprint', 'equalto', ssh_key_fingerprint.stdout) | list | first | default({})).name | default('') }}"
   when: lookup('env', 'IBM_SSH_KEY_ID') == ''
 
 - name: Fail if no SSH key found in IBM Cloud
   fail:
     msg: |
-      No SSH key found in IBM Cloud.
+      No SSH key found in IBM Cloud matching fingerprint {{ ssh_key_fingerprint.stdout }}.
       Please create an SSH key first:
-        ibmcloud is key-create zathras-key @~/.ssh/id_rsa.pub
+        ibmcloud is key-create zathras-key @{{ config_info.ssh_key }}.pub
       Or list existing keys:
         ibmcloud is keys
-  when: lookup('env', 'IBM_SSH_KEY_ID') == '' and (ibm_ssh_key_name.rc != 0 or ibm_ssh_key_name.stdout == '')
-
-- name: Set SSH key name
-  set_fact:
-    ibm_ssh_key_name_value: "{{ ibm_ssh_key_name.stdout }}"
-  when: lookup('env', 'IBM_SSH_KEY_ID') == ''
+  when: lookup('env', 'IBM_SSH_KEY_ID') == '' and ibm_ssh_key_name_value == ''
 
 - name: create private copy of tfvars template
   copy:
