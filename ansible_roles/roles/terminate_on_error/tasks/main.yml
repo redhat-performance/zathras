@@ -30,7 +30,7 @@
   set_fact:
     step_failed: >-
       {{ (not status_stat.stat.exists)
-         or ('fail' in ((status_slurp.content | b64decode) | lower).split()) }}
+         or ('fail' in ((status_slurp.content | b64decode) | lower)) }}
     step_failure_reason: >-
       {{ exit_msg if status_stat.stat.exists
          else (exit_msg ~ " (status file '" ~ status_file ~ "' not found in " ~ working_dir ~ ")") }}
