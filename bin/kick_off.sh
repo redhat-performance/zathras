@@ -229,6 +229,7 @@ if [[ $ansible_noise_level != "normal" ]]; then
 fi
 echo "[ssh_connection]" >> ansible.cfg
 echo "pipelining = True" >> ansible.cfg
+echo "ssh_args = -o IdentitiesOnly=yes -o ControlMaster=auto -o ControlPersist=60s" >> ansible.cfg
 
 current_test=0
 for sys_config in ${individual};
