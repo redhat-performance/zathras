@@ -38,6 +38,4 @@ network_count = 0
 
 use_spot_instances = {{ "true" if config_info.spot_start_price != 0 else "false" }}
 
-User = "{{ config_info.user_running | default('') }}"
-
-Project = "{{ config_info.run_label | default('') }}"
+{# User / Project and other generic cloud tags are appended via add_main_tf_vars #}
