@@ -20,6 +20,7 @@
       shell: |
         ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
+        -o IdentitiesOnly=yes \
         -i {{ ssh_key }} \
         '{{ test_user }}'@{{ item.1 }} \
         "id '{{ test_user }}' && echo 'User ready'"
