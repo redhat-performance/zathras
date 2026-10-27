@@ -19,7 +19,12 @@
   shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf/vars.tf"
 
 - name: Get IBM Cloud resource group
-  shell: ibmcloud target --output json | jq -r '.resource_group.id // empty'
+  shell: |
+    rg_id=$(ibmcloud target --output json | jq -r '.resource_group.guid // empty')
+    if [ -z "$rg_id" ]; then
+      rg_id=$(ibmcloud resource groups --output json | jq -r '[.[] | select(.default == true)][0].id // empty')
+    fi
+    echo "$rg_id"
   register: resource_group_id
   failed_when: resource_group_id.rc != 0 or resource_group_id.stdout == ""
 
