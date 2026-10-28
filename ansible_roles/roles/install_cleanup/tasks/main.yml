@@ -17,9 +17,9 @@
   block:
   - name: give command line
     debug:
-      msg: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ dyn_data.test_hostname }} --do_the_cleanup {{ dyn_data.ssh_i_option }} --update_type {{ config_info.update_type }}"
+      msg: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ dyn_data.test_hostname }} --do_the_cleanup --ssh_opts \"{{ dyn_data.ssh_opts }}\" --update_type {{ config_info.update_type }}"
   - name: execute the update command
-    command: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ dyn_data.test_hostname }} --do_the_cleanup {{ dyn_data.ssh_i_option }} --update_type {{ config_info.update_type }}"
+    shell: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ dyn_data.test_hostname }} --do_the_cleanup --ssh_opts \"{{ dyn_data.ssh_opts }}\" --update_type {{ config_info.update_type }}"
     ignore_errors: yes
     register: update_status
 

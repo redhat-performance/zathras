@@ -130,6 +130,9 @@ enabled will install the require packages, update the config file and reboot.
 ### --ssh_key_file
 Designates the ssh private key file we are to use.
 
+### --ssh_port
+Designates the ssh port to use when connecting to the system. Default is 22.
+
 ### --ssh_pub_key_file
 Designates the ssh public key file we are to use. Optional — if not set, only the private key specified by --ssh_key_file is used.
  

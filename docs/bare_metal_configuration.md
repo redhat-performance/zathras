@@ -93,6 +93,10 @@ ssh-copy-id root@target-hostname
 ssh root@target-hostname
 ```
 
+If the target system listens for SSH on a non-standard port, include the port in the
+commands above (e.g. `ssh-copy-id -p 2200 root@target-hostname`) and designate the port
+with the `ssh_port` option, as shown in [Non-Standard SSH Ports](#non-standard-ssh-ports).
+
 ### Step 2: Create Local Configuration File
 
 Create a configuration file for your target system:
@@ -147,8 +151,9 @@ Execute your tests:
 
 **SSH connection failures**
 - Verify passwordless SSH access: `ssh root@target-hostname`
-- Check that the target system is in your SSH known_hosts file
+- Check that the target system is in your SSH known_hosts file (for non-standard ports the entry is port-specific: `ssh-keyscan -p 2200 target-hostname`)
 - Ensure the target hostname resolves correctly
+- If the target listens on a non-standard port, make sure `ssh_port` is set (see [Non-Standard SSH Ports](#non-standard-ssh-ports))
 
 ### Validation
 
@@ -215,3 +220,33 @@ systems:
 ```
 
 Each system requires its own configuration file in the `local_configs/` directory.
+
+### Non-Standard SSH Ports
+
+If the target system listens for SSH on a port other than 22 (for example, a container
+forwarding sshd to port 2200), pass the port via the `ssh_port` option. It can be set on
+the command line or in the scenario file (globally or per system):
+
+```yaml
+# bare_metal_scenario.yml
+global:
+    results_prefix: bare_metal_test
+    system_type: local
+    ssh_port: 2200
+systems:
+    system1:
+        tests: fio
+        host_config: "my-server"
+```
+
+```bash
+./bin/burden --scenario bare_metal_scenario.yml
+# or
+./bin/burden --system_type local --host_config my-server --ssh_port 2200 --tests fio
+```
+
+Verify access before running tests:
+
+```bash
+ssh -p 2200 root@target-hostname "echo 'SSH access working'"
+```

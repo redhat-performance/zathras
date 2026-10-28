@@ -191,6 +191,7 @@ gl_selinux_state_set=0
 gl_ibm_api_key=""
 gl_ssh_key_file=""
 gl_ssh_pub_key_file=""
+gl_ssh_port=22
 gl_show_os_versions=0;
 gl_test_def_file=""
 gl_test_def_dir="${gl_top_dir}/config"
@@ -2202,6 +2203,7 @@ create_ansible_options()
 		else
 			echo "  ssh_pub_key: ${gl_ssh_pub_key_file}" >> ansible_vars_main.yml
 		fi
+		echo "  ssh_port: ${gl_ssh_port}" >> ansible_vars_main.yml
 		#
 		# local system type, user is expected to be root. cloud systems are expected
 		# to be non-root. Note: user_parent_home_dir is set after set_user_name
@@ -2769,6 +2771,17 @@ verify_iterations()
 	value_check=$(($1 + 0))
 	if [[ $value_check -lt 1 ]]; then
 		cleanup_and_exit "Error: $1, iterations needs to be an integer and greater than 0" 1
+	fi
+}
+
+#
+# Verify ssh port is an integer between 1 and 65535
+#
+verify_ssh_port()
+{
+	value_check=$(($1 + 0))
+	if [[ $value_check -lt 1 ]] || [[ $value_check -gt 65535 ]]; then
+		cleanup_and_exit "Error: $1, ssh port needs to be an integer between 1 and 65535" 1
 	fi
 }
 
@@ -3678,6 +3691,7 @@ usage()
 	echo "  --selinux_level: enforcing/permissive/disabled"
 	echo "  --selinux_state: disabled/enabled"
 	echo "  --ssh_key_file: Designates the ssh private key file we are to use."
+	echo "  --ssh_port: Designates the ssh port to use when connecting to the system.  Default is 22."
 	echo "  --ssh_pub_key_file: Designates the ssh public key file we are to use."
 	echo "  --show_os_versions: given the cloud type, and OS vendor, show the available os versions"
 	echo "  --show_tests:  list the available test as defined in config/test_defs.yml"
@@ -4022,6 +4036,12 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--ssh_port)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_ssh_port=$2
+			verify_data verify_ssh_port $gl_ssh_port
+			shift_by=2
+		;;
 		--system_type)
 			if [[ $gl_system_type == "" ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -4201,6 +4221,7 @@ grab_cli_data()
 		"run_file"
 		"scenario"
 		"ssh_key_file"
+		"ssh_port"
 		"ssh_pub_key_file"
 		"tuned_profiles"
 		"scenario_vars"

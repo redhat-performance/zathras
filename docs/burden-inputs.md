@@ -86,6 +86,7 @@
 | Option | Arguments | Description |
 |--------|-----------|-------------|
 | <nobr>`--ssh_key_file`</nobr> | `<file>` | SSH key file to use for authentication |
+| <nobr>`--ssh_port`</nobr> | `<port>` | SSH port to use when connecting to the system. Default: 22 |
 | <nobr>`--test_user`</nobr> | `<user>` | Username to log into system with. Overrides cloud/local defaults |
 | <nobr>`--ibm_api_key`</nobr> | `<key>` | IBM Cloud API key (IBM Cloud only) |
 

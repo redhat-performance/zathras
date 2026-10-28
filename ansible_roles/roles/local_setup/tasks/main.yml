@@ -10,6 +10,8 @@
     name: "{{ config_info.host_or_cloud_inst }}"
     groups: test_group,install_group
     ansible_user: root
+    ansible_port: "{{ config_info.ssh_port | default(22) }}"
+    ansible_ssh_private_key_file: "{{ config_info.ssh_key }}"
 
 - name: now add it to the test_group file
   include_role:

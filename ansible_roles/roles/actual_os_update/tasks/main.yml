@@ -20,9 +20,9 @@
       # 
       - name: iso update
         debug:
-          msg: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system }} {{ dyn_data.ssh_i_option }} --local_dir {{ config_info.local_run_dir }} --update_type iso"
+          msg: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system }} --ssh_opts \"{{ dyn_data.ssh_opts }}\" --local_dir {{ config_info.local_run_dir }} --update_type iso"
       - name: iso execute the update command
-        command: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system}} {{ dyn_data.ssh_i_option }} --local_dir {{ config_info.local_run_dir }} --update_type iso"
+        shell: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system}} --ssh_opts \"{{ dyn_data.ssh_opts }}\" --local_dir {{ config_info.local_run_dir }} --update_type iso"
         ignore_errors: yes
         register: update_results
       when:
@@ -32,9 +32,9 @@
     block:
     - name: ftp give command line
       debug:
-        msg: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system }} {{ dyn_data.ssh_i_option }} --local_dir {{ config_info.local_run_dir }} --update_type {{ config_info.update_type }} --update_target {{ config_info.update_os_version }}"
+        msg: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system }} --ssh_opts \"{{ dyn_data.ssh_opts }}\" --local_dir {{ config_info.local_run_dir }} --update_type {{ config_info.update_type }} --update_target {{ config_info.update_os_version }}"
     - name: ftp execute the update command
-      command: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system }} {{ dyn_data.ssh_i_option }} --local_dir {{ config_info.local_run_dir }} --update_type {{ config_info.update_type }} --update_target {{ config_info.update_os_version }}"
+      shell: "{{ working_dir }}/update_system --user {{ config_info.test_user }} --target_system {{ update_system }} --ssh_opts \"{{ dyn_data.ssh_opts }}\" --local_dir {{ config_info.local_run_dir }} --update_type {{ config_info.update_type }} --update_target {{ config_info.update_os_version }}"
       ignore_errors: yes
       register: update_results
     when:

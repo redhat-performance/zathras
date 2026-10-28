@@ -3,7 +3,7 @@
 #
 #
 - name: Obtain cpu type
-  command: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_i_option }} {{ config_info.test_user }}@{{ ip_addr }} 'lscpu | grep \"Model name:\" | cut -d: -f 2 | sort -u'"
+  command: "ssh -oStrictHostKeyChecking=no {{ dyn_data.ssh_opts }} {{ config_info.test_user }}@{{ ip_addr }} 'lscpu | grep \"Model name:\" | cut -d: -f 2 | sort -u'"
   register: cpu_info
 
 - name: Report cpu type
