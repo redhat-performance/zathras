@@ -1524,7 +1524,7 @@ aws_specific_os_version()
 		else
 			ami_check=$ami
 		fi
-		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}" | grep "${ami_check}"`
+		ami_value=`aws ec2 describe-images --query 'sort_by(Images, &CreationDate)[*].[CreationDate,Name,ImageId,Architecture]' --filters "$filter" --output table | grep -E "${start_date}|${end_date}" | grep "${ami_check}"`
 		if [[ $ami_value == "" ]]; then
 			get_cloud_acct_id
 			ami_value=`aws ec2 describe-images --owners $gl_cloud_acct_id | grep IMAGES | grep $ami_check`
