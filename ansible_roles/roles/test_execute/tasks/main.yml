@@ -22,15 +22,27 @@
 #
 - name: install git
   block:
-    - name: Install git package for rhel/azure if need be.
-      ansible.builtin.command: "dnf install -y git"
-      when: config_info.os_vendor == "azure" or config_info.os_vendor == "rhel" or config_info.os_vendor == "amazon"
-    - name: Install git package for ubuntu if need be.
-      ansible.builtin.command: "apt install -y git"
-      when: config_info.os_vendor == "ubuntu"
-    - name: Install git package on suse.
-      ansible.builtin.command: "zypper install -y git"
-      when: config_info.os_vendor == "suse"
+  - name: Determine OS package manager
+    block:
+      - name: Use dnf
+        set_fact:
+          pkg_man: dnf
+        when: config_info.os_vendor in ["azure", "rhel", "amazon"]
+      - name: Use apt
+        set_fact:
+          pkg_man: apt
+        when: config_info.os_vendor == "ubuntu"
+      - name: Use zypper
+        set_fact:
+          pkg_man: zypper
+        when: config_info.os_vendor == "suse"
+  - name: Build dependency list
+    set_fact:
+      pkgs:
+        - git
+  - name: Install packages
+    ansible.builtin.command: "{{ pkg_man }} install -y {{ item }}"
+    loop: "{{ pkgs }}"
   rescue:
     - name: If git not installed or failed to install bail.
       include_role:
@@ -44,37 +56,6 @@
     - git_check.rc != 0
     - config_info.do_not_install_packages == 0
     - config_info.do_not_install_system_packages == 0
-
-- name: check to see if git command is present
-  shell:
-      cmd: "command -v pip"
-  register: pip_check
-  changed_when: false
-  failed_when: false
-
-- name: install pip
-  block:
-    - name: Install git package for rhel/azure if need be.
-      ansible.builtin.command: "dnf install -y python3-pip"
-      when: config_info.os_vendor == "azure" or config_info.os_vendor == "rhel" or config_info.os_vendor == "amazon"
-    - name: Install git package for ubuntu if need be.
-      ansible.builtin.command: "apt install -y python3-pip"
-      when: config_info.os_vendor == "ubuntu"
-    - name: Install git package on suse.
-      ansible.builtin.command: "zypper install -y python3-pip"
-      when: config_info.os_vendor == "suse"
-  rescue:
-    - name: If pip not installed or failed to install bail.
-      include_role:
-        name: tf_delete
-      vars:
-        tf_dir: "tf"
-    - name: Aborting test
-      fail:
-        msg: "pip is not present"
-  when:
-    - pip_check.rc != 0
-    - config_info.do_not_install_pip_packages == 0
 
 #
 # Time we are starting the test.
