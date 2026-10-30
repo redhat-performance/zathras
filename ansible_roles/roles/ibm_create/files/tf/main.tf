@@ -32,7 +32,7 @@ resource "ibm_is_vpc" "zathras_vpc" {
   count          = var.vpc_name == "" ? 1 : 0
   name           = "${local.name_prefix}-vpc"
   resource_group = var.resource_group_id
-  tags           = [var.User, var.Project]
+  tags           = [var.User, var.Project, var.run_label, "zathras_run_id:${var.run_label}"]
 }
 
 locals {
@@ -123,7 +123,12 @@ resource "ibm_is_instance" "test" {
     }
   }
 
-  tags = [var.User, var.Project, var.run_label]
+  tags = [
+    var.User,
+    var.Project,
+    var.run_label,
+    "zathras_run_id:${var.run_label}",
+  ]
 
   lifecycle {
     ignore_changes = [image]
@@ -136,7 +141,7 @@ resource "ibm_is_floating_ip" "zathras_floating_ip" {
   name           = "${local.name_prefix}-${var.machine_type}-fip-${count.index}"
   target         = ibm_is_instance.test[count.index].primary_network_interface[0].id
   resource_group = var.resource_group_id
-  tags           = [var.User, var.Project]
+  tags           = [var.User, var.Project, var.run_label, "zathras_run_id:${var.run_label}"]
 }
 
 # Create private subnets for additional networks

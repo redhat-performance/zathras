@@ -5,7 +5,7 @@ resource "ibm_is_volume" "data_volume" {
   zone           = var.zone
   capacity       = var.disk_size
   resource_group = var.resource_group_id
-  tags           = [var.User, var.Project, var.run_label]
+  tags           = [var.User, var.Project, var.run_label, "zathras_run_id:${var.run_label}"]
 }
 
 resource "ibm_is_instance_volume_attachment" "volume_attachment" {

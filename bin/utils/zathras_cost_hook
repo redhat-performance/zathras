@@ -1,0 +1,117 @@
+#!/bin/bash
+#
+# Isolated Zathras cost plugin.
+#
+# Called from Ansible/kick_off at lifecycle points. This script MUST NOT
+# affect cloud create/destroy/test execution:
+#   - always exits 0
+#   - never runs terraform apply/destroy
+#   - time-boxed by the caller (timeout)
+#
+# Usage:
+#   zathras_cost_hook <event> <run_dir>
+#
+# Events:
+#   before_apply    record terraform apply start
+#   after_apply     record apply end; snapshot terraform show -json
+#   before_destroy  record destroy start; snapshot state if missing
+#   after_destroy   record destroy end
+#   after_run       calculate cost and attach reports to results zip/tar
+#
+
+trap 'exit 0' EXIT
+set +e
+
+event="${1:-}"
+run_dir="${2:-.}"
+
+log()
+{
+	mkdir -p "$run_dir" 2>/dev/null
+	echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [$event] $*" >> "$run_dir/cost_hook.log" 2>/dev/null
+}
+
+if [[ -z "$event" ]]; then
+	exit 0
+fi
+if [[ ! -d "$run_dir" ]]; then
+	exit 0
+fi
+
+here=$(cd "$(dirname "$0")" && pwd)
+life="$run_dir/instance_lifecycle"
+tf_dir="$run_dir/tf"
+inv="$run_dir/terraform_inventory.json"
+
+append_life()
+{
+	key="$1"
+	val="$2"
+	touch "$life" 2>/dev/null
+	if grep -q "^${key}=" "$life" 2>/dev/null; then
+		return 0
+	fi
+	printf '%s=%s\n' "$key" "$val" >> "$life" 2>/dev/null
+}
+
+now_unix()
+{
+	date -u +%s
+}
+
+snapshot_tf()
+{
+	if [[ -s "$inv" ]]; then
+		return 0
+	fi
+	if [[ ! -d "$tf_dir" ]]; then
+		log "no tf dir; skip inventory snapshot"
+		return 0
+	fi
+	if ! command -v terraform >/dev/null 2>&1; then
+		log "terraform not in PATH; skip inventory snapshot"
+		return 0
+	fi
+	(
+		cd "$tf_dir" || exit 0
+		terraform show -json > "$inv.tmp" 2>/dev/null
+	)
+	if [[ -s "$inv.tmp" ]]; then
+		mv "$inv.tmp" "$inv" 2>/dev/null
+		log "wrote terraform_inventory.json"
+	else
+		rm -f "$inv.tmp" 2>/dev/null
+		log "terraform show produced no inventory"
+	fi
+}
+
+case "$event" in
+	before_apply)
+		append_life terraform_apply_start_unix "$(now_unix)"
+		;;
+	after_apply)
+		append_life terraform_apply_end_unix "$(now_unix)"
+		snapshot_tf
+		;;
+	before_destroy)
+		append_life terraform_destroy_start_unix "$(now_unix)"
+		snapshot_tf
+		;;
+	after_destroy)
+		append_life terraform_destroy_end_unix "$(now_unix)"
+		;;
+	after_run)
+		if [[ -f "$here/ibm_cost.py" ]]; then
+			python3 "$here/ibm_cost.py" --fail-open --use-catalog --record --attach-results "$run_dir" \
+				>> "$run_dir/cost_hook.log" 2>&1
+			log "after_run calculator rc=$?"
+		else
+			log "ibm_cost.py missing; skip"
+		fi
+		;;
+	*)
+		log "unknown event; ignore"
+		;;
+esac
+
+exit 0

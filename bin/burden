@@ -144,6 +144,7 @@ gl_cloud_placement=${value_not_set}
 gl_cloud_networks_sys="duplicate"
 gl_preflight=0
 gl_use_pcp="--use_pcp"
+gl_track_cost=0
 #
 # Global values
 #   gl_sys_file: sysctl files to use.
@@ -273,6 +274,15 @@ if [ $? -ne 0 ]; then
 	UTILS_DIR=${curdir}/$UTILS_DIR/utils
 else
 	UTILS_DIR=$UTILS_DIR/utils
+fi
+
+#
+# IBM cost subcommand: ./burden cost [--latest] [run-dir]
+#
+if [[ "${1}" == "cost" ]]; then
+	shift
+	python3 "${UTILS_DIR}/ibm_cost.py" "$@"
+	exit $?
 fi
 
 #
@@ -2009,20 +2019,25 @@ create_ansible_options()
 		gl_host_config_info=`echo ${create_host} | sed s/';'/_/g | sed s/'\['/_/g | sed s/'\]'/_/g`
 
 		#
-		# If we did not find spot pricing, check the config/spot_price for the instance type,
-		# and populate if required.
+		# Instance hourly price. AWS uses ec2.shop; IBM uses Global Catalog.
+		# Do not call ec2.shop for non-AWS clouds.
 		#
-		if [[ $gl_system_type != "local" ]] && [[ $gl_spot_cap -eq 0 ]]; then
+		if [[ $gl_system_type == "aws" ]] && [[ $gl_spot_cap -eq 0 ]]; then
 			echo No spot price designated, retrieving
-			worker=`curl -L ec2.shop?filter=$1 -H 'accept: json'`
+			worker=`curl -L ec2.shop?filter=$host_or_cloud_inst -H 'accept: json'`
 			if [[ $? -ne 0 ]]; then
-				cleanup_and_exit "Unable to retrieve base cost $1" 1
+				cleanup_and_exit "Unable to retrieve base cost $host_or_cloud_inst" 1
 			fi
-			if [[ $gl_system_type == "aws" ]]; then
-				worker=`curl -L ec2.shop?filter=$host_or_cloud_inst -H 'accept: json'`
-				gl_base_cost=`echo $worker | cut -d':' -f 8 | cut -d',' -f 1`
-			fi
+			gl_base_cost=`echo $worker | cut -d':' -f 8 | cut -d',' -f 1`
 			retrieve_spot_from_config $host_or_cloud_inst
+		elif [[ $gl_system_type == "ibm" ]] && [[ $gl_track_cost -eq 1 ]]; then
+			ibm_price=`timeout 20 python3 "${gl_top_dir}/bin/utils/ibm_instance_price" --hourly-only "$host_or_cloud_inst" "$gl_cloud_region" 2>/dev/null`
+			if [[ $? -ne 0 ]] || [[ -z "$ibm_price" ]]; then
+				echo "Warning: IBM catalog price lookup failed; instance_cost=0 (run continues)"
+				gl_base_cost=0
+			else
+				gl_base_cost=$ibm_price
+			fi
 		fi
 
 		#
@@ -2106,6 +2121,7 @@ create_ansible_options()
 		echo "  "local_run_dir: $running_dir >> ansible_vars_main.yml
 		verify_system_type $gl_system_type
 		echo "  "system_type: $gl_system_type >> ansible_vars_main.yml
+		echo "  "track_cost: ${gl_track_cost} >> ansible_vars_main.yml
 		system_name=`parse_vmtype $create_host`
 		export_host_config_info=`echo "${system_name}" | sed "s/&/-/g"`
 		echo "  "host_config: $system_name >> ansible_vars_main.yml
@@ -3565,6 +3581,7 @@ usage()
 {
 	echo "Usage: $0"
 	echo "Version: "$version
+	echo "  cost [--latest] [--json] [--record] [run-dir]: IBM Cloud cost for a completed run"
 	echo "General options"
 	echo "  --ansible_noise_level <level>: How much information ansible is to output."
 	echo "    normal: standard ansible output"
@@ -3576,7 +3593,8 @@ usage()
 	echo "	--create_attempts: number of times we attempt to create an instance to get the"
 	echo "    designated cpu type"
 	echo "  --git_timeout: Number of seconds to timeout on git requests.  Default is 60"
-	echo "  --system_type <vendor>: aws, azure, gcp, or local"
+	echo "  --track_cost 0/1: IBM cost plugin (terraform apply→destroy). Isolated; failures never fail the run. Default 0"
+	echo "  --system_type <vendor>: aws, azure, gcp, ibm, or local"
 	echo "  --host_config <config options>: Specification of the system and configuration"
 	if [[ $1 -eq 1 ]]; then
 		echo "    If the --system_type option is local, then this is simply the system name"
@@ -3841,6 +3859,11 @@ set_general_value()
 			if [[ $gl_ibm_api_key == "" ]]; then
 				gl_ibm_api_key=$2
 			fi
+			shift_by=2
+		;;
+		--track_cost)
+			echo "$1 $2" >> $gl_cli_supplied_options
+			gl_track_cost=$2
 			shift_by=2
 		;;
 		--ignore_repo_errors)
@@ -4208,6 +4231,7 @@ grab_cli_data()
 		"selinux_state"
 		"system_type"
 		"terminate_cloud"
+		"track_cost"
 		"test_iter"
 		"tests"
 		"test_def_dir"

@@ -1,5 +1,13 @@
 ---
 
+- name: Cost plugin before terraform apply
+  include_role:
+    name: cost_track
+  vars:
+    cost_hook_event: before_apply
+  ignore_errors: true
+  when: (config_info.track_cost | default(0) | string) in ['1', 'true', 'yes']
+
 - name: Create resources
   shell: |
     set -eo pipefail
@@ -18,6 +26,16 @@
 - name: Determine if terraform succeeded
   ansible.builtin.set_fact:
     tf_success: '{{ create.rc == 0 }}'
+
+- name: Cost plugin after terraform apply
+  include_role:
+    name: cost_track
+  vars:
+    cost_hook_event: after_apply
+  ignore_errors: true
+  when:
+    - tf_success | bool
+    - (config_info.track_cost | default(0) | string) in ['1', 'true', 'yes']
 
 #
 # update the return status, to be used by the calling module.  We could
