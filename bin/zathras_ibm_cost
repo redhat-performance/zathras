@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI wrapper: zathras_cost → bin/utils/ibm_cost.py"""
+"""CLI wrapper: zathras_ibm_cost → bin/utils/ibm_cost.py"""
 import os
 import sys
 

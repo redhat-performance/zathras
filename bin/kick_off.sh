@@ -332,7 +332,7 @@ if [[ -f ansible_vars_main.yml ]]; then
 	_track_cost=`grep track_cost: ansible_vars_main.yml | awk '{print $2}'`
 	_cost_type=`grep system_type: ansible_vars_main.yml | awk '{print $2}'`
 	if [[ $_track_cost == "1" ]] && [[ $_cost_type == "ibm" ]]; then
-		_hook="$top_dir/bin/utils/zathras_cost_hook"
+		_hook="$top_dir/bin/utils/ibm_cost_hook"
 		if [[ -f $_hook ]]; then
 			timeout --signal=15 --kill-after=5s 90 bash "$_hook" after_run . >/dev/null 2>&1 || true
 		fi

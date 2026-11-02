@@ -25,8 +25,9 @@
 # OS license metrics (RHEL/Windows/etc.) are excluded to match CPT BYOL
 # images and the AWS Linux (non-RHEL) estimate from ec2.shop.
 #
-# Known profile names (from IBM VPC docs) live in:
-#   config/ibm_vpc_profiles.cfg
+# Known profile names used as a fallback for --list-profiles/--price-all when
+# a live lookup isn't available (no ibmcloud CLI / not logged in):
+#   config/hardware/ibm/ibm_vpc_profiles.cfg
 #
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -67,10 +69,52 @@ class IbmPriceError(Exception):
 
 def _profiles_cfg_path() -> str:
     here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.normpath(os.path.join(here, "..", "..", "config", "ibm_vpc_profiles.cfg"))
+    return os.path.normpath(
+        os.path.join(here, "..", "..", "config", "hardware", "ibm", "ibm_vpc_profiles.cfg")
+    )
 
 
-def load_known_profiles(path: Optional[str] = None) -> List[str]:
+PROFILE_LOOKUP_TIMEOUT = 15
+
+
+def _live_profiles() -> Optional[List[str]]:
+    """Enumerate current VPC profile names via the ibmcloud CLI.
+
+    Returns None (never raises) when the CLI is missing, not logged in, or
+    slow, so callers can fall back to the static snapshot file.
+    """
+    try:
+        result = subprocess.run(
+            ["ibmcloud", "is", "instance-profiles", "--output", "json"],
+            capture_output=True,
+            text=True,
+            timeout=PROFILE_LOOKUP_TIMEOUT,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    profiles = sorted({p["name"] for p in data if isinstance(p, dict) and "name" in p})
+    return profiles or None
+
+
+def load_known_profiles(path: Optional[str] = None, allow_live: bool = True) -> List[str]:
+    """List known VPC profile names.
+
+    Tries a live `ibmcloud is instance-profiles` lookup first so newly
+    released IBM profiles show up without a code/config change. Falls back
+    to the bundled snapshot (config/hardware/ibm/ibm_vpc_profiles.cfg) when
+    the CLI is unavailable or not logged in -- this only affects the
+    --list-profiles/--price-all enumeration commands, never per-run pricing.
+    """
+    if allow_live and path is None:
+        live = _live_profiles()
+        if live:
+            return live
     cfg = path or _profiles_cfg_path()
     if not os.path.isfile(cfg):
         raise IbmPriceError(f"Known profiles file not found: {cfg}")
@@ -634,7 +678,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser.add_argument(
         "--list-profiles",
         action="store_true",
-        help="List known profiles from config/ibm_vpc_profiles.cfg",
+        help="List known profiles (live via ibmcloud CLI, falling back to "
+        "config/hardware/ibm/ibm_vpc_profiles.cfg)",
     )
     parser.add_argument(
         "--price-all",

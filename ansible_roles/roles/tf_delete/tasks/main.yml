@@ -44,7 +44,9 @@
       vars:
         cost_hook_event: before_destroy
       ignore_errors: true
-      when: (config_info.track_cost | default(0) | string) in ['1', 'true', 'yes']
+      when:
+        - config_info.system_type == 'ibm'
+        - (config_info.track_cost | default(0) | string) in ['1', 'true', 'yes']
 
     #
     # timeout sends SIGTERM (--signal=15) so terraform can shut down gracefully
@@ -90,4 +92,6 @@
       vars:
         cost_hook_event: after_destroy
       ignore_errors: true
-      when: (config_info.track_cost | default(0) | string) in ['1', 'true', 'yes']
+      when:
+        - config_info.system_type == 'ibm'
+        - (config_info.track_cost | default(0) | string) in ['1', 'true', 'yes']

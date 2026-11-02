@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Isolated Zathras cost plugin.
+# Isolated IBM Cloud cost plugin for Zathras.
 #
 # Called from Ansible/kick_off at lifecycle points. This script MUST NOT
 # affect cloud create/destroy/test execution:
@@ -9,7 +9,7 @@
 #   - time-boxed by the caller (timeout)
 #
 # Usage:
-#   zathras_cost_hook <event> <run_dir>
+#   ibm_cost_hook <event> <run_dir>
 #
 # Events:
 #   before_apply    record terraform apply start

@@ -3,7 +3,7 @@
 # IBM Cloud cost tracking for a Zathras run directory.
 #
 # Pricing is never hard-coded in this file. Rates come from, in order:
-#   1) config/ibm_pricing_overrides.cfg
+#   1) config/hardware/ibm/ibm_pricing_overrides.cfg
 #   2) the run's instance_cost file (captured at start from the catalog)
 #   3) IBM Global Catalog (VSI / GPU only)
 # Missing rates are recorded as unavailable; they are not guessed.
@@ -17,7 +17,7 @@
 # Resource inventory prefers terraform_inventory.json (terraform show -json
 # snapshot taken after apply, before destroy). Ansible inference is fallback.
 #
-# Cost tracking is a plugin (zathras_cost_hook + cost_track role). Failures
+# Cost tracking is a plugin (ibm_cost_hook + cost_track role). Failures
 # must not fail Terraform or the benchmark.
 #
 
@@ -236,7 +236,7 @@ def vm_count_from_config(info: Dict[str, str]) -> int:
 
 
 def load_overrides(path: Optional[str] = None) -> List[Dict[str, str]]:
-    cfg = path or os.path.join(_REPO_ROOT, "config", "ibm_pricing_overrides.cfg")
+    cfg = path or os.path.join(_REPO_ROOT, "config", "hardware", "ibm", "ibm_pricing_overrides.cfg")
     rows: List[Dict[str, str]] = []
     if not os.path.isfile(cfg):
         return rows
