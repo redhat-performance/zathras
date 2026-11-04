@@ -24,7 +24,7 @@
 #
 
 image_parent="none"
-ssh_key_file=""
+ssh_opts=""
 target_system="none"
 user=root
 cleanup=0
@@ -96,17 +96,17 @@ ftp_update()
 			rval=$?
 		done
 	else
-		scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/update_system $user@$target_system:/tmp/update_system
+		scp -oStrictHostKeyChecking=no $ssh_opts $local_dir/tools_bin/update_system $user@$target_system:/tmp/update_system
 		if [ $? -ne 0 ]; then
 			error_out "scp of $local_dir/tools_bin/update_system failed"
 		fi
-		ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/update_system
+		ssh -oStrictHostKeyChecking=no $ssh_opts $user@$target_system chmod 755 /tmp/update_system
 		if [ $? -ne 0 ]; then
-			error_out "ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/update_system failed."
+			error_out "ssh -oStrictHostKeyChecking=no $ssh_opts $user@$target_system chmod 755 /tmp/update_system failed."
 		fi
-		ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --update_target $image_parent
+		ssh -oStrictHostKeyChecking=no $ssh_opts $user@$target_system sudo /tmp/update_system --update_target $image_parent
 		if [ $? -ne 0 ]; then
-			error_out "ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --update_target $image_parent failed"
+			error_out "ssh -oStrictHostKeyChecking=no $ssh_opts $user@$target_system sudo /tmp/update_system --update_target $image_parent failed"
 		fi
 	fi
 	exit 0
@@ -198,44 +198,44 @@ iso_retrieve_image()
 
 iso_cleanup_call()
 {
-	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --do_the_cleanup --update_type $update_type
+	ssh -oStrictHostKeyChecking=no $ssh_opts $user@$target_system sudo /tmp/update_system --do_the_cleanup --update_type $update_type
 }
 
 iso_update_the_system()
 {
-	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/update_system $user@$target_system:/tmp/update_system
+	scp -oStrictHostKeyChecking=no $ssh_opts $local_dir/tools_bin/update_system $user@$target_system:/tmp/update_system
 	if [ $? -ne 0 ]; then
 		error_out "iso_update_the_system: failed to upload $local_dir/tools_bin/update_system"
 	fi
-	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/grab_disks $user@$target_system:/tmp/grab_disks
+	scp -oStrictHostKeyChecking=no $ssh_opts $local_dir/tools_bin/grab_disks $user@$target_system:/tmp/grab_disks
 	if [ $? -ne 0 ]; then
 		error_out "iso_update_the_system: failed to upload $local_dir/tools_bin/grab_disks"
 	fi
-	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/update_system
+	ssh -oStrictHostKeyChecking=no $ssh_opts $user@$target_system chmod 755 /tmp/update_system
 	if [ $? -ne 0 ]; then
 		error_out "iso_update_the_system:: failed to chmod 755 /tmp/update_system"
 	fi
-	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system chmod 755 /tmp/grab_disks
+	ssh -oStrictHostKeyChecking=no $ssh_opts $user@$target_system chmod 755 /tmp/grab_disks
 	if [ $? -ne 0 ]; then
 		error_out "iso_update_the_system: faled to chmod 755 /tmp/grab_disks"
 	fi
-	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --prepare_update --update_type $update_type
+	ssh -oStrictHostKeyChecking=no $ssh_opts $user@$target_system sudo /tmp/update_system --prepare_update --update_type $update_type
 	if [ $? -ne 0 ]; then
 		error_out "iso_update_the_system: failed to sudo /tmp/update_system --prepare_update --update_type $update_type"
 	fi
-	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/dvd1.iso $user@$target_system:/iso_update/dvd1.iso
+	scp -oStrictHostKeyChecking=no $ssh_opts $local_dir/dvd1.iso $user@$target_system:/iso_update/dvd1.iso
 	if [ $? -ne 0 ]; then
 		error_out "iso_update_the_system: failed to upload $local_dir/dvd1.iso"
 	fi
-	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/CRB.tar $user@$target_system:/iso_update/CRB.tar
+	scp -oStrictHostKeyChecking=no $ssh_opts $local_dir/CRB.tar $user@$target_system:/iso_update/CRB.tar
 	if [ $? -ne 0 ]; then
 		error_out "iso_update_the_system: failed to upload $local_dir/CRB.tar"
 	fi
-	scp -oStrictHostKeyChecking=no $ssh_key_file $local_dir/tools_bin/update_repo.file $user@$target_system:/tmp/update_repo.file
+	scp -oStrictHostKeyChecking=no $ssh_opts $local_dir/tools_bin/update_repo.file $user@$target_system:/tmp/update_repo.file
 	if [ $? -ne 0 ]; then
 		error_out "iso_update_the_system: failed to upload $local_dir/tools_bin/update_repo.file"
 	fi
-	ssh -oStrictHostKeyChecking=no $ssh_key_file $user@$target_system sudo /tmp/update_system --do_the_update --update_type iso
+	ssh -oStrictHostKeyChecking=no $ssh_opts $user@$target_system sudo /tmp/update_system --do_the_update --update_type iso
 	if [ $? -ne 0 ]; then
 		error_out "iso_update_the_system: failed to sudo /tmp/update_system --do_the_update --update_type iso"
 	fi
@@ -270,6 +270,7 @@ ARGUMENT_LIST=(
 	"update_target"
 	"target_system"
 	"ssh_key_file"
+	"ssh_opts"
 	"requestor"
 	"user"
 	"local_dir"
@@ -343,12 +344,12 @@ while [[ $# -gt 0 ]]; do
 			do_the_update=1
 			shift 1
 		;;
-		--ssh_key_file)
-			ssh_key_file="-i "$2
+		--ssh_key_file | -i)
+			ssh_opts="-i $2 $ssh_opts"
 			shift 2
 		;;
-		-i)
-			ssh_key_file="-i "$2
+		--ssh_opts)
+			ssh_opts="$2 $ssh_opts"
 			shift 2
 		;;
 		--)

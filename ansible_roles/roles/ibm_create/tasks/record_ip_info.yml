@@ -86,8 +86,8 @@
 - name: Record ssh connection option
   lineinfile:
     path: "{{ working_dir }}/ansible_run_vars.yml"
-    regexp: "^ssh_i_option:"
-    line: "ssh_i_option: -i {{ config_info.ssh_key }}"
+    regexp: "^ssh_opts:"
+    line: "ssh_opts: -i {{ config_info.ssh_key }}"
     create: yes
 
 - name: Record uperf server IP for network tests
