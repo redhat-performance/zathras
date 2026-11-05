@@ -336,7 +336,7 @@
     when:
       - ten_of_us_codeready_cr_status_check | bool
       - config_info.os_vendor == "rhel"
-      - config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp"
+      - config_info.system_type == "aws" or config_info.system_type == "azure" or config_info.system_type == "gcp" or config_info.system_type == "ibm"
 
 #
 # Enable SLES legacy module
