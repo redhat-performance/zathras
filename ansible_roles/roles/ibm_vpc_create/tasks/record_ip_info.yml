@@ -14,7 +14,7 @@
     private_ip_address: "{{ [ tf_info.private_ip0 ] }}"
     hostname: "{{ tf_info.instance_name0 }}"
     vpc_instance_id: "{{ tf_info.instance_id0 }}"
-  when: config_info.cloud_numb_networks|int == 0 or config_info.cloud_network_type == "public"
+  when: config_info.cloud_numb_networks|int == 0 or config_info.cloud_numb_network_type == "public"
 
 - name: set host
   set_fact:
@@ -24,7 +24,7 @@
     private_ip_address: "{{ [ tf_info.private_ip0, tf_info.private_ip1 ] }}"
     hostname: "{{ tf_info.instance_name0 }}"
     vpc_instance_id: "{{ tf_info.instance_id0 }}"
-  when: config_info.cloud_numb_networks|int > 0 and config_info.cloud_network_type != "public"
+  when: config_info.cloud_numb_networks|int > 0 and config_info.cloud_numb_network_type != "public"
 
 - name: set ssh options up
   set_fact:
