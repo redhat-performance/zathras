@@ -2,7 +2,7 @@ machine_type = "{{ config_info.host_or_cloud_inst }}"
 
 cloud_os_version = "{{ config_info.cloud_os_version }}"
 
-run_label = "{{ config_info.user_running }}-{{ config_info.run_label | lower() | replace ('.','-',63) | replace('_','-',63) | replace('/','-',63) }}"
+run_label = "{{ (config_info.user_running + '-' + config_info.run_label | lower() | replace('.', '-') | replace('_', '-') | replace('/', '-'))[:63] }}"
 
 region = "{{ config_info.cloud_region }}"
 
