@@ -132,6 +132,11 @@ Designates the ssh private key file we are to use.
 
 ### --ssh_pub_key_file
 Designates the ssh public key file we are to use. Optional — if not set, only the private key specified by --ssh_key_file is used.
+
+### --ssh_port
+Specifies what port to use to SSH to the remote system.  This is only supported
+on local system types.  If not provided, then it defaults to whatever SSH will use
+according to it's configuration file.
  
 ### --show_os_versions
 Given the cloud type and OS vendor, show the available operating system versions.
