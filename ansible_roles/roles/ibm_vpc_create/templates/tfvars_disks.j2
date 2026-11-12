@@ -1,9 +1,9 @@
 {% if disk_type == "gp3" %}
 disk_profile = "custom"
-{% elif disk_type is defined and disk_type not in ["", "na"] %}
-disk_profile = "{{ disk_type }}"
-{% else %}
+{% elif disk_type == "gp2" or disk_type is not defined or disk_type in ["", "na"] %}
 disk_profile = "general-purpose"
+{% else %}
+disk_profile = "{{ disk_type }}"
 {% endif %}
 disk_count = {{ disk_count }}
 disk_size = {{ disk_size }}
