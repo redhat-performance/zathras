@@ -88,3 +88,13 @@ variable "disk_profile" {
   type        = string
   default     = "general-purpose"
 }
+
+variable "use_spot_instances" {
+  description = "Use spot instances for VSIs"
+  type        = bool
+  default     = false
+}
+
+# User / Project (and other cloud tags) are declared generically via
+# burden's add_vars_tf and appended onto this file at create time —
+# do not redeclare them here, terraform rejects duplicate declarations.
