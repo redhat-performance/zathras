@@ -63,8 +63,8 @@ do
 	device=`echo $mnt_data | awk '{print $1}'`
 	grep -q "^${device} " $worker_mnt
 	if [[ $? -eq 0 ]]; then
-		space=$( echo $mnt_data | awk '{print $5}' )
-		mnt_pnt=$( echo $mnt_data | awk '{print $7}' )
+		space=$( echo "$mnt_data" | awk '{print $5}' )
+		mnt_pnt=$( echo "$mnt_data" | awk '{print $7}' )
 		echo $space $mnt_pnt  >> $out_file
 	fi
 done < "$worker_fsys"
