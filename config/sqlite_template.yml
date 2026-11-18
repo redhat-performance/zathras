@@ -1,0 +1,7 @@
+location: https://github.com/redhat-performance/sqlite-wrapper/archive/refs/tags
+exec_dir: "sqlite-wrapper-1.1/sqlite"
+repo_file: "v1.1.tar.gz"
+storage_required: "no"
+network_required: "no"
+test_script_to_run: run_sqlite.sh
+test_specific: "--table_entries 5000"

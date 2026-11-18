@@ -1,0 +1,7 @@
+location: https://github.com/redhat-performance/cockroachdb-wrapper/archive/refs/tags
+exec_dir: "cockroachdb-wrapper-1.1/cockroachdb"
+repo_file: "v1.1.tar.gz"
+storage_required: "no"
+network_required: "no"
+test_script_to_run: cockroachdb_run
+test_specific: "--duration 180s --ramp 30s"
