@@ -191,6 +191,7 @@ gl_selinux_state_set=0
 gl_ibm_api_key=""
 gl_ssh_key_file=""
 gl_ssh_pub_key_file=""
+gl_ssh_port=""
 gl_show_os_versions=0;
 gl_test_def_file=""
 gl_test_def_dir="${gl_top_dir}/config"
@@ -2207,6 +2208,9 @@ create_ansible_options()
 		else
 			echo "  ssh_pub_key: ${gl_ssh_pub_key_file}" >> ansible_vars_main.yml
 		fi
+		if [[ -n "$gl_ssh_port" ]]; then
+			echo "  ssh_port: ${gl_ssh_port}" >> ansible_vars_main.yml
+		fi
 		#
 		# local system type, user is expected to be root. cloud systems are expected
 		# to be non-root. Note: user_parent_home_dir is set after set_user_name
@@ -2678,6 +2682,22 @@ verify_ssh_key_file()
 	fi
 }
 
+number_error()
+{
+	if [[ ! "$1" =~ ^[0-9]+$ ]]; then
+		cleanup_and_exit "Error $1 is not a valid value for $2, expected a number." 1
+	fi
+}
+
+verify_ssh_port()
+{
+	number_error $1 "ssh_port"
+
+	if [[ "$gl_system_type" != "local" ]] && [[ "$gl_system_type" != "" ]]; then
+		cleanup_and_exit "Error $gl_system_type is not supported with --ssh_port, only local systems are supported" 1
+	fi
+}
+
 #
 #  Verify that the test def file is present.
 #
@@ -2721,6 +2741,10 @@ verify_system_type()
 	done
 	if [[ $sys_type_found -eq 0 ]]; then
 		cleanup_and_exit "Error: $1, is an unrecognized system type.  Valid system types are designated via --system_type.  Valid system types are $gl_valid_system_types" 1
+	fi
+
+	if [[ "$gl_ssh_port" != "" ]] && [[ "$1" != "local" ]]; then
+		cleanup_and_exit "Error $gl_system_type is not supported with --ssh_port, only local systems are supported" 1
 	fi
 }
 
@@ -3684,6 +3708,7 @@ usage()
 	echo "  --selinux_state: disabled/enabled"
 	echo "  --ssh_key_file: Designates the ssh private key file we are to use."
 	echo "  --ssh_pub_key_file: Designates the ssh public key file we are to use."
+	echo "  --ssh_port: Designates the ssh port to use, default is to use SSH config to determine what port to use"
 	echo "  --show_os_versions: given the cloud type, and OS vendor, show the available os versions"
 	echo "  --show_tests:  list the available test as defined in config/test_defs.yml"
 	echo "  --skip_test_version_check:  Skip the initial check of test wrapper versions and just use what we have"
@@ -4027,6 +4052,14 @@ set_general_value()
 			fi
 			shift_by=2
 		;;
+		--ssh_port)
+			if [[ $gl_ssh_port == "" ]]; then
+				echo "$1 $2" >> $gl_cli_supplied_options
+				gl_ssh_port=$2
+				verify_data verify_ssh_port $gl_ssh_port
+			fi
+			shift_by=2
+		;;
 		--system_type)
 			if [[ $gl_system_type == "" ]]; then
 				echo "$1 $2" >> $gl_cli_supplied_options
@@ -4207,6 +4240,7 @@ grab_cli_data()
 		"scenario"
 		"ssh_key_file"
 		"ssh_pub_key_file"
+		"ssh_port"
 		"tuned_profiles"
 		"scenario_vars"
 		"selinux_level"
