@@ -165,3 +165,21 @@ test_defs:
     test_name: phoronix_redis
     test_description: phoronix redis test
     test_specific: "--sub_test redis"
+
+  test26:
+    test_template: nginx_template.yml
+    test_name: nginx
+    test_description: nginx-wrapper stable default config (post bugfix v1.1)
+    archive_results: "yes"
+
+  test27:
+    test_template: sqlite_template.yml
+    test_name: sqlite
+    test_description: sqlite-wrapper stable default config
+    archive_results: "yes"
+
+  test28:
+    test_template: cockroachdb_template.yml
+    test_name: cockroachdb
+    test_description: cockroachdb-wrapper stable config (180s duration, 30s ramp)
+    archive_results: "yes"

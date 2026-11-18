@@ -1,0 +1,7 @@
+location: https://github.com/redhat-performance/nginx-wrapper/archive/refs/tags
+exec_dir: "nginx-wrapper-1.2/nginx"
+repo_file: "v1.2.tar.gz"
+storage_required: "no"
+network_required: "no"
+test_script_to_run: run_nginx.sh
+test_specific: "--connections 1,2,4,8,16,32,64"
