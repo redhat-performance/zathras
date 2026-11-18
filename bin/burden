@@ -1606,22 +1606,23 @@ retrieve_spot_from_config()
 			gl_spot_cap=$gl_base_cost
 			#
 			# We will default to 5 intervals
-			# 
+			#
 			gl_spot_increment=`echo "scale=2;((($gl_spot_cap - $gl_spot_price)*1.5)/5.00)" | bc`
 
 		elif [[ $gl_system_type == "gcp" ]]; then
 		  echo "spot prices not to be provided in case of gcp."
+		elif [[ $gl_system_type == "azure" ]]; then
+			gl_spot_price=1
+		elif [[ $gl_system_type == "ibm" ]]; then
+			gl_spot_price=1
 		else
-			if [[ $gl_system_type != "azure" ]]; then
-				spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
-				if [[ $? -ne 0 ]]; then
-					cleanup_and_exit "Error: no spot information present for $1" 1
-				fi
-				gl_spot_price=`echo ${spot_string} | cut -d':' -f2`
-				gl_spot_increment=`echo ${spot_string} | cut -d':' -f3`
-				gl_spot_cap=`echo ${spot_string} | cut -d':' -f4`
+			spot_string=`grep $1 ${gl_test_def_dir}/spot_price.cfg`
+			if [[ $? -ne 0 ]]; then
+				cleanup_and_exit "Error: no spot information present for $1" 1
 			fi
-
+			gl_spot_price=`echo ${spot_string} | cut -d':' -f2`
+			gl_spot_increment=`echo ${spot_string} | cut -d':' -f3`
+			gl_spot_cap=`echo ${spot_string} | cut -d':' -f4`
 		fi
 	fi
 }
