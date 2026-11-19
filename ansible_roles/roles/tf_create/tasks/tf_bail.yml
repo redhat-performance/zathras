@@ -1,0 +1,17 @@
+---
+#
+# Shared failure handler: clean up any partial resources that terraform
+# may have created, then abort the play with the supplied message.
+#
+# Callers pass bail_msg with a description of what failed.
+#
+- name: Clean up partial resources on failure
+  include_role:
+    name: tf_delete
+  vars:
+    tf_dir: "tf"
+  ignore_errors: yes
+
+- name: Abort after cleanup
+  ansible.builtin.fail:
+    msg: "{{ bail_msg }}"
