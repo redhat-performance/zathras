@@ -97,6 +97,22 @@ Before using Zathras with IBM Cloud, you must:
          --tests linpack
 ```
 
+### With Cost Tracking
+
+```bash
+./burden --system_type ibm \
+         --host_config bx2-2x8 \
+         --cloud_os_id r006-xxx-xxx-xxx \
+         --os_vendor rhel \
+         --tests linpack \
+         --track_cost 1
+
+# After the run, review or re-generate the cost report:
+./burden cost --latest
+```
+
+See [Cost tracking](#cost-tracking) below for what gets recorded and priced.
+
 ### Show Available OS Images
 
 ```bash
@@ -285,6 +301,28 @@ systems:
          --cloud_os_id r006-xxx-xxx-xxx \
          --os_vendor rhel \
          --tests stream
+```
+
+## Cost tracking
+
+Enable with `--track_cost 1` (or `track_cost: 1` in the scenario). The isolated
+cost plugin times Terraform apply → destroy, inventories resources from
+`terraform show -json`, and prices:
+
+| Category | Billable resources | Catalog unit |
+|---|---|---|
+| VM | `ibm_is_instance` | instance-hour |
+| GPU | GPU hours on `gx*` profiles | GPU-hour (split from VSI) |
+| Storage | boot + data `ibm_is_volume` | GB-hour |
+| Network | `ibm_is_floating_ip` | IP-hour |
+| Other | VPC, subnet, SG, rules, `random_id` | not independently billed ($0) |
+
+Rates come from IBM Global Catalog (or `config/hardware/ibm/ibm_pricing_overrides.cfg`).
+Failures never fail the benchmark run.
+
+```bash
+./bin/burden --scenario rhel.yml --track_cost 1
+./burden cost --latest
 ```
 
 ## Additional Resources
