@@ -86,6 +86,7 @@
 | Option | Arguments | Description |
 |--------|-----------|-------------|
 | <nobr>`--ssh_key_file`</nobr> | `<file>` | SSH key file to use for authentication |
+| <nobr>`--ssh_port`</nopr> | `<port number> | SSH port to use (BareMetal only, default is to let SSH handle it) |
 | <nobr>`--test_user`</nobr> | `<user>` | Username to log into system with. Overrides cloud/local defaults |
 | <nobr>`--ibm_api_key`</nobr> | `<key>` | IBM Cloud API key (IBM Cloud only) |
 
