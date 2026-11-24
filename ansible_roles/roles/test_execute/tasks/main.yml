@@ -15,20 +15,34 @@
   failed_when: false
 
 #
-# Install git if it is missing.  ansible builtin package install is not
-# working on azurelinux, so dnf is used directly there.
+# Install git if it is missing.  Seeing issue on various os's where the ansible command fails
+# because there is extra data returned after ansible thinks all the data has been returned.
+# This results in the ansible thinking the command has failed.  Tried the various recommend fixes,
+# did not clear out the error.  Soloution is to use the installer for the particular os.
 #
 - name: install git
   block:
-    - name: Install git package if need be.
-      ansible.builtin.package:
-        name: git
-        state: present
-      when: config_info.os_vendor != "azure"
-
-    - name: Install git package on azure.
-      ansible.builtin.command: "dnf install -y git"
-      when: config_info.os_vendor == "azure"
+  - name: Determine OS package manager
+    block:
+      - name: Use dnf
+        set_fact:
+          pkg_man: dnf
+        when: config_info.os_vendor in ["azure", "rhel", "amazon"]
+      - name: Use apt
+        set_fact:
+          pkg_man: apt
+        when: config_info.os_vendor == "ubuntu"
+      - name: Use zypper
+        set_fact:
+          pkg_man: zypper
+        when: config_info.os_vendor == "suse"
+  - name: Build dependency list
+    set_fact:
+      pkgs:
+        - git
+  - name: Install packages
+    ansible.builtin.command: "{{ pkg_man }} install -y {{ item }}"
+    loop: "{{ pkgs }}"
   rescue:
     - name: If git not installed or failed to install bail.
       include_role:
