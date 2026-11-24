@@ -125,6 +125,27 @@ resource "ibm_is_instance" "test" {
 
   tags = [var.User, var.Project, var.run_label]
 
+{% if config_info.spot_start_price != 0 %}
+  # ibm_is_instance has no top-level "spot"/"commit"/"preemptible" argument;
+  # spot pricing is controlled via the nested availability block instead.
+  # See: https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs/resources/is_instance
+  #
+  # Note: spot instances require special IBM Cloud account approval. If the
+  # account is not approved, instance creation will fail at apply time with
+  # an error from the IBM API, not at plan/validate time.
+  availability {
+    class = "spot"
+  }
+
+  # preemption=stop leaves the instance stopped (not deleted) when IBM Cloud
+  # reclaims the capacity, matching this repo's Azure spot behavior
+  # (eviction_policy = "Deallocate" in azure_create).
+  availability_policy {
+    preemption   = "stop"
+    host_failure = "restart"
+  }
+{% endif %}
+
   lifecycle {
     ignore_changes = [image]
   }

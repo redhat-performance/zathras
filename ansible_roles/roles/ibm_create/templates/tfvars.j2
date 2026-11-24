@@ -35,3 +35,7 @@ network_count = {{ config_info.cloud_numb_networks }}
 vm_count = 1
 network_count = 0
 {% endif %}
+
+use_spot_instances = {{ "true" if config_info.spot_start_price != 0 else "false" }}
+
+{# User / Project and other generic cloud tags are appended via add_main_tf_vars #}

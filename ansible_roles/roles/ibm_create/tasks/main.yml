@@ -10,10 +10,14 @@
     src: "tf/{{ item }}"
     dest: "{{ working_dir }}/tf/"
   loop:
-    - main.tf
     - vars.tf
     - output.tf
     - network.tf
+
+- name: render main.tf
+  template:
+    src: main.tf.j2
+    dest: "{{ working_dir }}/tf/main.tf"
 
 - name: append custom vars to vars.tf
   shell: "cat {{ working_dir }}/add_vars_tf >> {{ working_dir }}/tf/vars.tf"
